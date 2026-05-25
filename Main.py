@@ -1,4 +1,3 @@
-
 import os
 import socket
 import json
@@ -100,7 +99,6 @@ def run_utility_scan(target_string: str, scan_profile_type: str) -> str:
     """Central dispatcher function dynamically executed by the blockly string mapping sequence."""
     normalized_profile = str(target_string if scan_profile_type == "DYNAMIC_TARGET" else scan_profile_type).lower().strip()
     
-    # Simple evaluation to detect standalone string values
     if "phone" in normalized_profile or target_string.startswith("+") or (target_string.isdigit() and len(target_string) >= 7):
         return perform_phone_scan(target_string)
     elif scan_profile_type == "dns":
@@ -110,7 +108,7 @@ def run_utility_scan(target_string: str, scan_profile_type: str) -> str:
 
 
 def show_output_to_user(data_result_string: str):
-    """Invoked directly by the compiled 'display_result' block command to append logs to side monitor."""
+    """Invoked directly by the compiled 'display_result' block command to append logs."""
     st.session_state["console_terminal_logs"] += f"\n{data_result_string}\n{'-'*40}"
 
 
@@ -144,22 +142,17 @@ if "console_terminal_logs" not in st.session_state:
 if "compiled_block_code" not in st.session_state:
     st.session_state["compiled_block_code"] = ""
 
-# Intercept updates passed up via iframe callback communication components
+# Process parameters updated from iframe callback mechanisms
 query_params = st.query_params
 if "generated_python" in query_params:
     st.session_state["compiled_block_code"] = query_params["generated_python"]
 
-# Setup the fixed Sidebar Terminal for continuous visibility
+# Setup Sidebar Target Console Log
 with st.sidebar:
     st.header("🖥️ Sidebar Target Console Log")
     st.code(st.session_state["console_terminal_logs"], language="text")
-    if st.button("%" if "v" not in st.__version__ else "🧹 Flush Monitor Buffer", use_container_width=True):
+    if st.button("🧹 Flush Monitor Buffer", use_container_width=True):
         st.session_state["console_terminal_logs"] = "Monitor buffer flushed."
-        # Safe backwards compatible rerun fallback
-        try:
-            st.rerender()
-        except AttributeError:
-            st.experimental_rerun()
 
 left_control_column, right_display_column = st.columns([7, 5])
 
@@ -216,7 +209,6 @@ with left_control_column:
       </xml>
 
       <script>
-        // Custom Raw Text Field Input Block
         Blockly.Blocks['custom_input_string'] = {
           init: function() {
             this.appendDummyInput()
@@ -261,19 +253,16 @@ with left_control_column:
           }
         };
 
-        // Register Translations
         Blockly.Python = Blockly.Generator.get('Python');
         
         Blockly.Python.forBlock['custom_input_string'] = function(block) {
           var text_raw_text = block.getFieldValue('RAW_TEXT');
-          var code = '"' + text_raw_text + '"';
-          return [code, 0];
+          return ['"' + text_raw_text + '"', 0];
         };
 
         Blockly.Python.forBlock['target'] = function(block) {
           var field_target = block.getFieldValue('Target');
-          var code = '"' + field_target + '"';
-          return [code, 0];
+          return ['"' + field_target + '"', 0];
         };
 
         Blockly.Python.forBlock['action_scan'] = function(block) {
@@ -286,7 +275,6 @@ with left_control_column:
           return 'show_output_to_user(current_result)\\n';
         };
 
-        // Mount Canvas
         var workspace = Blockly.inject('blocklyDiv', {
           toolbox: document.getElementById('toolbox'),
           grid: {spacing: 20, length: 3, colour: '#333', snap: true},
@@ -332,7 +320,3 @@ with right_display_column:
 if trigger_pipeline_run:
     with st.spinner("Processing visual workspace configurations..."):
         compile_and_execute_blocks(user_pipeline_input)
-        try:
-            st.rerender()
-        except AttributeError:
-            st.experimental_rerun()
