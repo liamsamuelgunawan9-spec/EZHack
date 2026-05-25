@@ -1,3 +1,4 @@
+
 import os
 import socket
 import json
@@ -57,18 +58,16 @@ def perform_ip_geolocation(target: str) -> str:
 def perform_phone_scan(target_phone: str) -> str:
     """
     Parses phone strings for multi-vector operational context metadata.
-    Does not scrape private info; exposes structural baseline telemetry.
+    Exposes structural baseline telemetry to maximize dashboard complexity.
     """
     clean_phone = str(target_phone).strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
     if not clean_phone:
         return "Error: Missing operational phone digits."
     
-    # Analyze prefix routing properties for baseline layout metrics
     is_intl = clean_phone.startswith("+")
     country_est = "International Flag Detected" if is_intl else "North American Dial Plan / Local"
     length = len(clean_phone)
     
-    # Generate structured engineering profile mapping data values dynamically
     mock_carriers = ["Verizon Wireless Routing", "AT&T Mobility Core", "T-Mobile USA Network", "Vodafone Carrier Link", "Orange Telecom Group"]
     mock_line_types = ["Mobile / Cellular String", "Fixed VoIP Anchor", "Landline Copper Loop", "Premium Toll Routing Block"]
     
@@ -99,15 +98,15 @@ def perform_phone_scan(target_phone: str) -> str:
 
 def run_utility_scan(target_string: str, scan_profile_type: str) -> str:
     """Central dispatcher function dynamically executed by the blockly string mapping sequence."""
-    normalized_profile = str(scan_profile_type).lower().strip()
-    if normalized_profile == "dns":
-        return perform_dns_lookup(target_string)
-    elif normalized_profile in ["whois", "geoip"]:
-        return perform_ip_geolocation(target_string)
-    elif normalized_profile == "phone":
+    normalized_profile = str(target_string if scan_profile_type == "DYNAMIC_TARGET" else scan_profile_type).lower().strip()
+    
+    # Simple evaluation to detect standalone string values
+    if "phone" in normalized_profile or target_string.startswith("+") or (target_string.isdigit() and len(target_string) >= 7):
         return perform_phone_scan(target_string)
+    elif scan_profile_type == "dns":
+        return perform_dns_lookup(target_string)
     else:
-        return f"[Configuration Fault] Unregistered mode profile: '{scan_profile_type}'"
+        return perform_ip_geolocation(target_string)
 
 
 def show_output_to_user(data_result_string: str):
@@ -117,7 +116,6 @@ def show_output_to_user(data_result_string: str):
 
 def compile_and_execute_blocks(compiled_script_text: str):
     """Safely executes code blocks by wrapping the text execution inside a structured runtime scope."""
-    # Reset tracking buffer frames ahead of execution loop runs
     st.session_state["console_terminal_logs"] = "==== Active Session Terminal Run ====\n"
     
     restricted_sandbox_globals = {
@@ -127,7 +125,6 @@ def compile_and_execute_blocks(compiled_script_text: str):
         "current_result": ""
     }
     try:
-        # Evaluate block script sequences line-by-line
         exec(compiled_script_text, restricted_sandbox_globals)
     except Exception as runtime_exception:
         st.session_state["console_terminal_logs"] += f"\n[Execution Engine Error]: {str(runtime_exception)}"
@@ -156,16 +153,19 @@ if "generated_python" in query_params:
 with st.sidebar:
     st.header("🖥️ Sidebar Target Console Log")
     st.code(st.session_state["console_terminal_logs"], language="text")
-    if st.button("🧹 Flush Monitor Buffer", use_container_width=True):
+    if st.button("%" if "v" not in st.__version__ else "🧹 Flush Monitor Buffer", use_container_width=True):
         st.session_state["console_terminal_logs"] = "Monitor buffer flushed."
-        st.rerender()
+        # Safe backwards compatible rerun fallback
+        try:
+            st.rerender()
+        except AttributeError:
+            st.experimental_rerun()
 
 left_control_column, right_display_column = st.columns([7, 5])
 
 with left_control_column:
     st.markdown("### 🗺️ Blockly Drag-and-Drop Arena")
 
-    # Injected HTML framework loading core open-source subcategories via CDN hooks
     blockly_html_payload = """
     <!DOCTYPE html>
     <html>
@@ -176,7 +176,6 @@ with left_control_column:
       <style>
         html, body { height: 100%; margin: 0; padding: 0; background-color: #1e1e1e; overflow: hidden; }
         #blocklyDiv { width: 100%; height: 480px; border: 1px solid #444; border-radius: 4px; }
-        /* Style fixes for injection frame workspace categories */
         .blocklyTreeLabel { color: #fff !important; font-family: sans-serif; font-size: 13px; }
       </style>
     </head>
@@ -185,7 +184,8 @@ with left_control_column:
       <div id="blocklyDiv"></div>
 
       <xml id="toolbox" style="display: none">
-        <category name="Custom Nodes" colour="260">
+        <category name="Custom Tools" colour="260">
+          <block type="custom_input_string"></block>
           <block type="target"></block>
           <block type="action_scan"></block>
           <block type="display_result"></block>
@@ -216,13 +216,23 @@ with left_control_column:
       </xml>
 
       <script>
-        // 1. Definition specifications for custom architectural operational layout nodes
+        // Custom Raw Text Field Input Block
+        Blockly.Blocks['custom_input_string'] = {
+          init: function() {
+            this.appendDummyInput()
+                .appendField("Input String:")
+                .appendField(new Blockly.FieldTextInput("8.8.8.8"), "RAW_TEXT");
+            this.setOutput(true, "String");
+            this.setColour(160);
+          }
+        };
+
         Blockly.Blocks['target'] = {
           init: function() {
             this.appendDummyInput()
-                .appendField("Target:")
+                .appendField("Quick Target Select:")
                 .appendField(new Blockly.FieldTextInput("google.com"), "Target")
-                .appendField(new Blockly.FieldDropdown([["Domain/IP","IP"], ["Phone Target","Phone"]]), "NAME");
+                .appendField(new Blockly.FieldDropdown([["Domain/IP","geoip"], ["Phone Number","phone"]]), "NAME");
             this.setOutput(true, "String");
             this.setColour(120);
           }
@@ -232,10 +242,10 @@ with left_control_column:
           init: function() {
             this.appendValueInput("NAME")
                 .setCheck("String")
-                .appendField("Run Scan on");
+                .appendField("Run Scan Profile on");
             this.appendDummyInput()
-                .appendField("using Operational Profile:")
-                .appendField(new Blockly.FieldDropdown([["DNS Infrastructure","dns"], ["IP Geolocation Map","geoip"], ["Phone Vector OSINT","phone"]]), "SCANTYPE");
+                .appendField("Scan Type:")
+                .appendField(new Blockly.FieldDropdown([["Auto Detect Content","DYNAMIC_TARGET"], ["DNS Infrastructure","dns"], ["IP Geolocation Map","geoip"], ["Phone Vector OSINT","phone"]]), "SCANTYPE");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
             this.setColour(210);
@@ -251,13 +261,19 @@ with left_control_column:
           }
         };
 
-        // 2. Register Generator translations mapping visuals to valid executable strings
+        // Register Translations
         Blockly.Python = Blockly.Generator.get('Python');
         
+        Blockly.Python.forBlock['custom_input_string'] = function(block) {
+          var text_raw_text = block.getFieldValue('RAW_TEXT');
+          var code = '"' + text_raw_text + '"';
+          return [code, 0];
+        };
+
         Blockly.Python.forBlock['target'] = function(block) {
           var field_target = block.getFieldValue('Target');
           var code = '"' + field_target + '"';
-          return [code, 0]; // Order 0 maps to Atomic python precedence wrapping
+          return [code, 0];
         };
 
         Blockly.Python.forBlock['action_scan'] = function(block) {
@@ -270,7 +286,7 @@ with left_control_column:
           return 'show_output_to_user(current_result)\\n';
         };
 
-        // 3. Mount workspace view container elements
+        // Mount Canvas
         var workspace = Blockly.inject('blocklyDiv', {
           toolbox: document.getElementById('toolbox'),
           grid: {spacing: 20, length: 3, colour: '#333', snap: true},
@@ -278,7 +294,6 @@ with left_control_column:
           trashcan: true
         });
 
-        // 4. Synchronization listener bridge alerting parent page frames of configuration adjustments
         function syncWorkspaceCode(event) {
           if (event.type == Blockly.Events.BLOCK_MOVE || 
               event.type == Blockly.Events.BLOCK_CHANGE || 
@@ -288,7 +303,6 @@ with left_control_column:
               
             var generatedRawText = Blockly.Python.workspaceToCode(workspace);
             
-            // Post code changes back cleanly up into the active view query params matrix
             window.parent.postMessage({
               type: 'streamlit:set_query_params',
               queryParams: { generated_python: generatedRawText }
@@ -318,4 +332,7 @@ with right_display_column:
 if trigger_pipeline_run:
     with st.spinner("Processing visual workspace configurations..."):
         compile_and_execute_blocks(user_pipeline_input)
-        st.rerender()
+        try:
+            st.rerender()
+        except AttributeError:
+            st.experimental_rerun()
