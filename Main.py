@@ -4,6 +4,7 @@ import json
 import urllib.request
 import random
 import streamlit as st
+import streamlit.components.v1 as components
 
 # ==========================================
 # 1. CORE UTILITY INFRASTRUCTURE BACKEND
@@ -93,15 +94,36 @@ def perform_phone_scan(target_phone: str) -> str:
 # ==========================================
 
 def run_utility_scan(target_string: str, scan_profile_type: str) -> str:
-    """Central dispatcher function dynamically executed by the processing sequence."""
+    """Central dispatcher function dynamically executed by the blockly string mapping sequence."""
     normalized_profile = str(scan_profile_type).lower().strip()
     
-    if normalized_profile == "phone" or target_string.startswith("+"):
+    if "phone" in normalized_profile or str(target_string).startswith("+"):
         return perform_phone_scan(target_string)
     elif normalized_profile == "dns":
         return perform_dns_lookup(target_string)
     else:
         return perform_ip_geolocation(target_string)
+
+
+def show_output_to_user(data_result_string: str):
+    """Invoked directly by the compiled 'display_result' block command to append logs."""
+    st.session_state["console_terminal_logs"] += f"\n{data_result_string}\n{'-'*40}"
+
+
+def compile_and_execute_blocks(compiled_script_text: str):
+    """Safely executes code blocks by wrapping the text execution inside a structured runtime scope."""
+    st.session_state["console_terminal_logs"] = "==== Active Session Terminal Run ====\n"
+    
+    restricted_sandbox_globals = {
+        "run_utility_scan": run_utility_scan,
+        "show_output_to_user": show_output_to_user,
+        "print": lambda *args: show_output_to_user(" ".join(map(str, args))),
+        "current_result": ""
+    }
+    try:
+        exec(compiled_script_text, restricted_sandbox_globals)
+    except Exception as runtime_exception:
+        st.session_state["console_terminal_logs"] += f"\n[Execution Engine Error]: {str(runtime_exception)}"
 
 # ==========================================
 # 3. STREAMLIT APPLICATION INTERACTIVE VIEW
@@ -109,11 +131,14 @@ def run_utility_scan(target_string: str, scan_profile_type: str) -> str:
 
 st.set_page_config(page_title="EZHack Pro Workspace", layout="wide")
 st.title("⚡ EZHack Core Framework — Hyper Studio")
-st.caption("Visual operational workflow workspace running loops, variables, and network diagnostics.")
+st.caption("Visual block operational workspace running loops, logic paths, variables, and network infrastructure diagnostics.")
 
 # System Memory Initialization
 if "console_terminal_logs" not in st.session_state:
-    st.session_state["console_terminal_logs"] = "System Monitor Standby. Input target parameters and execute your profile..."
+    st.session_state["console_terminal_logs"] = "System Monitor Standby. Setup workspace blocks, generate, and run pipeline..."
+
+if "compiled_block_code" not in st.session_state:
+    st.session_state["compiled_block_code"] = "current_result = run_utility_scan('8.8.8.8', 'geoip')\nshow_output_to_user(current_result)"
 
 # Setup Sidebar Target Console Log
 with st.sidebar:
@@ -122,48 +147,153 @@ with st.sidebar:
     if st.button("🧹 Flush Monitor Buffer", use_container_width=True):
         st.session_state["console_terminal_logs"] = "Monitor buffer flushed."
 
-left_control_column, right_display_column = st.columns([6, 6])
+left_control_column, right_display_column = st.columns([7, 5])
 
 with left_control_column:
-    st.markdown("### 🗺️ Workspace Input Vector Control")
-    st.write("Configure targets and scan parameters natively below:")
+    st.markdown("### 🗺️ Blockly Drag-and-Drop Arena")
     
-    # Secure inputs replacing the broken iframe elements
-    target_input = st.text_input("🎯 Target Asset Input string:", value="8.8.8.8", help="Provide a Domain name, IP address, or standard phone string.")
+    # Render the interactive canvas
+    blockly_html_payload = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+      <script src="https://unpkg.com/blockly/python_compressed.js"></script>
+      <style>
+        html, body { height: 100%; margin: 0; padding: 0; background-color: #1e1e1e; font-family: sans-serif; color: #fff; overflow: hidden; }
+        #blocklyDiv { width: 100%; height: 440px; border: 1px solid #444; border-radius: 4px; }
+        .blocklyTreeLabel { color: #fff !important; font-size: 13px; }
+      </style>
+    </head>
+    <body>
+
+      <div id="blocklyDiv"></div>
+
+      <xml id="toolbox" style="display: none">
+        <category name="Custom Tools" colour="260">
+          <block type="custom_input_string"></block>
+          <block type="target"></block>
+          <block type="action_scan"></block>
+          <block type="display_result"></block>
+        </category>
+        <sep></sep>
+        <category name="Logic Nodes" colour="210" custom="LOGIC">
+          <block type="controls_if"></block>
+          <block type="logic_compare"></block>
+          <block type="logic_operation"></block>
+          <block type="logic_boolean"></block>
+        </category>
+        <category name="Loop Controls" colour="120">
+          <block type="controls_repeat_ext">
+            <value name="TIMES">
+              <block type="math_number"><field name="NUM">3</field></block>
+            </value>
+          </block>
+          <block type="controls_whileUntil"></block>
+        </category>
+        <category name="Math Elements" colour="230">
+          <block type="math_number"><field name="NUM">1</field></block>
+          <block type="math_arithmetic"></block>
+        </category>
+        <category name="Variables" colour="330" custom="VARIABLE"></category>
+      </xml>
+
+      <script>
+        // Define Blocks
+        Blockly.Blocks['custom_input_string'] = {
+          init: function() {
+            this.appendDummyInput()
+                .appendField("Input String:")
+                .appendField(new Blockly.FieldTextInput("8.8.8.8"), "RAW_TEXT");
+            this.setOutput(true, "String");
+            this.setColour(160);
+          }
+        };
+
+        Blockly.Blocks['target'] = {
+          init: function() {
+            this.appendDummyInput()
+                .appendField("Quick Target:")
+                .appendField(new Blockly.FieldTextInput("google.com"), "Target");
+            this.setOutput(true, "String");
+            this.setColour(120);
+          }
+        };
+
+        Blockly.Blocks['action_scan'] = {
+          init: function() {
+            this.appendValueInput("NAME")
+                .setCheck("String")
+                .appendField("Run Scan Profile on");
+            this.appendDummyInput()
+                .appendField("Scan Type:")
+                .appendField(new Blockly.FieldDropdown([["IP Geolocation Map","geoip"], ["DNS Infrastructure","dns"], ["Phone Vector OSINT","phone"]]), "SCANTYPE");
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(210);
+          }
+        };
+
+        Blockly.Blocks['display_result'] = {
+          init: function() {
+            this.appendDummyInput().appendField("Log Result to Screen Console");
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(20);
+          }
+        };
+
+        // Code Generation Mapping Definitions
+        Blockly.Python = Blockly.Generator.get('Python');
+        
+        Blockly.Python.forBlock['custom_input_string'] = function(block) {
+          return ['"' + block.getFieldValue('RAW_TEXT') + '"', 0];
+        };
+
+        Blockly.Python.forBlock['target'] = function(block) {
+          return ['"' + block.getFieldValue('Target') + '"', 0];
+        };
+
+        Blockly.Python.forBlock['action_scan'] = function(block) {
+          var dropdown_scantype = block.getFieldValue('SCANTYPE');
+          var value_name = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
+          return 'current_result = run_utility_scan(' + value_name + ', "' + dropdown_scantype + '")\\n';
+        };
+
+        Blockly.Python.forBlock['display_result'] = function(block) {
+          return 'show_output_to_user(current_result)\\n';
+        };
+
+        // Mount Workspace
+        var workspace = Blockly.inject('blocklyDiv', {
+          toolbox: document.getElementById('toolbox'),
+          grid: {spacing: 20, length: 3, colour: '#333', snap: true},
+          trashcan: true
+        });
+
+        // Initialize with default blocks so it is not empty
+        var xmlText = '<xml><block type="action_scan" x="40" y="50"><field name="SCANTYPE">geoip</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">8.8.8.8</field></block></value><next><block type="display_result"></block></next></block></xml>';
+        Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xmlText), workspace);
+      </script>
+    </body>
+    </html>
+    """
+    components.html(blockly_html_payload, height=460, scrolling=False)
+
+with right_display_column:
+    st.markdown("### 📝 Code Generation Buffer View")
+    st.write("Review and fire code generated from your drag-and-drop workspace layout:")
     
-    scan_mode = st.selectbox(
-        "⚙️ Execution Scan Profile Type:",
-        ["IP Geolocation Map", "DNS Infrastructure", "Phone Vector OSINT"]
+    user_pipeline_input = st.text_area(
+        label="Active Generated Code Buffer Window:",
+        value=st.session_state["compiled_block_code"],
+        height=280,
+        label_visibility="collapsed"
     )
-    
-    # Visual Block Map preview representation generator
-    scan_map = {"IP Geolocation Map": "geoip", "DNS Infrastructure": "dns", "Phone Vector OSINT": "phone"}
-    selected_mode_id = scan_map[scan_mode]
-    
-    st.markdown("#### 📝 Preview Compiled Script Buffer")
-    generated_snippet = f'current_result = run_utility_scan("{target_input}", "{selected_mode_id}")\nshow_output_to_user(current_result)'
-    st.code(generated_snippet, language="python")
     
     trigger_pipeline_run = st.button("🚀 Fire Workspace Pipeline Execution", type="primary", use_container_width=True)
 
-with right_display_column:
-    st.markdown("### 🛡️ Live Terminal Activity Monitor")
-    st.write("Real-time utility execution monitoring stream output:")
-    
-    # Execution Block Runner Logic
-    if trigger_pipeline_run:
-        with st.spinner("Processing workspace configurations..."):
-            st.session_state["console_terminal_logs"] = "==== Active Session Terminal Run ====\n"
-            try:
-                scan_output = run_utility_scan(target_input, selected_mode_id)
-                st.session_state["console_terminal_logs"] += f"\n{scan_output}\n{'-'*40}"
-            except Exception as e:
-                st.session_state["console_terminal_logs"] += f"\n[Execution Engine Error]: {str(e)}"
-    
-    st.text_area(
-        label="Terminal Output Display View",
-        value=st.session_state["console_terminal_logs"],
-        height=400,
-        disabled=True,
-        label_visibility="collapsed"
-    )
+if trigger_pipeline_run:
+    with st.spinner("Processing visual workspace configurations..."):
+        compile_and_execute_blocks(user_pipeline_input)
