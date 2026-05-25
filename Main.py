@@ -142,10 +142,13 @@ if "console_terminal_logs" not in st.session_state:
 if "compiled_block_code" not in st.session_state:
     st.session_state["compiled_block_code"] = ""
 
-# Process parameters updated from iframe callback mechanisms
-query_params = st.query_params
-if "generated_python" in query_params:
-    st.session_state["compiled_block_code"] = query_params["generated_python"]
+# Process parameters updated from iframe callback mechanisms Safely
+try:
+    query_params = st.query_params
+    if "generated_python" in query_params:
+        st.session_state["compiled_block_code"] = query_params["generated_python"]
+except Exception:
+    pass
 
 # Setup Sidebar Target Console Log
 with st.sidebar:
