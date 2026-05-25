@@ -152,14 +152,15 @@ left_control_column, right_display_column = st.columns([7, 5])
 with left_control_column:
     st.markdown("### 🗺️ Blockly Drag-and-Drop Arena")
     
-    # Render the interactive canvas
+    # Secure iframe wrapper layout with embedded block definitions
     blockly_html_payload = """
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
-      <script src="https://unpkg.com/blockly/blockly.min.js"></script>
-      <script src="https://unpkg.com/blockly/python_compressed.js"></script>
+      <title>Blockly Frame</title>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/blockly/10.4.3/blockly.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/blockly/10.4.3/python.min.js"></script>
       <style>
         html, body { height: 100%; margin: 0; padding: 0; background-color: #1e1e1e; font-family: sans-serif; color: #fff; overflow: hidden; }
         #blocklyDiv { width: 100%; height: 440px; border: 1px solid #444; border-radius: 4px; }
@@ -196,11 +197,10 @@ with left_control_column:
           <block type="math_number"><field name="NUM">1</field></block>
           <block type="math_arithmetic"></block>
         </category>
-        <category name="Variables" colour="330" custom="VARIABLE"></category>
       </xml>
 
       <script>
-        // Define Blocks
+        // Define Custom Blocks
         Blockly.Blocks['custom_input_string'] = {
           init: function() {
             this.appendDummyInput()
@@ -245,23 +245,25 @@ with left_control_column:
         };
 
         // Code Generation Mapping Definitions
-        Blockly.Python = Blockly.Generator.get('Python');
+        javascript:void(0);
         
-        Blockly.Python.forBlock['custom_input_string'] = function(block) {
-          return ['"' + block.getFieldValue('RAW_TEXT') + '"', 0];
+        Blockly.Python['custom_input_string'] = function(block) {
+          var text_raw_text = block.getFieldValue('RAW_TEXT');
+          return ['"' + text_raw_text + '"', Blockly.Python.ORDER_ATOMIC];
         };
 
-        Blockly.Python.forBlock['target'] = function(block) {
-          return ['"' + block.getFieldValue('Target') + '"', 0];
+        Blockly.Python['target'] = function(block) {
+          var field_target = block.getFieldValue('Target');
+          return ['"' + field_target + '"', Blockly.Python.ORDER_ATOMIC];
         };
 
-        Blockly.Python.forBlock['action_scan'] = function(block) {
+        Blockly.Python['action_scan'] = function(block) {
           var dropdown_scantype = block.getFieldValue('SCANTYPE');
-          var value_name = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
+          var value_name = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
           return 'current_result = run_utility_scan(' + value_name + ', "' + dropdown_scantype + '")\\n';
         };
 
-        Blockly.Python.forBlock['display_result'] = function(block) {
+        Blockly.Python['display_result'] = function(block) {
           return 'show_output_to_user(current_result)\\n';
         };
 
@@ -272,7 +274,7 @@ with left_control_column:
           trashcan: true
         });
 
-        // Initialize with default blocks so it is not empty
+        // Initialize default node layout
         var xmlText = '<xml><block type="action_scan" x="40" y="50"><field name="SCANTYPE">geoip</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">8.8.8.8</field></block></value><next><block type="display_result"></block></next></block></xml>';
         Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xmlText), workspace);
       </script>
