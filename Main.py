@@ -1,154 +1,143 @@
+import os
 import socket
 import json
 import urllib.request
 import streamlit as st
 
-# Initialize execution state in Streamlit's session state to persist data across clicks
-if "workspace_output_data" not in st.session_state:
-    st.session_state["workspace_output_data"] = "No actions executed yet."
+# Verify initialization of tracking logs in the local session engine
+if "console_terminal_logs" not in st.session_state:
+    st.session_state["console_terminal_logs"] = "System Context: Awaiting block layout execution instructions..."
 
 # ==========================================
-# 1. CORE UTILITY SCAN FUNCTIONS (The Backend)
+# 1. CORE UTILITY EXTRACTION LOGIC
 # ==========================================
 
 def perform_dns_lookup(target: str) -> str:
-    """Performs a standard forward DNS lookup to resolve a hostname to an IP address."""
-    clean_target = target.strip().replace(" ", "")
-    if not clean_target:
-        return "Error: Target is empty."
-    
+    """Performs standard forward infrastructure DNS lookups."""
+    clean_host = target.strip().replace(" ", "")
+    if not clean_host:
+        return "Error: Missing operational target value."
     try:
-        ip_address = socket.gethostbyname(clean_target)
-        return f"[DNS Lookup Success]\nHostname: {clean_target}\nResolved IP: {ip_address}"
+        ip_addr = socket.gethostbyname(clean_host)
+        return f"[DNS Query Complete]\nDomain String: {clean_host}\nResolved IPv4: {ip_addr}"
     except socket.gaierror:
-        return f"[DNS Lookup Error]\nCould not resolve hostname: '{clean_target}'"
+        return f"[DNS Query Fault]\nUnable to parse or map destination domain: '{clean_host}'"
     except Exception as e:
-        return f"[Error] Unexpected issue during DNS resolution: {str(e)}"
+        return f"[System Exception] DNS Lookup engine failure: {str(e)}"
 
 
 def perform_ip_geolocation(target: str) -> str:
-    """
-    Looks up basic geographic routing info for an IP or host.
-    Uses a standard open-access public API securely.
-    """
-    clean_target = target.strip().replace(" ", "")
-    if not clean_target:
-        return "Error: Target is empty."
-        
+    """Queries a secure open-access lookup routing endpoint for network asset vectors."""
+    clean_host = target.strip().replace(" ", "")
+    if not clean_host:
+        return "Error: Missing operational target value."
     try:
-        # Resolve hostname to IP first if a domain name was provided
         try:
-            resolved_ip = socket.gethostbyname(clean_target)
+            lookup_ip = socket.gethostbyname(clean_host)
         except socket.gaierror:
-            return f"[IP Lookup Error]\nCould not resolve target '{clean_target}' to a valid IP layout."
+            return f"[GeoIP Map Fault]\nTarget string '{clean_host}' did not resolve to a verifiable routing address."
 
-        # Fetch basic geo JSON record
-        url = f"http://ip-api.com/json/{resolved_ip}"
-        with urllib.request.urlopen(url, timeout=5) as response:
-            data = json.loads(response.read().decode())
+        api_url = f"http://ip-api.com/json/{lookup_ip}"
+        with urllib.request.urlopen(api_url, timeout=5) as network_stream:
+            json_payload = json.loads(network_stream.read().decode())
             
-        if data.get("status") == "fail":
-            return f"[IP Lookup Failed]\nMessage: {data.get('message', 'Unknown error')}"
+        if json_payload.get("status") == "fail":
+            return f"[GeoIP Target Failure]\nResponse Code: {json_payload.get('message', 'Unknown endpoint parsing error')}"
             
-        output_lines = [
-            "[IP Geolocation Data]",
-            f"Target Host: {clean_target}",
-            f"Query IP:    {data.get('query')}",
-            f"Country:     {data.get('country')} ({data.get('countryCode')})",
-            f"Region/City: {data.get('regionName')}, {data.get('city')}",
-            f"ISP:         {data.get('isp')}",
-            f"ASN:         {data.get('as')}"
-        ]
-        return "\n".join(output_lines)
-        
+        return (
+            f"[IP Geolocation Metrics]\n"
+            f"Input Reference: {clean_host}\n"
+            f"Target Address:  {json_payload.get('query')}\n"
+            f"Country / Code:  {json_payload.get('country')} ({json_payload.get('countryCode')})\n"
+            f"Region Name/City: {json_payload.get('regionName')}, {json_payload.get('city')}\n"
+            f"Network Provider: {json_payload.get('isp')}\n"
+            f"Routing Autonomous System: {json_payload.get('as')}"
+        )
     except Exception as e:
-        return f"[Error] Infrastructure query failed: {str(e)}"
+        return f"[System Exception] Structural context retrieval crash: {str(e)}"
 
 
 # ==========================================
-# 2. THE COMPILER RUNTIME INTERFACE (The Glue)
+# 2. RUNTIME SANDBOX TRANSLATOR PIPELINE
 # ==========================================
 
-def run_utility_scan(target: str, scan_type: str) -> str:
-    """
-    Central dispatcher called directly by your generated blockly code strings.
-    """
-    if scan_type == "dns":
-        st.session_state["workspace_output_data"] = perform_dns_lookup(target)
-    elif scan_type == "whois":
-        # Hooking up IP routing/Geo metrics to the Whois selector slot
-        st.session_state["workspace_output_data"] = perform_ip_geolocation(target)
+def run_utility_scan(target_string: str, scan_profile_type: str) -> str:
+    """Central dispatcher function dynamically executed by the blockly string mapping sequence."""
+    normalized_profile = scan_profile_type.lower().strip()
+    
+    if normalized_profile == "dns":
+        execution_output = perform_dns_lookup(target_string)
+    elif normalized_profile in ["whois", "nmap", "geoip"]:
+        execution_output = perform_ip_geolocation(target_string)
     else:
-        st.session_state["workspace_output_data"] = f"Unknown operational block mode selected: {scan_type}"
+        execution_output = f"[Configuration Fault] Unregistered execution mode profile: '{scan_profile_type}'"
         
-    return st.session_state["workspace_output_data"]
+    return execution_output
 
 
-def show_output_to_user(data_content: str):
-    """
-    Invoked by the brown statement log block to write values to the active Streamlit app view.
-    """
-    # Simply guarantees the state is captured; rendering is handled natively below
-    pass
+def show_output_to_user(data_result_string: str):
+    """Invoked directly by the compiled 'display_result' block command to lock results into state."""
+    st.session_state["console_terminal_logs"] = data_result_string
 
 
-def execute_workspace_blocks(generated_python_code: str):
-    """
-    Safely interprets the blockly workspace pipeline using an isolated local execution state environment.
-    """
-    # Strict dictionary execution scope containing ONLY the pre-approved backend actions
-    execution_scope = {
+def compile_and_execute_blocks(compiled_script_text: str):
+    """Safely executes code blocks by wrapping the text execution inside a structured runtime scope."""
+    restricted_sandbox_globals = {
         "run_utility_scan": run_utility_scan,
         "show_output_to_user": show_output_to_user,
-        "current_result": st.session_state["workspace_output_data"]
+        "current_result": ""
     }
     
     try:
-        # Executes the generated script string sequentially line by line
-        exec(generated_python_code, execution_scope)
-    except Exception as exec_error:
-        st.error(f"Workspace Runtime Exception: {str(exec_error)}")
+        exec(compiled_script_text, restricted_sandbox_globals)
+    except Exception as runtime_exception:
+        st.error(f"Execution Error inside Workspace: {str(runtime_exception)}")
 
 
 # ==========================================
-# 3. STREAMLIT APP LAYOUT & CONTROL FRONTEND
+# 3. STREAMLIT FRAMEWORK LAYOUT & LOADER
 # ==========================================
 
 st.set_page_config(page_title="EZHack Dashboard", layout="wide")
+st.title("🛡️ EZHack Toolkit — Scripting Control Workspace")
 
-st.title("🛡️ EZHack Toolkit — Visual Studio")
-st.caption("Modular automation framework driven by user-defined visual block layouts.")
+# Debugging tool sidebar: Displays and verifies the JavaScript assets we loaded
+with st.sidebar:
+    st.header("📦 Registered JS Assets")
+    assets_dir = "assets"
+    if os.path.exists(assets_dir):
+        js_files = [f for f in os.listdir(assets_dir) if f.endswith(".js")]
+        for js_file in js_files:
+            st.success(f"Loaded block file: `{js_file}`")
+    else:
+        st.error("Missing standard directory location: `assets/` folder not found.")
 
-# Creating two clean workspace column segments
-col_canvas, col_results = st.columns([3, 2])
+left_control_column, right_display_column = st.columns([1, 1])
 
-with col_canvas:
-    st.subheader("Workspace Pipeline Configuration")
+with left_control_column:
+    st.markdown("### 📝 Code Generation Buffer View")
+    st.caption("This matches the raw layout code string passed when chaining your custom blocks together.")
     
-    # ⚠️ PLACEHOLDER/MOCK FOR CODING SIMULATION: 
-    # In your full implementation, this text variable string should receive the text directly from 
-    # the frontend javascript injection code snippet when compiling the workspace blocks!
-    mock_generated_code = (
-        'current_result = run_utility_scan("example.com", "dns")\n'
+    # Pre-loading mock text data layout showing exactly how your three updated blocks chain together seamlessly:
+    sample_block_code_output = (
+        'current_result = run_utility_scan("google.com", "dns")\n'
         'show_output_to_user(current_result)\n'
     )
     
-    st.info("💡 **Block Code Translation View** (Simulated compile output shown below)")
-    workspace_code_text = st.text_area(
-        label="Active Blockly Python Code Generation Output String:",
-        value=mock_generated_code,
-        height=150
+    raw_text_input_stream = st.text_area(
+        label="Blockly Code Output Window:",
+        value=sample_block_code_output,
+        height=180,
+        label_visibility="collapsed"
     )
     
-    trigger_execution = st.button("▶ Run Workspace Actions", type="primary")
+    trigger_pipeline_run = st.button("🚀 Fire Workspace Pipeline Execution", type="primary", use_container_width=True)
 
-with col_results:
-    st.subheader("Console Output Log")
+with right_display_column:
+    st.markdown("### 🖥️ Realtime Output Monitor Terminal")
     
-    if trigger_execution:
-        with st.spinner("Processing workspace pipeline..."):
-            execute_workspace_blocks(workspace_code_text)
+    if trigger_pipeline_run:
+        with st.spinner("Compiling script state sequences..."):
+            compile_and_execute_blocks(raw_text_input_stream)
             
-    # Output presentation container box
-    st.markdown("### Execution Terminal Window:")
-    st.code(st.session_state["workspace_output_data"], language="text")
+    st.code(st.session_state["console_terminal_logs"], language="text")
