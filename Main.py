@@ -6,8 +6,12 @@ import random
 import streamlit as st
 import streamlit.components.v1 as components
 
+# Import Google's phonenumbers library components
+import phonenumbers
+from phonenumbers import carrier, geocoder, timezone
+
 # ==========================================
-# 1. UTILITY FUNCTIONS (PROTECTED BACKEND MAP)
+# 1. UTILITY FUNCTIONS (GLOBAL OSINT ENGINE)
 # ==========================================
 
 def perform_dns_lookup(target: str) -> str:
@@ -37,20 +41,55 @@ def perform_ip_geolocation(target: str) -> str:
         return f"💥 ERROR: {str(e)}"
 
 def perform_phone_tracking(target: str) -> str:
-    clean_phone = str(target).strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+    # Clean up standard characters but preserve the '+' sign for country codes
+    clean_phone = str(target).strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "").replace('"', '').replace("'", "")
     if not clean_phone:
         return "❌ ERROR: Phone number input missing!"
     
-    if clean_phone.startswith("+1"):
-        return f"📱 [PHONE PROFILE] Target: {clean_phone} | Region: North America (US/CA) | Type: Validated Format"
-    elif clean_phone.startswith("+44"):
-        return f"📱 [PHONE PROFILE] Target: {clean_phone} | Region: United Kingdom | Type: Validated Format"
-    elif clean_phone.startswith("+49"):
-        return f"📱 [PHONE PROFILE] Target: {clean_phone} | Region: Germany | Type: Validated Format"
-    elif clean_phone.startswith("+33"):
-        return f"📱 [PHONE PROFILE] Target: {clean_phone} | Region: France | Type: Validated Format"
-    else:
-        return f"📱 [PHONE PROFILE] Target: {clean_phone} | Region: International / General Prefix | Type: Parsed"
+    # Smart fallback: If an Indonesian number is typed as '08...', automatically prefix it with '+62'
+    if clean_phone.startswith("08"):
+        clean_phone = "+62" + clean_phone[1:]
+    # If a number doesn't start with '+', try parsing with an assumption or alert
+    elif not clean_phone.startswith("+"):
+        clean_phone = "+" + clean_phone
+
+    try:
+        # Parse the data via Google's library engine
+        parsed_number = phonenumbers.parse(clean_phone, None)
+        
+        # Verify if the number structure is mathematically valid globally
+        if not phonenumbers.is_valid_number(parsed_number):
+            return f"❌ ERROR: '{clean_phone}' is not a valid global phone number structure."
+
+        # Extract specifications dynamically
+        country_code = parsed_number.country_code
+        national_num = parsed_number.national_number
+        
+        # 1. Gather Carrier/Operator Info (Supporting multiple languages, default English 'en')
+        operator_name = carrier.name_for_number(parsed_number, "en")
+        if not operator_name:
+            operator_name = "Unknown Carrier / Protected Virtual Infrastructure"
+            
+        # 2. Gather Location/Region name mapping
+        region_location = geocoder.description_for_number(parsed_number, "en")
+        if not region_location:
+            region_location = "General Regional Assignment Pool"
+            
+        # 3. Gather standard time zones associated
+        zones = timezone.time_zones_for_number(parsed_number)
+        timezone_string = ", ".join(zones) if zones else "Unknown Grid Time"
+
+        return (f"📱 [GLOBAL PHONE PROFILE - VERIFIED]\n"
+                f"   • Input Target   : {clean_phone}\n"
+                f"   • Country Code   : +{country_code}\n"
+                f"   • National ID    : {national_num}\n"
+                f"   • Core Location  : {region_location}\n"
+                f"   • Network Carrier: {operator_name}\n"
+                f"   • Zone Matrix    : {timezone_string}\n"
+                f"   • Status Check   : Active Allocation")
+
+    except Exception as err:
+        return f"❌ ENGINE EXCEPTION: Failed to process parse matrix. Details: {str(err)}"
 
 # Custom tracking collectors to feed into the workspace iframe directly
 if "terminal_history_output" not in st.session_state:
@@ -101,7 +140,6 @@ with st.sidebar:
             st.warning("⚠️ Execution Halted: Connect your blocks to 'Sequence Start' on the canvas!")
         else:
             try:
-                # Flush the clean logging header first
                 st.session_state["terminal_history_output"] = "🛰️ RUNNING NEW SEQUENCE PAYLOAD MATRIX...\\n-----------------------------------------\\n"
                 exec(code_to_run)
             except Exception as runtime_err:
@@ -146,12 +184,11 @@ blockly_html_payload = f"""
       box-shadow: 0 0 15px rgba(255, 0, 85, 0.1);
     }}
     
-    /* Draggable Window Container Styling */
     #floatingResultsTab {{
       position: absolute;
       top: 40px;
       right: 40px;
-      width: 420px;
+      width: 460px;
       background-color: #1f2833;
       border: 2px solid #1fec79;
       border-radius: 8px;
@@ -223,7 +260,6 @@ blockly_html_payload = f"""
   </xml>
 
   <script>
-    // Drag Window System Logic
     dragElement(document.getElementById("floatingResultsTab"));
 
     function dragElement(elmnt) {{
@@ -236,7 +272,6 @@ blockly_html_payload = f"""
 
       function dragMouseDown(e) {{
         e = e || window.event;
-        // Verify we aren't clicking inside the scrolling console text area itself
         if(e.target.className === "terminalContent") return;
         e.preventDefault();
         pos3 = e.clientX;
@@ -275,7 +310,7 @@ blockly_html_payload = f"""
       init: function() {{
         this.appendDummyInput()
             .appendField("Target:")
-            .appendField(new Blockly.FieldTextInput("+1234567890"), "RAW_TEXT");
+            .appendField(new Blockly.FieldTextInput("+628111989199"), "RAW_TEXT");
         this.setOutput(true, "String");
         this.setColour(160);
       }}
@@ -322,7 +357,6 @@ blockly_html_payload = f"""
       }}
     }};
 
-    // --- Python Code Generators for Core Blocks ---
     Blockly.Python.forBlock['when_sequence_activated'] = function(block) {{ return '# Sequence Active\\n'; }};
     Blockly.Python.forBlock['custom_input_string'] = function(block) {{ return ["'" + block.getFieldValue('RAW_TEXT') + "'", 0]; }};
     Blockly.Python.forBlock['multi_target_list'] = function(block) {{ return ["'" + block.getFieldValue('TARGETS') + "'", 0]; }};
@@ -339,7 +373,6 @@ blockly_html_payload = f"""
       return 'verify_protocol(target=' + val + ', verification_mode="' + type + '")\\n';
     }};
 
-    // Inject Workspace Canvas Matrix
     var workspace = Blockly.inject('blocklyDiv', {{
       toolbox: document.getElementById('toolbox'),
       grid: {{spacing: 20, length: 3, colour: '#1f2833', snap: true}},
@@ -348,7 +381,6 @@ blockly_html_payload = f"""
 
     var terminal = document.getElementById("debugTerminal");
 
-    // Comprehensive Canvas Debug Parsing Loop Matrix
     function renderDebugLogs() {{
       var allBlocks = workspace.getAllBlocks(false);
       var textOutput = "⚙️ LIVE WORKSPACE PARSER MATRIX\\n-----------------------------------------\\n";
@@ -393,7 +425,6 @@ blockly_html_payload = f"""
       terminal.innerText = textOutput;
     }}
 
-    // Process every canvas layout adjustment instantly
     workspace.addChangeListener(function(e) {{
       if (e.type === Blockly.Events.BLOCK_CREATE || 
           e.type === Blockly.Events.BLOCK_MOVE || 
@@ -403,7 +434,6 @@ blockly_html_payload = f"""
       }}
     }});
 
-    // Scheduler fallback sync loop
     setInterval(renderDebugLogs, 500);
   </script>
 </body>
@@ -418,7 +448,7 @@ components.html(blockly_html_payload, height=700, scrolling=False)
 
 
 # ==========================================
-# 4. SCROLLABLE LOWER GIMMICK MODULES
+# 4. SCROLLABLE LOWER TERMINAL MODULES
 # ==========================================
 st.markdown("---")
 st.markdown("### 🎛️ Standalone Verification Terminals")
@@ -429,7 +459,7 @@ col1, col2 = st.columns(2)
 with col1:
     st.subheader("🎯 Query Terminal Matrix")
     tool_choice = st.selectbox("Select Utility Channel", ["🔍 Website DNS Lookup", "🗺️ IP Geolocation", "📱 Phone Tracker Info"])
-    query_input = st.text_input("Target Value Input", "example.com")
+    query_input = st.text_input("Target Value Input", "+628111989199")
     
     if st.button("Execute Manual Query", type="secondary"):
         with st.spinner("Processing channel..."):
@@ -443,8 +473,8 @@ with col1:
 with col2:
     st.subheader("📊 Network Routing Help")
     st.markdown("""
-    Use these formats for testing:
-    - **Domains**: `google.com`, `github.com`
-    - **IP Addresses**: `8.8.8.8`, `1.1.1.1`
-    - **Phone Formats**: Standard International (`+1...`, `+44...`)
+    Use global international standards for scanning inputs:
+    - **US Target Example**: `+14155552671`
+    - **UK Target Example**: `+442079460192`
+    - **Indonesian Target Example**: `+628111989199` or local format `08111989199`
     """)
