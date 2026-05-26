@@ -146,28 +146,21 @@ def compile_and_execute_blocks(compiled_script_text: str):
 
 st.set_page_config(page_title="EZHack Horizon Studio", layout="wide")
 
-# Persistent memory buffers
 if "console_terminal_logs" not in st.session_state:
     st.session_state["console_terminal_logs"] = "💻 [READY] Construct your layout and hit launch circuit..."
 
-# Check URL parameters for direct cross-window syncing 
-query_params = st.query_params
-active_code_payload = query_params.get("raw_code_buffer", "")
-
-if active_code_payload:
-    st.session_state["live_compiled_code"] = active_code_payload
-else:
-    # Safe explicit runtime default
-    st.session_state["live_compiled_code"] = "current_result = run_utility_scan('+1234567890', 'phone')\nshow_output_to_user(current_result)"
+# Initialize fallback string block code input text
+if "live_compiled_code" not in st.session_state:
+    st.session_state["live_compiled_code"] = "current_result = run_utility_scan('+15555550199', 'phone')\nshow_output_to_user(current_result)"
 
 # ----------------------------------------------------
-# 🪐 TOP-LEFT CONTROLS ROW
+# 🪐 TOP CONTROLS ROW
 # ----------------------------------------------------
 title_col, button_col_1, button_col_2 = st.columns([6, 3, 3])
 
 with title_col:
     st.title("⚡ Horizon Core Toolroom")
-    st.caption("Cool cyberpunk terminal aesthetics wrapped around beginner-friendly modules.")
+    st.caption("Visual automation interface built for network diagnostic utilities testing.")
 
 with button_col_1:
     st.write("")
@@ -179,16 +172,16 @@ with button_col_2:
         st.session_state["console_terminal_logs"] = "Monitor buffer cleared."
         st.rerun()
 
-# Execution phase trigger 
+# Execution process block
 if trigger_pipeline_run:
-    with st.spinner("Processing automated actions code sequences..."):
+    with st.spinner("Executing current pipeline setup..."):
         compile_and_execute_blocks(st.session_state["live_compiled_code"])
 
-# Sanitize visual characters inside preview logs window
+# Escape sequence clean-up
 safe_terminal_logs = st.session_state["console_terminal_logs"].replace("`", "'").replace("\\", "\\\\").replace("\n", "\\n")
 
 # ----------------------------------------------------
-# STAGE 1: VISUAL STUDIO WORKSPACE CANVAS
+# STAGE 1: WORKSPACE GENERATOR CANVAS
 # ----------------------------------------------------
 st.markdown("### 🗺️ Visual Studio Workspace Canvas")
 
@@ -270,12 +263,11 @@ blockly_html_payload = f"""
   </xml>
 
   <script>
-    // Define the custom blocks explicitly
     Blockly.Blocks['custom_input_string'] = {{
       init: function() {{
         this.appendDummyInput()
             .appendField("Type Target:")
-            .appendField(new Blockly.FieldTextInput("+1-555-0199"), "RAW_TEXT");
+            .appendField(new Blockly.FieldTextInput("+15555550199"), "RAW_TEXT");
         this.setOutput(true, "String");
         this.setColour(160);
       }}
@@ -309,7 +301,6 @@ blockly_html_payload = f"""
       }}
     }};
 
-    // Text parsing outputs rule definitions
     Blockly.Python.forBlock['custom_input_string'] = function(block) {{
       var rawText = block.getFieldValue('RAW_TEXT');
       return ['"' + rawText + '"', 0];
@@ -331,26 +322,19 @@ blockly_html_payload = f"""
       trashcan: true
     }});
 
-    // Build default workspace on startup
     var xmlText = '<xml><block type="action_scan" x="40" y="50"><field name="SCANTYPE">phone</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">+15555550199</field></block></value><next><block type="display_result"></block></next></block></xml>';
     Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xmlText), workspace);
 
-    // 🔄 FORCE SYNC UPWARD USING PARENT WINDOW URL BUFFER LOCATION INSULATION ESCAPE
-    function syncToParentStream() {{
-      var generatedPythonText = Blockly.Python.workspaceToCode(workspace);
-      var currentUrl = new URL(window.parent.location.href);
-      
-      // If code changed, force immediate parent rewrite injection
-      if (currentUrl.searchParams.get("raw_code_buffer") !== generatedPythonText) {{
-         currentUrl.searchParams.set("raw_code_buffer", generatedPythonText);
-         window.parent.history.replaceState({{}}, "", currentUrl.toString());
+    // Global workspace listener - Triggers automatically on any value modification or connection adjustments
+    workspace.addChangeListener(function(event) {{
+      var code = Blockly.Python.workspaceToCode(workspace);
+      // Updates an input field hidden inside the wrapper frame to bypass iframe insulation barriers
+      if(window.parent.document.getElementById("hidden_code_transport")) {{
+         window.parent.document.getElementById("hidden_code_transport").value = code;
       }}
-    }}
-    
-    workspace.addChangeListener(syncToParentStream);
-    setInterval(syncToParentStream, 500); // Bulletproof polling backup fallback
+    }});
 
-    // Simple Terminal Dragger 
+    // Simple Terminal Dragger Engine Setup
     var element = document.getElementById("draggableTerminal");
     var header = document.getElementById("terminalHeader");
     var activeDragging = false;
@@ -374,15 +358,18 @@ blockly_html_payload = f"""
 </html>
 """
 
-# Render workspace area
 components.html(blockly_html_payload, height=620, scrolling=False)
 
 # ----------------------------------------------------
-# STAGE 2: 📝 TEXT TRANSLATION BACKSTAGE WINDOW (SCROLL DOWN TO SEE)
+# STAGE 2: BACKSTAGE RAW WORKSPACE INTERCEPTOR
 # ----------------------------------------------------
 st.markdown("---")
 st.markdown("### 📝 Code Translation Behind the Blocks")
-st.write("This window outputs the actual code text that the blocks are converting to in real-time:")
+st.write("If changes inside your drag-and-drop workspace aren't showing instantly, verify or type/paste your desired script structure manually here:")
 
-# Render the dynamic text block directly so you can see if the target registered!
-st.code(st.session_state["live_compiled_code"], language="python")
+# Direct editing textarea box acting as our direct global sync path
+st.session_state["live_compiled_code"] = st.text_area(
+    label="Live Pipeline Script Code Terminal Structure:",
+    value=st.session_state["live_compiled_code"],
+    height=120
+)
