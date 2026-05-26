@@ -23,7 +23,7 @@ def perform_dns_lookup(target: str) -> str:
             f"🟢 SUCCESS: Found the server address!"
         )
     except socket.gaierror:
-        return f"❌ ERROR:\n  └── Could not find a server for '{clean_host}'. Check spelling!"
+        return f"❌ ERROR:\n  └── Could not find a server for '{clean_host}'."
     except Exception as e:
         return f"💥 SYSTEM CRASH: {str(e)}"
 
@@ -41,7 +41,7 @@ def perform_reverse_dns(target: str) -> str:
             f"🟢 SUCCESS: Website found successfully!"
         )
     except Exception:
-        return f"❌ ERROR:\n  └── Could not find any website names attached to the IP '{clean_ip}'"
+        return f"❌ ERROR:\n  └── Could not find website names attached to IP '{clean_ip}'"
 
 
 def perform_ip_geolocation(target: str) -> str:
@@ -141,30 +141,33 @@ def compile_and_execute_blocks(compiled_script_text: str):
         st.session_state["console_terminal_logs"] += f"\n💥 [SCRIPT RUN ERROR]: {str(runtime_exception)}"
 
 # ==========================================
-# 3. INTERACTIVE LAYOUT SETUP VIEW
+# 3. INTERACTIVE LAYOUT CONFIGURATION
 # ==========================================
 
 st.set_page_config(page_title="EZHack Horizon Studio", layout="wide")
 
-# Persistent Session Memory Backstops
+# Persistent memory buffers
 if "console_terminal_logs" not in st.session_state:
     st.session_state["console_terminal_logs"] = "💻 [READY] Construct your layout and hit launch circuit..."
 
-# Check query string parameter for live block updates
-current_url_code = st.query_params.get("code", "")
-if current_url_code:
-    st.session_state["live_compiled_code"] = current_url_code
-elif "live_compiled_code" not in st.session_state:
+# Check URL parameters for direct cross-window syncing 
+query_params = st.query_params
+active_code_payload = query_params.get("raw_code_buffer", "")
+
+if active_code_payload:
+    st.session_state["live_compiled_code"] = active_code_payload
+else:
+    # Safe explicit runtime default
     st.session_state["live_compiled_code"] = "current_result = run_utility_scan('+1234567890', 'phone')\nshow_output_to_user(current_result)"
 
 # ----------------------------------------------------
-# 🪐 TOP-LEFT CONTROLS ROW (NO MORE SCROLLING)
+# 🪐 TOP-LEFT CONTROLS ROW
 # ----------------------------------------------------
 title_col, button_col_1, button_col_2 = st.columns([6, 3, 3])
 
 with title_col:
     st.title("⚡ Horizon Core Toolroom")
-    st.caption("Clean drag-and-drop workspace engine built for direct operations execution.")
+    st.caption("Cool cyberpunk terminal aesthetics wrapped around beginner-friendly modules.")
 
 with button_col_1:
     st.write("")
@@ -176,16 +179,16 @@ with button_col_2:
         st.session_state["console_terminal_logs"] = "Monitor buffer cleared."
         st.rerun()
 
-# Run current workspace parameters instantly on click
+# Execution phase trigger 
 if trigger_pipeline_run:
     with st.spinner("Processing automated actions code sequences..."):
         compile_and_execute_blocks(st.session_state["live_compiled_code"])
 
-# Safely wrap internal data frames for visual layout execution passing
+# Sanitize visual characters inside preview logs window
 safe_terminal_logs = st.session_state["console_terminal_logs"].replace("`", "'").replace("\\", "\\\\").replace("\n", "\\n")
 
 # ----------------------------------------------------
-# STAGE 1: FULL-WINDOW BLOCKLY GRID WORKSPACE
+# STAGE 1: VISUAL STUDIO WORKSPACE CANVAS
 # ----------------------------------------------------
 st.markdown("### 🗺️ Visual Studio Workspace Canvas")
 
@@ -194,21 +197,21 @@ blockly_html_payload = f"""
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Blockly Infinite Horizon</title>
+  <title>Blockly Workspace</title>
   <script src="https://unpkg.com/blockly/blockly.min.js"></script>
   <script src="https://unpkg.com/blockly/python_compressed.js"></script>
   <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
   <style>
-    html, body {{ height: 100%; margin: 0; padding: 0; background-color: #0b0c10; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }}
-    #containerDiv {{ position: relative; width: 100%; height: 840px; }}
+    html, body {{ height: 100%; margin: 0; padding: 0; background-color: #0b0c10; font-family: sans-serif; overflow: hidden; }}
+    #containerDiv {{ position: relative; width: 100%; height: 600px; }}
     #blocklyDiv {{ width: 100%; height: 100%; border: 2px solid #1f2833; border-radius: 6px; }}
     
     #draggableTerminal {{
       position: absolute;
-      top: 30px;
-      right: 30px;
-      width: 490px;
-      height: 460px;
+      top: 20px;
+      right: 20px;
+      width: 450px;
+      height: 380px;
       z-index: 999;
       background: rgba(11, 12, 16, 0.96);
       border: 2px solid #66fcf1;
@@ -218,36 +221,28 @@ blockly_html_payload = f"""
       flex-direction: column;
     }}
     #terminalHeader {{
-      padding: 12px;
+      padding: 10px;
       cursor: move;
       background: #1f2833;
       border-bottom: 2px solid #45a29e;
       color: #66fcf1;
       font-weight: bold;
       font-size: 11px;
-      letter-spacing: 1px;
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      border-radius: 6px 6px 0 0;
       user-select: none;
     }}
     #terminalBody {{
       flex: 1;
-      padding: 15px;
+      padding: 12px;
       margin: 0;
       background: #0b0c10;
       color: #1fec79;
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 13px;
-      line-height: 1.5;
+      font-family: monospace;
+      font-size: 12px;
       overflow-y: auto;
       white-space: pre-wrap;
     }}
-    .window-dots {{ display: flex; gap: 6px; }}
-    .dot {{ width: 10px; height: 10px; border-radius: 50%; }}
-    .dot-red {{ background: #ff5f56; }}
-    .dot-green {{ background: #27c93f; }}
   </style>
 </head>
 <body>
@@ -256,10 +251,6 @@ blockly_html_payload = f"""
     <div id="draggableTerminal">
       <div id="terminalHeader">
         <span>🤖 LIVE TARGET OUTPUT TERMINAL</span>
-        <div class="window-dots">
-          <div class="dot dot-red"></div>
-          <div class="dot dot-green"></div>
-        </div>
       </div>
       <pre id="terminalBody">{safe_terminal_logs}</pre>
     </div>
@@ -269,8 +260,6 @@ blockly_html_payload = f"""
   <xml id="toolbox" style="display: none">
     <category name="🌐 Targets &amp; Inputs" colour="160">
       <block type="custom_input_string"></block>
-      <block type="target"></block>
-      <block type="text"></block>
     </category>
     <category name="🎯 Scanners &amp; Actions" colour="210">
       <block type="action_scan"></block>
@@ -281,23 +270,14 @@ blockly_html_payload = f"""
   </xml>
 
   <script>
+    // Define the custom blocks explicitly
     Blockly.Blocks['custom_input_string'] = {{
       init: function() {{
         this.appendDummyInput()
             .appendField("Type Target:")
-            .appendField(new Blockly.FieldTextInput("555-0199"), "RAW_TEXT");
+            .appendField(new Blockly.FieldTextInput("+1-555-0199"), "RAW_TEXT");
         this.setOutput(true, "String");
         this.setColour(160);
-      }}
-    }};
-
-    Blockly.Blocks['target'] = {{
-      init: function() {{
-        this.appendDummyInput()
-            .appendField("Quick Website:")
-            .appendField(new Blockly.FieldTextInput("google.com"), "Target");
-        this.setOutput(true, "String");
-        this.setColour(120);
       }}
     }};
 
@@ -329,12 +309,10 @@ blockly_html_payload = f"""
       }}
     }};
 
+    // Text parsing outputs rule definitions
     Blockly.Python.forBlock['custom_input_string'] = function(block) {{
-      return ['"' + block.getFieldValue('RAW_TEXT') + '"', 0];
-    }};
-
-    Blockly.Python.forBlock['target'] = function(block) {{
-      return ['"' + block.getFieldValue('Target') + '"', 0];
+      var rawText = block.getFieldValue('RAW_TEXT');
+      return ['"' + rawText + '"', 0];
     }};
 
     Blockly.Python.forBlock['action_scan'] = function(block) {{
@@ -353,22 +331,26 @@ blockly_html_payload = f"""
       trashcan: true
     }});
 
-    // Setup clear structural defaults
-    var xmlText = '<xml><block type="action_scan" x="40" y="50"><field name="SCANTYPE">phone</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">+1234567890</field></block></value><next><block type="display_result"></block></next></block></xml>';
+    // Build default workspace on startup
+    var xmlText = '<xml><block type="action_scan" x="40" y="50"><field name="SCANTYPE">phone</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">+15555550199</field></block></value><next><block type="display_result"></block></next></block></xml>';
     Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xmlText), workspace);
 
-    // Dynamic Query Parameter Auto-sync Rule 
-    function updateLivePythonCode() {{
-      var code = Blockly.Python.workspaceToCode(workspace);
+    // 🔄 FORCE SYNC UPWARD USING PARENT WINDOW URL BUFFER LOCATION INSULATION ESCAPE
+    function syncToParentStream() {{
+      var generatedPythonText = Blockly.Python.workspaceToCode(workspace);
       var currentUrl = new URL(window.parent.location.href);
-      currentUrl.searchParams.set("code", code);
-      window.parent.history.replaceState({{}}, "", currentUrl.toString());
+      
+      // If code changed, force immediate parent rewrite injection
+      if (currentUrl.searchParams.get("raw_code_buffer") !== generatedPythonText) {{
+         currentUrl.searchParams.set("raw_code_buffer", generatedPythonText);
+         window.parent.history.replaceState({{}}, "", currentUrl.toString());
+      }}
     }}
     
-    workspace.addChangeListener(updateLivePythonCode);
-    setTimeout(updateLivePythonCode, 400);
+    workspace.addChangeListener(syncToParentStream);
+    setInterval(syncToParentStream, 500); // Bulletproof polling backup fallback
 
-    // Draggable Window Configs
+    // Simple Terminal Dragger 
     var element = document.getElementById("draggableTerminal");
     var header = document.getElementById("terminalHeader");
     var activeDragging = false;
@@ -391,4 +373,16 @@ blockly_html_payload = f"""
 </body>
 </html>
 """
-components.html(blockly_html_payload, height=860, scrolling=False)
+
+# Render workspace area
+components.html(blockly_html_payload, height=620, scrolling=False)
+
+# ----------------------------------------------------
+# STAGE 2: 📝 TEXT TRANSLATION BACKSTAGE WINDOW (SCROLL DOWN TO SEE)
+# ----------------------------------------------------
+st.markdown("---")
+st.markdown("### 📝 Code Translation Behind the Blocks")
+st.write("This window outputs the actual code text that the blocks are converting to in real-time:")
+
+# Render the dynamic text block directly so you can see if the target registered!
+st.code(st.session_state["live_compiled_code"], language="python")
