@@ -147,9 +147,9 @@ with st.sidebar:
 left_control_column, right_display_column = st.columns([7, 5])
 
 with left_control_column:
-    st.markdown("### 🗺️ Huge Blockly Drag-and-Drop Arena")
+    st.markdown("### 🗺️ Native Blockly Studio Arena")
     
-    # Modernized, expanded Blockly sandbox with custom procedure categories
+    # Modernized, categorized, error-handled implementation layout
     blockly_html_payload = """
     <!DOCTYPE html>
     <html>
@@ -169,9 +169,11 @@ with left_control_column:
       <div id="blocklyDiv"></div>
 
       <xml id="toolbox" style="display: none">
-        <category name="Custom Tools" colour="260">
+        <category name="🌐 Recon Tools" colour="160">
           <block type="custom_input_string"></block>
           <block type="target"></block>
+        </category>
+        <category name="🎯 Attack Vectors" colour="20">
           <block type="action_scan"></block>
           <block type="display_result"></block>
         </category>
@@ -189,8 +191,8 @@ with left_control_column:
           <block type="math_number"><field name="NUM">1</field></block>
           <block type="math_arithmetic"></block>
         </category>
-        <category name="Variables" colour="330" custom="VARIABLE"></category>
-        <category name="Functions Block" colour="290" custom="PROCEDURE"></category>
+        <category name="Variables Loop" colour="330" custom="VARIABLE"></category>
+        <category name="Functions Setup" colour="290" custom="PROCEDURE"></category>
       </xml>
 
       <script>
@@ -259,14 +261,14 @@ with left_control_column:
           return 'show_output_to_user(current_result)\\n';
         };
 
-        // Inject Blockly
+        // Inject Blockly with explicit toolbox attachment
         var workspace = Blockly.inject('blocklyDiv', {
           toolbox: document.getElementById('toolbox'),
           grid: {spacing: 20, length: 3, colour: '#333', snap: true},
           trashcan: true
         });
 
-        // Add starting elements to workspace
+        // Add starting elements to workspace layout
         var xmlText = '<xml><block type="action_scan" x="40" y="50"><field name="SCANTYPE">geoip</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">8.8.8.8</field></block></value><next><block type="display_result"></block></next></block></xml>';
         Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xmlText), workspace);
       </script>
@@ -277,9 +279,8 @@ with left_control_column:
 
 with right_display_column:
     st.markdown("### 📝 Code Generation Window")
-    st.write("Construct functions inside the arena, review the compiled pipeline sequence, and run it directly below:")
+    st.write("Organize loops and tools, copy code safely into the field window, and verify execution outputs below:")
     
-    # Text input area setup to directly copy-paste code from your Blockly work session
     user_pipeline_input = st.text_area(
         label="Active Script Execution Workspace Configuration Window:",
         value="current_result = run_utility_scan('8.8.8.8', 'geoip')\nshow_output_to_user(current_result)",
