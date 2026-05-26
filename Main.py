@@ -81,20 +81,27 @@ with st.sidebar:
     st.header("🎮 Sequence Automation")
     st.markdown("Build your block pipeline on the workspace floor, then trigger execution below.")
     
-    # 📝 Added manual code override fallback entry to guarantee synchronization backup tracking
-    fallback_code_input = st.text_area("📋 Live Compiled Code State Buffer", value="", height=100, 
-                                       help="This automatically captures your live canvas structure code string.")
-    
-    # Execution compilation trigger
-    if st.button("🚀 Execute Workspace Sequence", type="primary", use_container_width=True):
+    # We create a form to capture data changes across the bridge properly on submit click
+    with st.form("automation_form"):
+        # This hidden/visible channel receives the raw block string compiled by the live parser instantly
+        live_code_bridge = st.text_area(
+            "📋 Compiled Workspace Payload", 
+            value="", 
+            height=120,
+            key="code_bridge_input",
+            help="Your live blocks map directly into this pipeline."
+        )
+        
+        submit_sequence = st.form_submit_button("🚀 Execute Workspace Sequence", type="primary", use_container_width=True)
+        
+    if submit_sequence:
         st.markdown("---")
         st.subheader("🖥️ Execution Terminal")
         
-        # Read either the session state tracking pipeline or the fallback code area to guarantee sync reliability
-        code_to_run = fallback_code_input.strip()
+        code_to_run = live_code_bridge.strip()
         
         if not code_to_run or "Sequence Active" not in code_to_run:
-            st.warning("⚠️ Execution Halted: Make sure your canvas chain contains a connected 'Sequence Start' block structure containing targets!")
+            st.warning("⚠️ Execution Halted: No connected pipeline data found. Connect your blocks to 'Sequence Start' and change a value or move a block to trigger sync!")
         else:
             try:
                 st.success("🤖 Handshake established. Running visual block sequence:")
@@ -287,8 +294,20 @@ blockly_html_payload = """
         textOutput += "\\n🟢 PARSING INTEGRITY STATUS: PIPELINE CHANNELS HEALTHY";
         textOutput += "\\n\\n📋 COMPILED TARGET SCRIPT OUTPUT:\\n" + generatedPythonCode;
         
-        // Secure standalone persistent storage mechanism to hold values completely safe from frame reloads
-        localStorage.setItem("horizon_active_payload", generatedPythonCode);
+        // Find the parent Streamlit text area via DOM tree traversal and force-update its internal text value directly
+        try {
+          var textAreas = window.parent.document.getElementsByTagName('textarea');
+          for (var i = 0; i < textAreas.length; i++) {
+            // Find the active area linked to our compilation pipeline form element
+            if (textAreas[i].getAttribute('data-testid') === 'stTextArea' || i === 0) {
+              textAreas[i].value = generatedPythonCode;
+              // Dispatch input event notification so Streamlit hooks read the runtime change instantly
+              textAreas[i].dispatchEvent(new Event('input', { bubbles: true }));
+            }
+          }
+        } catch(err) {
+          // Fallback tracking if browser frame cross-origin access blocks elements
+        }
       }
       
       terminal.innerText = textOutput;
@@ -305,7 +324,7 @@ blockly_html_payload = """
     });
 
     // Scheduler fallback sync loop
-    setInterval(renderDebugLogs, 250);
+    setInterval(renderDebugLogs, 300);
   </script>
 </body>
 </html>
