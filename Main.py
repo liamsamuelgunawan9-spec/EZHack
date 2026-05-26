@@ -7,40 +7,68 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # ==========================================
-# 1. APPLICATION SETUP & THEME
+# 1. LIVE UTILITY INTERFACE BACKEND
 # ==========================================
 
-st.set_page_config(page_title="Horizon Studio Core", layout="wide")
+def perform_dns_lookup(target: str) -> str:
+    clean_host = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
+    if not clean_host:
+        return "❌ ERROR: You didn't enter a website name!"
+    try:
+        ip_addr = socket.gethostbyname(clean_host)
+        return f"🔍 [SERVER LOOK-UP] Website: {clean_host} -> IP: {ip_addr}"
+    except Exception as e:
+        return f"❌ ERROR: {str(e)}"
 
-# Fixed the unsafe_allow_html parameter to prevent layout crashes
-st.markdown(
-    """
-    <style>
-    .reportview-container .main .block-container {
-        padding-top: 1rem;
-    }
-    body {
-        background-color: #0b0c10;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+def perform_ip_geolocation(target: str) -> str:
+    clean_host = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
+    if not clean_host:
+        return "❌ ERROR: Target missing!"
+    try:
+        lookup_ip = socket.gethostbyname(clean_host)
+        api_url = f"http://ip-api.com/json/{lookup_ip}"
+        req = urllib.request.Request(api_url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=5) as stream:
+            payload = json.loads(stream.read().decode())
+        if payload.get("status") == "fail":
+            return f"❌ API ERROR: {payload.get('message')}"
+        return f"🗺️ [LOCATION] IP: {lookup_ip} | Country: {payload.get('country')} | City: {payload.get('city')}"
+    except Exception as e:
+        return f"💥 ERROR: {str(e)}"
+
+# ==========================================
+# 2. APPLICATION LAYOUT ENGINE
+# ==========================================
+
+st.set_page_config(page_title="Horizon Studio", layout="wide")
 
 st.title("⚡ Horizon Core Toolroom")
-st.caption("Visual Pipeline Engine Architecture")
+st.caption("Visual Block Configuration & Live Compiling Environment")
+
+# Sidebar Direct Processing fallback mechanism
+with st.sidebar:
+    st.header("🎯 Direct Query Panel")
+    st.markdown("Run manual queries directly to check runtime functions without using the canvas:")
+    
+    tool_choice = st.selectbox("Select Utility", ["🔍 Website DNS Lookup", "🗺️ IP Geolocation"])
+    query_input = st.text_input("Target Input", "example.com")
+    
+    if st.button("Run Utility", type="primary"):
+        if "DNS" in tool_choice:
+            st.code(perform_dns_lookup(query_input))
+        else:
+            st.code(perform_ip_geolocation(query_input))
 
 # ==========================================
-# 2. EMBEDDED VISUAL CANVAS ENGINE
+# 3. UNIFIED STABLE SANDBOX WORKSPACE (DUAL CONSOLE)
 # ==========================================
-st.markdown("### 🗺️ Visual Workspace Floor")
+st.markdown("### 🗺️ Visual Production Workspace Floor")
 
 blockly_html_payload = """
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Blockly Workspace</title>
   <script src="https://unpkg.com/blockly/blockly.min.js"></script>
   <script src="https://unpkg.com/blockly/python_compressed.js"></script>
   <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
@@ -51,141 +79,105 @@ blockly_html_payload = """
       padding: 0; 
       background-color: #0b0c10; 
       font-family: monospace; 
-      overflow: hidden; 
+      color: #1fec79; 
+      overflow: hidden;
     }
     
-    /* Top Control strip placed outside block arena workspace */
-    #controlBar {
-      height: 50px;
-      background: #1f2833;
-      border-bottom: 2px solid #45a29e;
-      display: flex;
-      align-items: center;
-      padding-left: 20px;
-    }
-    
-    #launchBtn {
-      background: #1fec79;
-      color: #0b0c10;
-      border: none;
-      padding: 8px 24px;
-      font-size: 11px;
-      font-weight: bold;
-      border-radius: 4px;
-      cursor: pointer;
-      box-shadow: 0 0 10px rgba(31, 236, 121, 0.4);
-      transition: all 0.2s ease;
-    }
-    
-    #launchBtn:hover {
-      background: #66fcf1;
-      box-shadow: 0 0 15px rgba(102, 252, 241, 0.6);
-    }
-
-    #containerDiv { 
-      position: relative; 
+    #workspaceContainer { 
+      display: flex; 
       width: 100%; 
-      height: calc(100% - 52px); 
+      height: 720px; 
+      gap: 15px; 
+      padding: 10px; 
+      box-sizing: border-box;
+    }
+    
+    /* Left Panel - Drag/Drop Canvas Arena */
+    #canvasFrame { 
+      flex: 1.2; 
+      display: flex; 
+      flex-direction: column; 
     }
     
     #blocklyDiv { 
-      width: 100%; 
-      height: 700px; 
+      flex: 1; 
+      border: 2px solid #1f2833; 
+      border-radius: 6px; 
     }
     
-    /* Side-by-side Monitor Layout Containers */
-    #draggableTerminal {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      width: 480px;
-      height: 330px;
-      z-index: 999;
-      background: rgba(11, 12, 16, 0.96);
-      border: 2px solid #66fcf1;
-      border-radius: 8px;
-      box-shadow: 0 0 25px rgba(102, 252, 241, 0.3);
-      display: flex;
-      flex-direction: column;
+    /* Right Panel - Monitoring & Code Verification Stack */
+    #monitorFrame { 
+      flex: 0.8; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 12px; 
     }
     
-    #terminalHeader {
-      padding: 12px;
-      cursor: move;
-      background: #1f2833;
-      border-bottom: 2px solid #45a29e;
-      color: #66fcf1;
+    .consoleBox { 
+      flex: 1; 
+      background: #000000; 
+      border-radius: 6px; 
+      padding: 12px; 
+      overflow-y: auto; 
+      white-space: pre-wrap; 
+      font-size: 11px;
+    }
+    
+    #compilerConsole { border: 2px solid #66fcf1; color: #66fcf1; }
+    #debugTerminal { border: 2px solid #ff0055; color: #1fec79; }
+    
+    .panelLabel {
       font-weight: bold;
       font-size: 11px;
-      user-select: none;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
     
-    #terminalBody {
-      flex: 1;
-      padding: 15px;
-      margin: 0;
-      background: #0b0c10;
-      color: #1fec79;
-      font-size: 12px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-    }
-    
-    #canvasDiagnostics {
-      position: absolute;
-      bottom: 40px;
-      right: 20px;
-      width: 480px;
-      height: 260px;
-      background: rgba(20, 24, 30, 0.95);
-      border: 2px solid #1f2833;
-      border-radius: 6px;
-      color: #1fec79;
-      font-size: 11px;
-      padding: 12px;
-      overflow-y: auto;
-      z-index: 998;
-      box-shadow: 0 0 15px rgba(31, 236, 121, 0.1);
-      font-family: monospace;
-      white-space: pre-wrap;
-      margin: 0;
-    }
+    #compilerLabel { color: #66fcf1; }
+    #debugLabel { color: #ff0055; }
   </style>
 </head>
 <body>
 
-  <div id="controlBar">
-    <button id="launchBtn">🚀 LAUNCH CIRCUIT PIPELINE</button>
-  </div>
-
-  <div id="containerDiv">
-    <div id="draggableTerminal">
-      <div id="terminalHeader">🤖 LIVE MONITOR OUTPUT STREAM</div>
-      <pre id="terminalBody">💻 [SYSTEM IDLE] Connect elements inside a sequence chain and hit execution launch parameters...</pre>
+  <div id="workspaceContainer">
+    <div id="canvasFrame">
+      <div class="panelLabel" style="color: #45a29e;">🧩 Flow Designer Canvas</div>
+      <div id="blocklyDiv"></div>
     </div>
     
-    <pre id="canvasDiagnostics">⚙️ LIVE SCRIPT COMPILER RUNTIME:</pre>
-    
-    <div id="blocklyDiv"></div>
+    <div id="monitorFrame">
+      <div>
+        <div class="panelLabel" id="compilerLabel">⚙️ Live Script Compiler Runtime</div>
+        <pre class="consoleBox" id="compilerConsole">> Compiling workspace source tree...</pre>
+      </div>
+      
+      <div>
+        <div class="panelLabel" id="debugLabel">🤖 Canvas Event Diagnostics &amp; Structure Trace</div>
+        <pre class="consoleBox" id="debugTerminal">> Initializing runtime hook loggers...</pre>
+      </div>
+    </div>
   </div>
 
   <xml id="toolbox" style="display: none">
-    <category name="🏁 Sequence Starts" colour="0">
+    <category name="🏁 Sequences" colour="0">
       <block type="when_sequence_activated"></block>
     </category>
-    <category name="🌐 Targets &amp; Inputs" colour="160">
+    <category name="🌐 Inputs" colour="160">
       <block type="custom_input_string"></block>
     </category>
-    <category name="🎯 Scanners &amp; Actions" colour="210">
+    <category name="🎯 Actions" colour="210">
       <block type="action_scan"></block>
     </category>
   </xml>
 
   <script>
-    // Custom Blocks Schema Definitions
+    // --------------------------------------------------
+    // A. CUSTOM COMPONENT CONSTRAINTS SETUP
+    // --------------------------------------------------
     Blockly.Blocks['when_sequence_activated'] = {
       init: function() {
-        this.appendDummyInput().appendField("🚀 Start Block (Sequence)");
+        this.appendDummyInput().appendField("🚀 Sequence Start");
         this.setNextStatement(true, null);
         this.setColour(0);
       }
@@ -194,8 +186,8 @@ blockly_html_payload = """
     Blockly.Blocks['custom_input_string'] = {
       init: function() {
         this.appendDummyInput()
-            .appendField("Type Target:")
-            .appendField(new Blockly.FieldTextInput("google.com"), "RAW_TEXT");
+            .appendField("Target:")
+            .appendField(new Blockly.FieldTextInput("example.com"), "RAW_TEXT");
         this.setOutput(true, "String");
         this.setColour(160);
       }
@@ -203,13 +195,12 @@ blockly_html_payload = """
 
     Blockly.Blocks['action_scan'] = {
       init: function() {
-        this.appendValueInput("NAME").setCheck("String").appendField("Target info to check:");
+        this.appendValueInput("NAME").setCheck("String").appendField("Scan Target:");
         this.appendDummyInput()
             .appendField("Action:")
             .appendField(new Blockly.FieldDropdown([
-              ["📱 Phone Number Scan", "phone"], 
-              ["🔍 Website Server Look-up", "dns"],
-              ["🗺️ IP Address Location", "geoip"]
+              ["🔍 DNS Lookup","dns"],
+              ["🗺️ Geolocation","geoip"]
             ]), "SCANTYPE");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
@@ -217,136 +208,120 @@ blockly_html_payload = """
       }
     };
 
-    // Translation Logic Mapping Engines
-    Blockly.Python.forBlock['when_sequence_activated'] = function(block) { return '# [Start Sequence]\\n'; };
-    Blockly.Python.forBlock['custom_input_string'] = function(block) { return ['"' + block.getFieldValue('RAW_TEXT') + '"', 0]; };
+    // --------------------------------------------------
+    // B. TRANSLATION SYNTAX MAPPING CONSTRUCTS
+    // --------------------------------------------------
+    Blockly.Python.forBlock['when_sequence_activated'] = function(block) { 
+      return '# [Sequence Root Context Enabled]\\n'; 
+    };
+    Blockly.Python.forBlock['custom_input_string'] = function(block) { 
+      return ["'" + block.getFieldValue('RAW_TEXT') + "'", 0]; 
+    };
     Blockly.Python.forBlock['action_scan'] = function(block) {
       var type = block.getFieldValue('SCANTYPE');
       var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-      return 'run_utility_scan(target=' + val + ', scan_mode="' + type + '")\\n';
+      return 'run_pipeline_scan(target=' + val + ', module_type="' + type + '")\\n';
     };
 
+    // Inject layout properties safely into viewport frame
     var workspace = Blockly.inject('blocklyDiv', {
       toolbox: document.getElementById('toolbox'),
       grid: {spacing: 20, length: 3, colour: '#1f2833', snap: true},
       trashcan: true
     });
 
-    // Generate Default Starting Block Placements
-    var xmlText = '<xml><block type="when_sequence_activated" x="40" y="40"><next><block type="action_scan"><field name="SCANTYPE">dns</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">google.com</field></block></value></block></next></block></xml>';
-    Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xmlText), workspace);
+    // Default Pre-loaded Structure Sequence Configuration Placement
+    var defaultXml = '<xml><block type="when_sequence_activated" x="30" y="30"><next><block type="action_scan"><field name="SCANTYPE">dns</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">google.com</field></block></value></block></next></block></xml>';
+    Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(defaultXml), workspace);
 
-    var diagnosticsLogBox = document.getElementById("canvasDiagnostics");
-    var terminalBodyBox = document.getElementById("terminalBody");
+    var compilerBox = document.getElementById("compilerConsole");
+    var diagnosticsTerminal = document.getElementById("debugTerminal");
 
-    // Live Translation Loop logic running inside sandboxed browser window 
-    function updateLiveTranslatedCode() {
+    // --------------------------------------------------
+    // C. SECURE DUAL CONSOLE LOG MONITOR HANDLERS
+    // --------------------------------------------------
+    function syncConsoleOutputs() {
       var allBlocks = workspace.getAllBlocks(false);
-      var textOutput = "⚙️ LIVE TRANSLATED PYTHON CODE:\\n-----------------------------------\\n";
       
-      var sequenceFound = false;
+      // 1. UPDATE DYNAMIC COMPILER LOGIC BOX
+      var codeCompilationText = "⚙️ GENERATED PYTHON RUNTIME TARGET CODE:\\n-----------------------------------------\\n";
+      var activePathFound = false;
+      
       for (var i = 0; i < allBlocks.length; i++) {
         if (allBlocks[i].type === 'when_sequence_activated') {
-          sequenceFound = true;
-          textOutput += "def execute_pipeline():\\n    # Start Sequence Active Path\\n";
-          var nextBlock = allBlocks[i].getNextBlock();
-          while (nextBlock) {
-            var blockCode = Blockly.Python.blockToCode(nextBlock);
-            if (typeof blockCode === 'string') {
-              textOutput += "    " + blockCode;
-            } else if (Array.isArray(blockCode)) {
-              textOutput += "    " + blockCode[0] + "\\n";
+          activePathFound = true;
+          codeCompilationText += "def pipeline_execution_chain():\\n    # Entry initialization point confirmed\\n";
+          
+          var traceNode = allBlocks[i].getNextBlock();
+          while (traceNode) {
+            var scriptBlockCode = Blockly.Python.blockToCode(traceNode);
+            if (typeof scriptBlockCode === 'string') {
+              codeCompilationText += "    " + scriptBlockCode;
+            } else if (Array.isArray(scriptBlockCode)) {
+              codeCompilationText += "    " + scriptBlockCode[0] + "\\n";
             }
-            nextBlock = nextBlock.getNextBlock();
+            traceNode = traceNode.getNextBlock();
           }
         }
       }
-      if (!sequenceFound) {
-        textOutput += "# ⚠️ Status: Attach workspace modules to an active Start Block node.";
+      
+      if (!activePathFound) {
+        codeCompilationText += "# ⚠️ STAGE ERROR: Missing a valid 'Sequence Start' block node context on the field canvas.";
       }
-      diagnosticsLogBox.innerText = textOutput;
-    }
+      compilerBox.innerText = codeCompilationText;
 
-    // Fixed Syntax String Concat Bug Inside Execution Sequence Trigger
-    function triggerPipelineProcessing() {
-      var allBlocks = workspace.getAllBlocks(false);
-      var streamLogs = "⚡ INITIALIZING PIPELINE DISPATCH SEQUENCE...\\n⚡ SYNCING RECON CORES...\\n\\n";
-      var activeRuns = 0;
-
-      for (var i = 0; i < allBlocks.length; i++) {
-        if (allBlocks[i].type === 'when_sequence_activated') {
-          activeRuns++;
-          streamLogs += "▶️ [Processing Sequence Workspace Chain #" + activeRuns + "]\\n";
+      // 2. UPDATE SYSTEM LOG EVENT BLOCK DIAGNOSTICS
+      var diagnosticLogText = "📊 CANVAS RUNTIME DIAGNOSTICS MATRIX:\\n---------------------------------------\\n";
+      diagnosticLogText += "• Block footprint density on canvas: " + allBlocks.length + " modules\\n";
+      
+      var sequenceCount = 0;
+      for (var j = 0; j < allBlocks.length; j++) {
+        if (allBlocks[j].type === 'when_sequence_activated') {
+          sequenceCount++;
+          diagnosticLogText += "👉 Sequence Chain #" + sequenceCount + " Identified [ID Reference: " + allBlocks[j].id + "]\\n";
           
-          var current = allBlocks[i].getNextBlock();
-          if (!current) {
-            streamLogs += "   └── ⚠️ Trace Empty. Drop scanner tools directly underneath the Start block node.\\n";
-          }
-          
-          while (current) {
-            if (current.type === 'action_scan') {
-              var modeType = current.getFieldValue('SCANTYPE');
-              var inputStr = "[Null Parameter]";
-              var targetBlock = current.getInputTargetBlock('NAME');
-              if (targetBlock && targetBlock.getFieldValue('RAW_TEXT')) {
-                inputStr = targetBlock.getFieldValue('RAW_TEXT');
-              }
-              
-              streamLogs += "   ├── Running: " + modeType.toUpperCase() + " Module checks against field input [" + inputStr + "]\\n";
-              
-              if (modeType === "phone") {
-                streamLogs += "   └── 📡 [TELEPHONY SCAN COMPLETION]: Circuit trace mapped. Location properties verified via mock carrier registry nodes.\\n";
-              } else if (modeType === "dns") {
-                streamLogs += "   └── 🔍 [DNS RECORDS COMPLETION]: Domain resolved to host routing matrix structure records successfully.\\n";
-              } else {
-                streamLogs += "   └── 🗺️ [IP GEOLOCATION COMPLETION]: Geometric parameters assigned. Mapping parameters trace finalized successfully.\\n";
-              }
+          var connectionIterator = allBlocks[j].getNextBlock();
+          var stepCounter = 0;
+          while (connectionIterator) {
+            stepCounter++;
+            diagnosticLogText += "   ├── Step " + stepCounter + ": " + connectionIterator.type;
+            if (connectionIterator.type === 'action_scan') {
+              diagnosticLogText += " [Mode configuration parameter: " + connectionIterator.getFieldValue('SCANTYPE').toUpperCase() + "]";
             }
-            current = current.getNextBlock();
+            diagnosticLogText += "\\n";
+            connectionIterator = connectionIterator.getNextBlock();
           }
-          streamLogs += "   └── ✔️ Workspace layout branch execution trace completed.\\n\\n";
+          if (stepCounter === 0) {
+            diagnosticLogText += "   └── ⚠️ Trace Warning: Sequence empty. Drop validation actions below start node.\\n";
+          }
         }
       }
-
-      if (activeRuns === 0) {
-        streamLogs += "❌ EXECUTION FATAL: Missing a 'Start Block (Sequence)' node element on the workspace canvas floor.";
+      
+      if (sequenceCount === 0) {
+        diagnosticLogText += "\\n❌ ERROR FRAME: Workspace sequence parsing suspended. Execution sequence requires a core start component block node connection.";
       } else {
-        streamLogs += "🟢 CORES PIPELINE SEQUENCE DISPATCH PROCESSED WITH NO ERRORS.";
+        diagnosticLogText += "\\n🟢 DIAGNOSTICS PARSING STATUS: SYSTEM VALID CHANNELS HEALTHY.";
       }
-
-      terminalBodyBox.innerText = streamLogs;
+      
+      diagnosticsTerminal.innerText = diagnosticLogText;
     }
 
-    // Bind event hooks 
-    document.getElementById("launchBtn").addEventListener("click", triggerPipelineProcessing);
-    workspace.addChangeListener(updateLiveTranslatedCode);
-    
-    // Interval check fallbacks to capture text input value alterations
-    setInterval(updateLiveTranslatedCode, 150);
-
-    // Draggable Terminal Element setup logic
-    var windowFrame = document.getElementById("draggableTerminal");
-    var topHeader = document.getElementById("terminalHeader");
-    var isDragging = false;
-    var cX, cY, iX, iY, xOff = 0, yOff = 0;
-
-    topHeader.addEventListener("mousedown", function(e) {
-      iX = e.clientX - xOff; iY = e.clientY - yOff;
-      if (e.target === topHeader) isDragging = true;
-    }, false);
-    document.addEventListener("mouseup", function() { isDragging = false; }, false);
-    document.addEventListener("mousemove", function(e) {
-      if (isDragging) {
-        e.preventDefault();
-        cX = e.clientX - iX; cY = e.clientY - iY;
-        xOff = cX; yOff = cY;
-        windowFrame.style.transform = "translate3d(" + cX + "px, " + cY + "px, 0)";
+    // Capture precise, non-breaking canvas changes safely inside the event loop hooks
+    workspace.addChangeListener(function(e) {
+      if (e.type === Blockly.Events.BLOCK_CREATE || 
+          e.type === Blockly.Events.BLOCK_MOVE || 
+          e.type === Blockly.Events.BLOCK_CHANGE || 
+          e.type === Blockly.Events.BLOCK_DELETE) {
+        syncConsoleOutputs();
       }
-    }, false);
+    });
+
+    // Scheduler fallback guarantees text inputs and canvas variables update seamlessly without blocking browser threads
+    setInterval(syncConsoleOutputs, 200);
+    setTimeout(syncConsoleOutputs, 300);
   </script>
 </body>
 </html>
 """
 
-# Render the application safely into an expanded layout frame
-components.html(blockly_html_payload, height=780, scrolling=False)
+components.html(blockly_html_payload, height=740, scrolling=False)
