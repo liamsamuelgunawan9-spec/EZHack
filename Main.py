@@ -130,8 +130,8 @@ def compile_and_execute_blocks(compiled_script_text: str):
 # ==========================================
 
 st.set_page_config(page_title="EZHack Pro Workspace", layout="wide")
-st.title("⚡ EZHack Core Framework — Hyper Studio")
-st.caption("Visual block operational workspace running loops, custom functions, variables, and network infrastructure diagnostics.")
+st.title("⚡ EZHack Studio — Professional Pentest Workspace")
+st.caption("Integrated block development studio blending logic loops, variables, and network reconnaissance capabilities.")
 
 # System Memory Initialization
 if "console_terminal_logs" not in st.session_state:
@@ -147,17 +147,18 @@ with st.sidebar:
 left_control_column, right_display_column = st.columns([7, 5])
 
 with left_control_column:
-    st.markdown("### 🗺️ Native Blockly Studio Arena")
+    st.markdown("### 🗺️ Studio Drag-and-Drop Arena")
     
-    # Modernized, categorized, error-handled implementation layout
+    # Fully static XML toolbox implementation layout with loaded external submodules
     blockly_html_payload = """
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
-      <title>Blockly Environment</title>
+      <title>Blockly Studio Environment</title>
       <script src="https://unpkg.com/blockly/blockly.min.js"></script>
       <script src="https://unpkg.com/blockly/python_compressed.js"></script>
+      <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
       <style>
         html, body { height: 100%; margin: 0; padding: 0; background-color: #1e1e1e; font-family: sans-serif; }
         #blocklyDiv { width: 100%; height: 630px; border: 1px solid #444; border-radius: 4px; }
@@ -178,7 +179,13 @@ with left_control_column:
           <block type="display_result"></block>
         </category>
         <sep></sep>
-        <category name="Logic Nodes" colour="210" custom="LOGIC"></category>
+        <category name="Logic Nodes" colour="210">
+          <block type="controls_if"></block>
+          <block type="logic_compare"></block>
+          <block type="logic_operation"></block>
+          <block type="logic_negate"></block>
+          <block type="logic_boolean"></block>
+        </category>
         <category name="Loop Controls" colour="120">
           <block type="controls_repeat_ext">
             <value name="TIMES">
@@ -187,16 +194,20 @@ with left_control_column:
           </block>
           <block type="controls_whileUntil"></block>
         </category>
-        <category name="Math Elements" colour="230">
+        <category name="Math &amp; Text" colour="230">
           <block type="math_number"><field name="NUM">1</field></block>
           <block type="math_arithmetic"></block>
+          <block type="text"></block>
+          <block type="text_print"></block>
         </category>
-        <category name="Variables Loop" colour="330" custom="VARIABLE"></category>
-        <category name="Functions Setup" colour="290" custom="PROCEDURE"></category>
+        <category name="Variables Loop" colour="330">
+          <block type="variables_get"><field name="VAR">target_ip</field></block>
+          <block type="variables_set"><field name="VAR">target_ip</field></block>
+        </category>
       </xml>
 
       <script>
-        // Custom Blocks Definitions
+        // Custom Block Structure Definitions
         Blockly.Blocks['custom_input_string'] = {
           init: function() {
             this.appendDummyInput()
@@ -220,7 +231,7 @@ with left_control_column:
         Blockly.Blocks['action_scan'] = {
           init: function() {
             this.appendValueInput("NAME")
-                .setCheck("String")
+                .setCheck(null)
                 .appendField("Run Scan Profile on");
             this.appendDummyInput()
                 .appendField("Scan Type:")
@@ -240,7 +251,7 @@ with left_control_column:
           }
         };
 
-        // Modern Python Generation Syntax Mapping
+        // Code Generation Mappings
         Blockly.Python.forBlock['custom_input_string'] = function(block) {
           var text_raw_text = block.getFieldValue('RAW_TEXT');
           return ['"' + text_raw_text + '"', 0];
@@ -261,14 +272,14 @@ with left_control_column:
           return 'show_output_to_user(current_result)\\n';
         };
 
-        // Inject Blockly with explicit toolbox attachment
+        // Mount and Inject Stable Workspace Layout Configuration
         var workspace = Blockly.inject('blocklyDiv', {
           toolbox: document.getElementById('toolbox'),
           grid: {spacing: 20, length: 3, colour: '#333', snap: true},
           trashcan: true
         });
 
-        // Add starting elements to workspace layout
+        // Initialize default workspace architecture layout
         var xmlText = '<xml><block type="action_scan" x="40" y="50"><field name="SCANTYPE">geoip</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">8.8.8.8</field></block></value><next><block type="display_result"></block></next></block></xml>';
         Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xmlText), workspace);
       </script>
@@ -279,7 +290,7 @@ with left_control_column:
 
 with right_display_column:
     st.markdown("### 📝 Code Generation Window")
-    st.write("Organize loops and tools, copy code safely into the field window, and verify execution outputs below:")
+    st.write("Construct functions inside the arena, review the compiled pipeline sequence, and run it directly below:")
     
     user_pipeline_input = st.text_area(
         label="Active Script Execution Workspace Configuration Window:",
