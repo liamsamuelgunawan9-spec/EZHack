@@ -7,7 +7,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # ==========================================
-# 1. LIVE UTILITY INTERFACE BACKEND
+# 1. UTILITY FUNCTIONS (UNTOUCHED CORE)
 # ==========================================
 
 def perform_dns_lookup(target: str) -> str:
@@ -37,21 +37,21 @@ def perform_ip_geolocation(target: str) -> str:
         return f"💥 ERROR: {str(e)}"
 
 # ==========================================
-# 2. APPLICATION LAYOUT ENGINE
+# 2. STREAMLIT INTERFACE
 # ==========================================
 
 st.set_page_config(page_title="Horizon Studio", layout="wide")
 
 st.title("⚡ Horizon Core Toolroom")
-st.caption("Visual Block Configuration & Live Compiling Environment")
+st.caption("Visual Block Configuration Environment")
 
-# Sidebar Direct Processing fallback mechanism
+# Sidebar Manual Tool runner to bypass iframe connectivity issues entirely
 with st.sidebar:
     st.header("🎯 Direct Query Panel")
-    st.markdown("Run manual queries directly to check runtime functions without using the canvas:")
+    st.markdown("If the visual canvas is syncing with the browser frame sandbox, run queries directly below:")
     
     tool_choice = st.selectbox("Select Utility", ["🔍 Website DNS Lookup", "🗺️ IP Geolocation"])
-    query_input = st.text_input("Target Input", "example.com")
+    query_input = st.text_input("Target Input (e.g., google.com)", "example.com")
     
     if st.button("Run Utility", type="primary"):
         if "DNS" in tool_choice:
@@ -60,9 +60,9 @@ with st.sidebar:
             st.code(perform_ip_geolocation(query_input))
 
 # ==========================================
-# 3. UNIFIED STABLE SANDBOX WORKSPACE (DUAL CONSOLE)
+# 3. VISUAL CANVAS EMBED
 # ==========================================
-st.markdown("### 🗺️ Visual Production Workspace Floor")
+st.markdown("### 🗺️ Visual Workspace Workspace")
 
 blockly_html_payload = """
 <!DOCTYPE html>
@@ -73,90 +73,28 @@ blockly_html_payload = """
   <script src="https://unpkg.com/blockly/python_compressed.js"></script>
   <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
   <style>
-    html, body { 
-      height: 100%; 
-      margin: 0; 
-      padding: 0; 
-      background-color: #0b0c10; 
-      font-family: monospace; 
-      color: #1fec79; 
-      overflow: hidden;
-    }
-    
-    #workspaceContainer { 
-      display: flex; 
-      width: 100%; 
-      height: 720px; 
-      gap: 15px; 
-      padding: 10px; 
-      box-sizing: border-box;
-    }
-    
-    /* Left Panel - Drag/Drop Canvas Arena */
-    #canvasFrame { 
-      flex: 1.2; 
-      display: flex; 
-      flex-direction: column; 
-    }
-    
-    #blocklyDiv { 
-      flex: 1; 
-      border: 2px solid #1f2833; 
-      border-radius: 6px; 
-    }
-    
-    /* Right Panel - Monitoring & Code Verification Stack */
-    #monitorFrame { 
-      flex: 0.8; 
-      display: flex; 
-      flex-direction: column; 
-      gap: 12px; 
-    }
-    
-    .consoleBox { 
-      flex: 1; 
+    html, body { height: 100%; margin: 0; padding: 0; background-color: #0b0c10; font-family: monospace; color: #1fec79; }
+    #workspaceWrapper { display: flex; flex-direction: column; height: 680px; padding: 5px; box-sizing: border-box; }
+    #blocklyDiv { flex: 1; border: 2px solid #45a29e; border-radius: 6px; box-shadow: 0 0 15px rgba(69, 162, 158, 0.15); }
+    #debugTerminal { 
+      height: 180px; 
       background: #000000; 
-      border-radius: 6px; 
+      border: 2px solid #ff0055; 
+      margin-top: 12px; 
       padding: 12px; 
       overflow-y: auto; 
       white-space: pre-wrap; 
-      font-size: 11px;
+      font-size: 12px;
+      border-radius: 6px;
+      box-shadow: 0 0 15px rgba(255, 0, 85, 0.1);
     }
-    
-    #compilerConsole { border: 2px solid #66fcf1; color: #66fcf1; }
-    #debugTerminal { border: 2px solid #ff0055; color: #1fec79; }
-    
-    .panelLabel {
-      font-weight: bold;
-      font-size: 11px;
-      margin-bottom: 4px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-    
-    #compilerLabel { color: #66fcf1; }
-    #debugLabel { color: #ff0055; }
   </style>
 </head>
 <body>
 
-  <div id="workspaceContainer">
-    <div id="canvasFrame">
-      <div class="panelLabel" style="color: #45a29e;">🧩 Flow Designer Canvas</div>
-      <div id="blocklyDiv"></div>
-    </div>
-    
-    <div id="monitorFrame">
-      <div>
-        <div class="panelLabel" id="compilerLabel">⚙️ Live Script Compiler Runtime</div>
-        <pre class="consoleBox" id="compilerConsole">> Compiling workspace source tree...</pre>
-      </div>
-      
-      <div>
-        <div class="panelLabel" id="debugLabel">🤖 Canvas Event Diagnostics &amp; Structure Trace</div>
-        <pre class="consoleBox" id="debugTerminal">> Initializing runtime hook loggers...</pre>
-      </div>
-    </div>
+  <div id="workspaceWrapper">
+    <div id="blocklyDiv"></div>
+    <div id="debugTerminal">> Awaiting block placement events...</div>
   </div>
 
   <xml id="toolbox" style="display: none">
@@ -165,16 +103,16 @@ blockly_html_payload = """
     </category>
     <category name="🌐 Inputs" colour="160">
       <block type="custom_input_string"></block>
+      <block type="multi_target_list"></block>
     </category>
     <category name="🎯 Actions" colour="210">
       <block type="action_scan"></block>
+      <block type="protocol_verify"></block>
     </category>
   </xml>
 
   <script>
-    // --------------------------------------------------
-    // A. CUSTOM COMPONENT CONSTRAINTS SETUP
-    // --------------------------------------------------
+    // --- Existing Blocks ---
     Blockly.Blocks['when_sequence_activated'] = {
       init: function() {
         this.appendDummyInput().appendField("🚀 Sequence Start");
@@ -188,6 +126,17 @@ blockly_html_payload = """
         this.appendDummyInput()
             .appendField("Target:")
             .appendField(new Blockly.FieldTextInput("example.com"), "RAW_TEXT");
+        this.setOutput(true, "String");
+        this.setColour(160);
+      }
+    };
+
+    // --- New Input Block ---
+    Blockly.Blocks['multi_target_list'] = {
+      init: function() {
+        this.appendDummyInput()
+            .appendField("Multi-Targets:")
+            .appendField(new Blockly.FieldTextInput("target1.com, target2.com"), "TARGETS");
         this.setOutput(true, "String");
         this.setColour(160);
       }
@@ -208,120 +157,97 @@ blockly_html_payload = """
       }
     };
 
-    // --------------------------------------------------
-    // B. TRANSLATION SYNTAX MAPPING CONSTRUCTS
-    // --------------------------------------------------
-    Blockly.Python.forBlock['when_sequence_activated'] = function(block) { 
-      return '# [Sequence Root Context Enabled]\\n'; 
+    // --- New Action Block ---
+    Blockly.Blocks['protocol_verify'] = {
+      init: function() {
+        this.appendValueInput("TARGET").setCheck("String").appendField("Verify Target:");
+        this.appendDummyInput()
+            .appendField("Check Option:")
+            .appendField(new Blockly.FieldDropdown([
+              ["🔒 SSL/TLS Certificate","ssl"],
+              ["🔌 Open Ports Scan","ports"]
+            ]), "VERIFYTYPE");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(210);
+      }
     };
-    Blockly.Python.forBlock['custom_input_string'] = function(block) { 
-      return ["'" + block.getFieldValue('RAW_TEXT') + "'", 0]; 
-    };
+
+    // --- Python Compilers ---
+    Blockly.Python.forBlock['when_sequence_activated'] = function(block) { return '# Sequence Active\\n'; };
+    Blockly.Python.forBlock['custom_input_string'] = function(block) { return ['"' + block.getFieldValue('RAW_TEXT') + '"', 0]; };
+    Blockly.Python.forBlock['multi_target_list'] = function(block) { return ['"' + block.getFieldValue('TARGETS') + '"', 0]; };
+    
     Blockly.Python.forBlock['action_scan'] = function(block) {
       var type = block.getFieldValue('SCANTYPE');
       var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-      return 'run_pipeline_scan(target=' + val + ', module_type="' + type + '")\\n';
+      return 'run_scan(target=' + val + ', mode="' + type + '")\\n';
     };
 
-    // Inject layout properties safely into viewport frame
+    Blockly.Python.forBlock['protocol_verify'] = function(block) {
+      var type = block.getFieldValue('VERIFYTYPE');
+      var val = Blockly.Python.valueToCode(block, 'TARGET', 0) || "''";
+      return 'verify_protocol(target=' + val + ', verification_mode="' + type + '")\\n';
+    };
+
+    // Inject parameters
     var workspace = Blockly.inject('blocklyDiv', {
       toolbox: document.getElementById('toolbox'),
       grid: {spacing: 20, length: 3, colour: '#1f2833', snap: true},
       trashcan: true
     });
 
-    // Default Pre-loaded Structure Sequence Configuration Placement
-    var defaultXml = '<xml><block type="when_sequence_activated" x="30" y="30"><next><block type="action_scan"><field name="SCANTYPE">dns</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">google.com</field></block></value></block></next></block></xml>';
-    Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(defaultXml), workspace);
+    var terminal = document.getElementById("debugTerminal");
 
-    var compilerBox = document.getElementById("compilerConsole");
-    var diagnosticsTerminal = document.getElementById("debugTerminal");
-
-    // --------------------------------------------------
-    // C. SECURE DUAL CONSOLE LOG MONITOR HANDLERS
-    // --------------------------------------------------
-    function syncConsoleOutputs() {
+    function renderDebugLogs() {
       var allBlocks = workspace.getAllBlocks(false);
-      
-      // 1. UPDATE DYNAMIC COMPILER LOGIC BOX
-      var codeCompilationText = "⚙️ GENERATED PYTHON RUNTIME TARGET CODE:\\n-----------------------------------------\\n";
-      var activePathFound = false;
-      
-      for (var i = 0; i < allBlocks.length; i++) {
-        if (allBlocks[i].type === 'when_sequence_activated') {
-          activePathFound = true;
-          codeCompilationText += "def pipeline_execution_chain():\\n    # Entry initialization point confirmed\\n";
-          
-          var traceNode = allBlocks[i].getNextBlock();
-          while (traceNode) {
-            var scriptBlockCode = Blockly.Python.blockToCode(traceNode);
-            if (typeof scriptBlockCode === 'string') {
-              codeCompilationText += "    " + scriptBlockCode;
-            } else if (Array.isArray(scriptBlockCode)) {
-              codeCompilationText += "    " + scriptBlockCode[0] + "\\n";
-            }
-            traceNode = traceNode.getNextBlock();
-          }
-        }
-      }
-      
-      if (!activePathFound) {
-        codeCompilationText += "# ⚠️ STAGE ERROR: Missing a valid 'Sequence Start' block node context on the field canvas.";
-      }
-      compilerBox.innerText = codeCompilationText;
-
-      // 2. UPDATE SYSTEM LOG EVENT BLOCK DIAGNOSTICS
-      var diagnosticLogText = "📊 CANVAS RUNTIME DIAGNOSTICS MATRIX:\\n---------------------------------------\\n";
-      diagnosticLogText += "• Block footprint density on canvas: " + allBlocks.length + " modules\\n";
+      var textOutput = "⚙️ LIVE WORKSPACE PARSER MATRIX\\n-----------------------------------------\\n";
+      textOutput += "• Active elements mapped on floor: " + allBlocks.length + "\\n\\n";
       
       var sequenceCount = 0;
-      for (var j = 0; j < allBlocks.length; j++) {
-        if (allBlocks[j].type === 'when_sequence_activated') {
+      for (var i = 0; i < allBlocks.length; i++) {
+        if (allBlocks[i].type === 'when_sequence_activated') {
           sequenceCount++;
-          diagnosticLogText += "👉 Sequence Chain #" + sequenceCount + " Identified [ID Reference: " + allBlocks[j].id + "]\\n";
+          textOutput += "🏁 [Sequence Sequence Node #" + sequenceCount + "] Enabled -> [UUID: " + allBlocks[i].id + "]\\n";
           
-          var connectionIterator = allBlocks[j].getNextBlock();
-          var stepCounter = 0;
-          while (connectionIterator) {
-            stepCounter++;
-            diagnosticLogText += "   ├── Step " + stepCounter + ": " + connectionIterator.type;
-            if (connectionIterator.type === 'action_scan') {
-              diagnosticLogText += " [Mode configuration parameter: " + connectionIterator.getFieldValue('SCANTYPE').toUpperCase() + "]";
+          var nextBlock = allBlocks[i].getNextBlock();
+          while(nextBlock) {
+            textOutput += "   └── Connected Step: " + nextBlock.type;
+            if(nextBlock.type === 'action_scan') {
+              textOutput += " [Action Mode: " + nextBlock.getFieldValue('SCANTYPE').toUpperCase() + "]";
+            } else if(nextBlock.type === 'protocol_verify') {
+              textOutput += " [Verification Mode: " + nextBlock.getFieldValue('VERIFYTYPE').toUpperCase() + "]";
             }
-            diagnosticLogText += "\\n";
-            connectionIterator = connectionIterator.getNextBlock();
-          }
-          if (stepCounter === 0) {
-            diagnosticLogText += "   └── ⚠️ Trace Warning: Sequence empty. Drop validation actions below start node.\\n";
+            textOutput += "\\n";
+            nextBlock = nextBlock.getNextBlock();
           }
         }
       }
       
-      if (sequenceCount === 0) {
-        diagnosticLogText += "\\n❌ ERROR FRAME: Workspace sequence parsing suspended. Execution sequence requires a core start component block node connection.";
+      if(sequenceCount === 0) {
+        textOutput += "⚠️ STATUS ALERT: Drag and drop a 'Sequence Start' block onto the workspace canvas floor to begin compilation.";
       } else {
-        diagnosticLogText += "\\n🟢 DIAGNOSTICS PARSING STATUS: SYSTEM VALID CHANNELS HEALTHY.";
+        textOutput += "\\n🟢 PARSING INTEGRITY STATUS: PIPELINE CHANNELS HEALTHY";
       }
       
-      diagnosticsTerminal.innerText = diagnosticLogText;
+      terminal.innerText = textOutput;
     }
 
-    // Capture precise, non-breaking canvas changes safely inside the event loop hooks
+    // Capture every block event instantaneously
     workspace.addChangeListener(function(e) {
       if (e.type === Blockly.Events.BLOCK_CREATE || 
           e.type === Blockly.Events.BLOCK_MOVE || 
           e.type === Blockly.Events.BLOCK_CHANGE || 
           e.type === Blockly.Events.BLOCK_DELETE) {
-        syncConsoleOutputs();
+        renderDebugLogs();
       }
     });
 
-    // Scheduler fallback guarantees text inputs and canvas variables update seamlessly without blocking browser threads
-    setInterval(syncConsoleOutputs, 200);
-    setTimeout(syncConsoleOutputs, 300);
+    // Run interval check to catch text typing changes
+    setInterval(renderDebugLogs, 200);
   </script>
 </body>
 </html>
 """
 
-components.html(blockly_html_payload, height=740, scrolling=False)
+components.html(blockly_html_payload, height=700, scrolling=False)
