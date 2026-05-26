@@ -7,7 +7,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # ==========================================
-# 1. RECON RECOVERY UTILITIES (BACKEND)
+# 1. UTILITY FUNCTIONS
 # ==========================================
 
 def perform_dns_lookup(target: str) -> str:
@@ -16,441 +16,183 @@ def perform_dns_lookup(target: str) -> str:
         return "❌ ERROR: You didn't enter a website name!"
     try:
         ip_addr = socket.gethostbyname(clean_host)
-        return (
-            f"🔍 [WEBSITE SERVER LOOK-UP]\n"
-            f"  ├── Website Name : {clean_host}\n"
-            f"  └── Server IP    : {ip_addr}\n"
-            f"🟢 SUCCESS: Found the server address!"
-        )
-    except socket.gaierror:
-        return f"❌ ERROR:\n  └── Could not find a server for '{clean_host}'."
+        return f"🔍 [SERVER LOOK-UP] Website: {clean_host} -> IP: {ip_addr}"
     except Exception as e:
-        return f"💥 SYSTEM CRASH: {str(e)}"
-
-
-def perform_reverse_dns(target: str) -> str:
-    clean_ip = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
-    if not clean_ip:
-        return "❌ ERROR: You didn't enter an IP address!"
-    try:
-        host_meta = socket.gethostbyaddr(clean_ip)
-        return (
-            f"🔄 [FIND WEBSITE FROM IP]\n"
-            f"  ├── IP Address   : {clean_ip}\n"
-            f"  └── Website Name : {host_meta[0]}\n"
-            f"🟢 SUCCESS: Website found successfully!"
-        )
-    except Exception:
-        return f"❌ ERROR:\n  └── Could not find website names attached to IP '{clean_ip}'"
-
+        return f"❌ ERROR: {str(e)}"
 
 def perform_ip_geolocation(target: str) -> str:
     clean_host = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
     if not clean_host:
-        return "❌ ERROR: You didn't enter an IP or Website!"
+        return "❌ ERROR: Target missing!"
     try:
-        try:
-            lookup_ip = socket.gethostbyname(clean_host)
-        except socket.gaierror:
-            return f"❌ ERROR:\n  └── Target '{clean_host}' is offline or invalid."
-
+        lookup_ip = socket.gethostbyname(clean_host)
         api_url = f"http://ip-api.com/json/{lookup_ip}"
         req = urllib.request.Request(api_url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=5) as network_stream:
-            json_payload = json.loads(network_stream.read().decode())
-            
-        if json_payload.get("status") == "fail":
-            return f"❌ ERROR:\n  └── Server message: {json_payload.get('message', 'Unknown error')}"
-            
-        return (
-            f"🗺️ [IP ADDRESS LOCATION REPORT]\n"
-            f"  ├── Searched For : {clean_host}\n"
-            f"  ├── Real IP      : {json_payload.get('query')}\n"
-            f"  ├── Country      : {json_payload.get('country')} ({json_payload.get('countryCode')})\n"
-            f"  ├── City/State   : {json_payload.get('city')}, {json_payload.get('regionName')}\n"
-            f"  ├── Company/ISP  : {json_payload.get('isp')}\n"
-            f"  └── Network Code : {json_payload.get('as')}\n"
-            f"🟢 SUCCESS: Location coordinates loaded!"
-        )
+        with urllib.request.urlopen(req, timeout=5) as stream:
+            payload = json.loads(stream.read().decode())
+        if payload.get("status") == "fail":
+            return f"❌ API ERROR: {payload.get('message')}"
+        return f"🗺️ [LOCATION] IP: {lookup_ip} | Country: {payload.get('country')} | City: {payload.get('city')}"
     except Exception as e:
-        return f"💥 SYSTEM CRASH: {str(e)}"
-
-
-def perform_phone_scan(target_phone: str) -> str:
-    clean_phone = str(target_phone).strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
-    if not clean_phone:
-        return "❌ ERROR: You didn't enter any phone digits!"
-    
-    is_intl = clean_phone.startswith("+")
-    country_est = "🌍 Outside North America (International)" if is_intl else "🇺🇸 Local US/Canada Number"
-    length = len(clean_phone)
-    
-    mock_carriers = ["Verizon Wireless Network", "AT&T Core Mobility", "T-Mobile USA Network", "Vodafone Routing Hub", "Orange Telecom Group"]
-    mock_line_types = ["📱 Mobile / Cell Phone", "☎️ Traditional Landline", "💻 Internet Number (VoIP)", "📡 Toll-Free Helpline Circuit"]
-    
-    seed_val = sum(ord(c) for c in clean_phone)
-    random.seed(seed_val)
-    
-    selected_carrier = random.choice(mock_carriers)
-    selected_type = random.choice(mock_line_types)
-    exchange_code = clean_phone[1:4] if is_intl else clean_phone[0:3]
-    
-    return (
-        f"📡 [PHONE NUMBER SCAN RAPID REPORT]\n"
-        f"  ├── Original Entry : {target_phone}\n"
-        f"  ├── Cleaned Number : {clean_phone}\n"
-        f"  ├── Total Digits   : {length} numbers\n"
-        f"  ├── Location Area  : {country_est}\n"
-        f"  ├── Area/City Code : [+{exchange_code}]\n"
-        f"  ├── Phone Type     : {selected_type}\n"
-        f"  └── Phone Company  : {selected_carrier}\n"
-        f"🟢 SUCCESS: Line trace complete!"
-    )
+        return f"💥 ERROR: {str(e)}"
 
 # ==========================================
-# 2. RUNTIME PIPELINE EXECUTION ENGINE
+# 2. STREAMLIT INTERFACE
 # ==========================================
 
-def run_utility_scan(target_string: str, scan_profile_type: str) -> str:
-    normalized_profile = str(scan_profile_type).lower().strip()
-    if normalized_profile == "phone":
-        return perform_phone_scan(target_string)
-    elif normalized_profile == "dns":
-        return perform_dns_lookup(target_string)
-    elif normalized_profile == "rev_dns":
-        return perform_reverse_dns(target_string)
-    else:
-        return perform_ip_geolocation(target_string)
+st.set_page_config(page_title="Horizon Studio", layout="wide")
 
+st.title("⚡ Horizon Core Toolroom")
+st.caption("Visual Block Configuration Environment")
 
-def show_output_to_user(data_result_string: str):
-    st.session_state["console_terminal_logs"] += f"\n{data_result_string}\n⚡{'='*48}⚡\n"
-
-
-def compile_and_execute_blocks(compiled_script_text: str):
-    st.session_state["console_terminal_logs"] = "⚡ MONITOR STREAM ACTIVE...\n⚡ EXECUTING ACTIVE SEQUENCE CHAIN:\n"
-    restricted_sandbox_globals = {
-        "run_utility_scan": run_utility_scan,
-        "show_output_to_user": show_output_to_user,
-        "print": lambda *args: show_output_to_user(" ".join(map(str, args))),
-        "current_result": ""
-    }
+# Sidebar Manual Tool runner to bypass iframe connectivity issues entirely
+with st.sidebar:
+    st.header("🎯 Direct Query Panel")
+    st.markdown("If the visual canvas is syncing with the browser frame sandbox, run queries directly below:")
     
-    execution_code = ""
-    for line in compiled_script_text.splitlines():
-        if "when_sequence_activated" in line or "Sequence #" in line or line.strip() == "pass" or line.strip().startswith("#"):
-            continue
-        execution_code += line + "\n"
-        
-    if not execution_code.strip():
-        st.session_state["console_terminal_logs"] += "\n⚠️ WARNING: Connect modules to a Start Block sequence chain to process logic."
-        return
-
-    try:
-        exec(execution_code, restricted_sandbox_globals)
-    except Exception as runtime_exception:
-        st.session_state["console_terminal_logs"] += f"\n💥 [SCRIPT RUN ERROR]: {str(runtime_exception)}"
+    tool_choice = st.selectbox("Select Utility", ["🔍 Website DNS Lookup", "🗺️ IP Geolocation"])
+    query_input = st.text_input("Target Input (e.g., google.com)", "example.com")
+    
+    if st.button("Run Utility", type="primary"):
+        if "DNS" in tool_choice:
+            st.code(perform_dns_lookup(query_input))
+        else:
+            st.code(perform_ip_geolocation(query_input))
 
 # ==========================================
-# 3. INTERACTIVE STREAMLIT GUI
+# 3. VISUAL CANVAS EMBED
 # ==========================================
+st.markdown("### 🗺️ Visual Workspace Workspace")
 
-st.set_page_config(page_title="EZHack Horizon Studio", layout="wide")
-
-if "console_terminal_logs" not in st.session_state:
-    st.session_state["console_terminal_logs"] = "💻 [READY] Pipeline stream fully operational..."
-
-# Layout Architecture Headers
-title_col, button_col_1, button_col_2 = st.columns([6, 3, 3])
-
-with title_col:
-    st.title("⚡ Horizon Core Toolroom")
-    st.caption("Native framework pipeline compiler interface.")
-
-with button_col_1:
-    st.write("")
-    trigger_pipeline_run = st.button("🚀 LAUNCH CIRCUIT PIPELINE", type="primary", use_container_width=True)
-
-with button_col_2:
-    st.write("")
-    if st.button("🧹 Flush Monitor Logs", use_container_width=True):
-        st.session_state["console_terminal_logs"] = "Monitor buffer cleared."
-        st.rerun()
-
-safe_terminal_logs = st.session_state["console_terminal_logs"].replace("`", "'").replace("\\", "\\\\").replace("\n", "\\n")
-
-# 🗺️ BLOCKLY WORKSPACE SECTION (WITH STREAMLIT FRAMEWORK BACKCHANNEL)
-st.markdown("### 🗺️ Visual Studio Workspace Canvas")
-
-blockly_html_payload = f"""
+blockly_html_payload = """
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Blockly Workspace</title>
-  <script src="https://cdn.jsdelivr.net/npm/streamlit-component-lib@1.3.0/dist/index.min.js"></script>
   <script src="https://unpkg.com/blockly/blockly.min.js"></script>
   <script src="https://unpkg.com/blockly/python_compressed.js"></script>
   <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
   <style>
-    html, body {{ height: 100%; margin: 0; padding: 0; background-color: #0b0c10; font-family: sans-serif; overflow: hidden; }}
-    #containerDiv {{ position: relative; width: 100%; height: 600px; }}
-    #blocklyDiv {{ width: 100%; height: 100%; border: 2px solid #1f2833; border-radius: 6px; }}
-    
-    #draggableTerminal {{
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      width: 440px;
-      height: 320px;
-      z-index: 999;
-      background: rgba(11, 12, 16, 0.96);
-      border: 2px solid #66fcf1;
-      border-radius: 8px;
-      box-shadow: 0 0 25px rgba(102, 252, 241, 0.3);
-      display: flex;
-      flex-direction: column;
-    }}
-    #terminalHeader {{
-      padding: 10px;
-      cursor: move;
-      background: #1f2833;
-      border-bottom: 2px solid #45a29e;
-      color: #66fcf1;
-      font-weight: bold;
-      font-size: 11px;
-      user-select: none;
-    }}
-    #terminalBody {{
-      flex: 1;
-      padding: 12px;
-      margin: 0;
-      background: #0b0c10;
-      color: #1fec79;
-      font-family: monospace;
-      font-size: 12px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-    }}
-    
-    #canvasDiagnostics {{
-      position: absolute;
-      bottom: 15px;
-      left: 15px;
-      width: 390px;
-      height: 140px;
-      background: rgba(20, 24, 30, 0.95);
-      border: 2px solid #1fec79;
-      border-radius: 6px;
-      color: #1fec79;
-      font-family: monospace;
-      font-size: 11px;
-      padding: 12px;
-      overflow-y: auto;
-      z-index: 998;
-      pointer-events: none;
-      box-shadow: 0 0 15px rgba(31, 236, 121, 0.2);
-    }}
+    html, body { height: 100%; margin: 0; padding: 0; background-color: #0b0c10; font-family: monospace; color: #1fec79; }
+    #workspaceWrapper { display: flex; flex-direction: column; height: 580px; }
+    #blocklyDiv { flex: 1; border: 2px solid #1f2833; border-radius: 4px; }
+    #debugTerminal { height: 160px; background: #000; border: 2px solid #ff0055; margin-top: 10px; padding: 10px; overflow-y: auto; white-space: pre-wrap; }
   </style>
 </head>
 <body>
 
-  <div id="containerDiv">
-    <div id="draggableTerminal">
-      <div id="terminalHeader">🤖 LIVE TARGET OUTPUT TERMINAL</div>
-      <pre id="terminalBody">{safe_terminal_logs}</pre>
-    </div>
-    
-    <div id="canvasDiagnostics">⚙️ EVENT ENGINE SYSTEM LOGGER:<br>🟢 Core system initialized. Drop a block to trigger sync...</div>
-    
+  <div id="workspaceWrapper">
     <div id="blocklyDiv"></div>
+    <div id="debugTerminal">> Awaiting block placement events...</div>
   </div>
 
   <xml id="toolbox" style="display: none">
-    <category name="🏁 Sequence Starts" colour="0">
+    <category name="🏁 Sequences" colour="0">
       <block type="when_sequence_activated"></block>
     </category>
-    <category name="🌐 Targets &amp; Inputs" colour="160">
+    <category name="🌐 Inputs" colour="160">
       <block type="custom_input_string"></block>
     </category>
-    <category name="🎯 Scanners &amp; Actions" colour="210">
+    <category name="🎯 Actions" colour="210">
       <block type="action_scan"></block>
-    </category>
-    <category name="🖥️ Monitor Controls" colour="65">
-      <block type="display_result"></block>
     </category>
   </xml>
 
   <script>
-    // Define Workspace Core Custom Blocks
-    Blockly.Blocks['when_sequence_activated'] = {{
-      init: function() {{
-        this.appendDummyInput().appendField("🚀 Start Block (Sequence)");
+    Blockly.Blocks['when_sequence_activated'] = {
+      init: function() {
+        this.appendDummyInput().appendField("🚀 Sequence Start");
         this.setNextStatement(true, null);
         this.setColour(0);
-      }}
-    }};
+      }
+    };
 
-    Blockly.Blocks['custom_input_string'] = {{
-      init: function() {{
+    Blockly.Blocks['custom_input_string'] = {
+      init: function() {
         this.appendDummyInput()
-            .appendField("Type Target:")
-            .appendField(new Blockly.FieldTextInput("+15555550199"), "RAW_TEXT");
+            .appendField("Target:")
+            .appendField(new Blockly.FieldTextInput("example.com"), "RAW_TEXT");
         this.setOutput(true, "String");
         this.setColour(160);
-      }}
-    }};
+      }
+    };
 
-    Blockly.Blocks['action_scan'] = {{
-      init: function() {{
-        this.appendValueInput("NAME").setCheck(null).appendField("Target info to check:");
+    Blockly.Blocks['action_scan'] = {
+      init: function() {
+        this.appendValueInput("NAME").setCheck("String").appendField("Scan Target:");
         this.appendDummyInput()
             .appendField("Action:")
             .appendField(new Blockly.FieldDropdown([
-              ["📱 Phone Number Scan","phone"], 
-              ["🗺️ IP Address Location","geoip"], 
-              ["🔍 Website Server Look-up","dns"],
-              ["🔄 Find Website from IP","rev_dns"]
+              ["🔍 DNS Lookup","dns"],
+              ["🗺️ Geolocation","geoip"]
             ]), "SCANTYPE");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour(210);
-      }}
-    }};
+      }
+    };
 
-    Blockly.Blocks['display_result'] = {{
-      init: function() {{
-        this.appendDummyInput().appendField("📟 Print Results to Monitor Screen");
-        this.setPreviousStatement(true, null);
-        this.setNextStatement(true, null);
-        this.setColour(65);
-      }}
-    }};
-
-    Blockly.Python.forBlock['when_sequence_activated'] = function(block) {{ return '# [Start Sequence]\\n'; }};
-    Blockly.Python.forBlock['custom_input_string'] = function(block) {{ return ['"' + block.getFieldValue('RAW_TEXT') + '"', 0]; }};
-    Blockly.Python.forBlock['action_scan'] = function(block) {{
+    Blockly.Python.forBlock['when_sequence_activated'] = function(block) { return '# Sequence Active\\n'; };
+    Blockly.Python.forBlock['custom_input_string'] = function(block) { return ['"' + block.getFieldValue('RAW_TEXT') + '"', 0]; };
+    Blockly.Python.forBlock['action_scan'] = function(block) {
       var type = block.getFieldValue('SCANTYPE');
       var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-      return 'current_result = run_utility_scan(' + val + ', "' + type + '")\\n';
-    }};
-    Blockly.Python.forBlock['display_result'] = function(block) {{ return 'show_output_to_user(current_result)\\n'; }};
+      return 'run_scan(target=' + val + ', mode="' + type + '")\\n';
+    };
 
-    var workspace = Blockly.inject('blocklyDiv', {{
+    var workspace = Blockly.inject('blocklyDiv', {
       toolbox: document.getElementById('toolbox'),
-      grid: {{spacing: 20, length: 3, colour: '#1f2833', snap: true}},
+      grid: {spacing: 20, length: 3, colour: '#1f2833', snap: true},
       trashcan: true
-    }});
+    });
 
-    // Draw initial layout
-    var xmlText = '<xml><block type="when_sequence_activated" x="40" y="40"><next><block type="action_scan"><field name="SCANTYPE">phone</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">+15555550199</field></block></value><next><block type="display_result"></block></next></block></next></block></xml>';
-    Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xmlText), workspace);
+    var terminal = document.getElementById("debugTerminal");
 
-    var logBox = document.getElementById("canvasDiagnostics");
-    var lastSentTranslation = "";
-
-    // ⚡ THE COMPILER ENGINE UTILITY FUNCTION
-    function compileAndSyncWorkspace() {{
+    function renderDebugLogs() {
       var allBlocks = workspace.getAllBlocks(false);
-      var sequenceCount = 0;
-      var totalCombinedScript = "";
+      var textOutput = "⚙️ LIVE WORKSPACE LOGGER\\n-----------------------\\n";
+      textOutput += "Total blocks detected on canvas: " + allBlocks.length + "\\n";
       
-      var telemetryLog = "⚙️ LIVE ENGINE STATUS REPORT:<br>✨ Total Blocks Placed: " + allBlocks.length + "<br>";
-
-      for (var i = 0; i < allBlocks.length; i++) {{
-        if (allBlocks[i].type === 'when_sequence_activated') {{
+      var sequenceCount = 0;
+      for (var i = 0; i < allBlocks.length; i++) {
+        if (allBlocks[i].type === 'when_sequence_activated') {
           sequenceCount++;
-          telemetryLog += "<span style='color:#66fcf1;'>🏁 Registered Start Block #" + sequenceCount + " (" + allBlocks[i].id.substring(0,5) + ")</span><br>";
+          textOutput += "🏁 [Sequence #" + sequenceCount + "] Detected! ID: " + allBlocks[i].id + "\\n";
           
-          totalCombinedScript += "# ---- Sequence #" + sequenceCount + " ----\\n";
-          
-          var connectedBlock = allBlocks[i].getNextBlock();
-          var localChainHeight = 0;
-          
-          while (connectedBlock) {{
-            localChainHeight++;
-            var componentCode = Blockly.Python.blockToCode(connectedBlock);
-            if (typeof componentCode === 'string') {{
-              totalCombinedScript += componentCode;
-            }} else if (Array.isArray(componentCode)) {{
-              totalCombinedScript += componentCode[0];
-            }}
-            connectedBlock = connectedBlock.getNextBlock();
-          }}
-          telemetryLog += "   └── Connected sequence runtime path depth: " + localChainHeight + " blocks.<br>";
-        }}
-      }}
+          var nextBlock = allBlocks[i].getNextBlock();
+          while(nextBlock) {
+            textOutput += "   └── Connected Step: " + nextBlock.type;
+            if(nextBlock.type === 'action_scan') {
+              textOutput += " [Action: " + nextBlock.getFieldValue('SCANTYPE') + "]";
+            }
+            textOutput += "\\n";
+            nextBlock = nextBlock.getNextBlock();
+          }
+        }
+      }
+      
+      if(sequenceCount === 0) {
+        textOutput += "\\n⚠️ STATUS: Drag and drop a 'Sequence Start' block onto the workspace canvas floor to begin compilation.";
+      }
+      
+      terminal.innerText = textOutput;
+    }
 
-      if (sequenceCount === 0) {{
-        totalCombinedScript = "# ⚠️ Error: Active Start Block missing from canvas layout stage!";
-        telemetryLog += "<span style='color:#ff3366;'>⚠️ CRITICAL STATUS: Place a Start Block onto the canvas workspace floor!</span><br>";
-      }}
+    // Capture every block event instantaneously
+    workspace.addChangeListener(function(e) {
+      if (e.type === Blockly.Events.BLOCK_CREATE || 
+          e.type === Blockly.Events.BLOCK_MOVE || 
+          e.type === Blockly.Events.BLOCK_CHANGE || 
+          e.type === Blockly.Events.BLOCK_DELETE) {
+        renderDebugLogs();
+      }
+    });
 
-      logBox.innerHTML = telemetryLog;
-      totalCombinedScript = totalCombinedScript.trim();
-
-      if (totalCombinedScript !== lastSentTranslation) {{
-        lastSentTranslation = totalCombinedScript;
-        // 🚀 CRITICAL FIX: Send data natively back up using standard Streamlit messaging channels
-        if (window.Streamlit) {{
-          window.Streamlit.setComponentValue(totalCombinedScript);
-        }}
-      }}
-    }}
-
-    // 🎯 TRIGGER EVENT 1: INSTANT ACTION CAPTURE BY NATIVE BLOCKLY LISTENERS
-    workspace.addChangeListener(function(event) {{
-      if (event.type === Blockly.Events.BLOCK_CREATE || 
-          event.type === Blockly.Events.BLOCK_MOVE || 
-          event.type === Blockly.Events.BLOCK_CHANGE || 
-          event.type === Blockly.Events.BLOCK_DELETE) {{
-        compileAndSyncWorkspace();
-      }}
-    }});
-
-    // 🕒 TRIGGER EVENT 2: 0.1-SECOND BACKUP GUARD INTERVAL HEARTBEAT
-    setInterval(compileAndSyncWorkspace, 100);
-
-    // Initial load execution fire
-    setTimeout(compileAndSyncWorkspace, 250);
-
-    // Draggable Window Config rules
-    var element = document.getElementById("draggableTerminal");
-    var header = document.getElementById("terminalHeader");
-    var activeDragging = false;
-    var currentX, currentY, initialX, initialY, xOffset = 0, yOffset = 0;
-
-    header.addEventListener("mousedown", function(e) {{
-      initialX = e.clientX - xOffset; initialY = e.clientY - yOffset;
-      if (e.target === header) activeDragging = true;
-    }}, false);
-    document.addEventListener("mouseup", function() {{ activeDragging = false; }}, false);
-    document.addEventListener("mousemove", function(e) {{
-      if (activeDragging) {{
-        e.preventDefault();
-        currentX = e.clientX - initialX; currentY = e.clientY - initialY;
-        xOffset = currentX; yOffset = currentY;
-        element.style.transform = "translate3d(" + currentX + "px, " + currentY + "px, 0)";
-      }}
-    }}, false);
+    // Run interval check to catch text typing changes
+    setInterval(renderDebugLogs, 200);
   </script>
 </body>
 </html>
 """
 
-# Receive data instantly directly from our custom bi-directional window component channel
-live_blocks_data_stream = components.html(blockly_html_payload, height=620, scrolling=False)
-
-# Safely catch data output variables returning down the message channel
-if live_blocks_data_stream is not None:
-    st.session_state["live_compiled_code"] = str(live_blocks_data_stream).strip()
-
-if trigger_pipeline_run:
-    with st.spinner("Processing running workspace sequences..."):
-        compile_and_execute_blocks(st.session_state["live_compiled_code"])
-
-# ==========================================
-# 4. MONITOR ENGINE TERMINAL TRANSLATION
-# ==========================================
-st.markdown("### 📝 Code Translation Behind the Blocks")
-st.code(st.session_state["live_compiled_code"], language="python")
+components.html(blockly_html_payload, height=600, scrolling=False)
