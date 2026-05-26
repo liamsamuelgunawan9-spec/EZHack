@@ -22,9 +22,8 @@ def perform_dns_lookup(target: str) -> str:
     if not clean_host:
         return "❌ ERROR: Target missing!"
     
-    # Safeguard against phone numbers being passed to DNS
-    if clean_host.startswith("+") or clean_host.isdigit():
-        return "⚠️ ROUTING WARN: Cannot perform DNS Server Resolve on a phone number structure. Use 'Global Mobile OSINT Trace' instead."
+    if clean_host.startswith("+") or (clean_host.isdigit() and len(clean_host) > 6):
+        return f"🔄 [CROSS-VECTOR DNS DETECTED]\n   • Target identified as Phone Structure: {clean_host}\n   • Action: Routing to Global Telecom Registry Mapping...\n" + perform_phone_tracking(clean_host)
         
     try:
         ip_addr = socket.gethostbyname(clean_host)
@@ -39,9 +38,30 @@ def perform_ip_geolocation(target: str) -> str:
     if not clean_host:
         return "❌ ERROR: Target missing!"
         
-    # Safeguard against phone numbers being passed to GeoIP
-    if clean_host.startswith("+") or clean_host.isdigit():
-        return "⚠️ ROUTING WARN: Cannot perform IP Geolocation on a raw mobile phone string. Use 'Global Mobile OSINT Trace' instead."
+    # Cross-vector support: If user targets a phone number for Geolocation, bridge the vectors!
+    if clean_host.startswith("+") or (clean_host.isdigit() and len(clean_host) > 6):
+        try:
+            if clean_host.startswith("08") and not clean_host.startswith("+"):
+                parsed_phone = "+62" + clean_host[1:]
+            elif not clean_host.startswith("+"):
+                parsed_phone = "+" + clean_host
+            else:
+                parsed_phone = clean_host
+                
+            parsed_number = phonenumbers.parse(parsed_phone, None)
+            region_location = geocoder.description_for_number(parsed_number, "en") or "Global Roaming Allocation"
+            operator_name = carrier.name_for_number(parsed_number, "en") or "Unknown Carrier Node"
+            zones = timezone.time_zones_for_number(parsed_number)
+            timezone_string = ", ".join(zones) if zones else "Unknown Grid Time"
+            
+            return (f"🗺️ [CROSS-VECTOR PHONE GEOLOCATION TRACE]\n"
+                    f"   • Input Signal    : {clean_host} (Cellular Protocol Identified)\n"
+                    f"   • Country/Region  : {region_location}\n"
+                    f"   • Network Registry: {operator_name}\n"
+                    f"   • Operational TZ  : {timezone_string}\n"
+                    f"   • Notice          : Successfully mapped physical routing profile via telecom allocation blocks.")
+        except Exception as e:
+            return f"❌ CROSS-VECTOR TELECOM BRIDGE ERROR: {str(e)}"
         
     try:
         lookup_ip = socket.gethostbyname(clean_host)
@@ -95,8 +115,9 @@ def perform_whois_lookup(target: str) -> str:
     clean_host = clean_host.replace("https://", "").replace("http://", "").split("/")[0]
     if not clean_host:
         return "❌ ERROR: Target domain missing!"
-    if clean_host.startswith("+") or clean_host.isdigit():
-        return "⚠️ ROUTING WARN: WHOIS registries track web domains, not phone metadata strings."
+    
+    if clean_host.startswith("+") or (clean_host.isdigit() and len(clean_host) > 6):
+        return f"🔄 [CROSS-VECTOR WHOIS DETECTED]\n   • Target: Phone Number\n   • Action: Processing via Telecom Registry Framework...\n" + perform_phone_tracking(clean_host)
         
     try:
         api_url = f"https://rdap.org/domain/{clean_host}"
@@ -125,8 +146,9 @@ def perform_dns_records_extract(target: str, record_type: str) -> str:
     clean_host = clean_host.replace("https://", "").replace("http://", "").split("/")[0]
     if not clean_host:
         return "❌ ERROR: Domain missing for DNS Extraction!"
-    if clean_host.startswith("+") or clean_host.isdigit():
-        return "⚠️ ROUTING WARN: DNS zones belong to domains, not phone indicators."
+        
+    if clean_host.startswith("+") or (clean_host.isdigit() and len(clean_host) > 6):
+        return "⚠️ CROSS-VECTOR ERR: DNS records are bound strictly to domain zones. No reverse-records mapping found for cellular sequences."
     
     try:
         base_ip = socket.gethostbyname(clean_host)
@@ -143,8 +165,9 @@ def perform_dns_records_extract(target: str, record_type: str) -> str:
 
 def perform_http_header_audit(target: str) -> str:
     clean_url = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
-    if clean_url.startswith("+") or clean_url.isdigit():
-        return "⚠️ ROUTING WARN: HTTP Headers require web endpoints, not telecommunication footprints."
+    if clean_url.startswith("+") or (clean_url.isdigit() and len(clean_url) > 6):
+        return "⚠️ CROSS-VECTOR ERR: HTTP Audit profiles require direct server network endpoints, not a cellular tracking string."
+        
     if not clean_url.startswith("http"):
         clean_url = "https://" + clean_url
     try:
@@ -172,8 +195,8 @@ def perform_subdomain_ct_logs(target: str) -> str:
     clean_host = clean_host.replace("https://", "").replace("http://", "").split("/")[0]
     if not clean_host:
         return "❌ ERROR: Target asset missing."
-    if clean_host.startswith("+") or clean_host.isdigit():
-        return "⚠️ ROUTING WARN: Subdomains belong to web infrastructure records, not cellular tracks."
+    if clean_host.startswith("+") or (clean_host.isdigit() and len(clean_host) > 6):
+        return "⚠️ CROSS-VECTOR ERR: Certificate infrastructure tracks domain roots, not telecom phone numbers."
     
     subdomains = [f"www.{clean_host}", f"api.{clean_host}", f"staging.{clean_host}", f"dev.{clean_host}", f"vpn.{clean_host}"]
     out = f"📧 [CERTIFICATE TRANSPARENCY SUBDOMAIN LOGS] Ledger Assets for: {clean_host}\n"
@@ -188,8 +211,8 @@ def perform_threat_intelligence(target: str) -> str:
     clean_host = clean_host.replace("https://", "").replace("http://", "").split("/")[0]
     if not clean_host:
         return "❌ ERROR: Missing target data vector."
-    if clean_host.startswith("+") or clean_host.isdigit():
-        return "⚠️ ROUTING WARN: Threat intelligence endpoint checks require web addresses or servers."
+    if clean_host.startswith("+") or (clean_host.isdigit() and len(clean_host) > 6):
+         return f"🔄 [CROSS-VECTOR REPUTATION DETECTED]\n   • Threat intelligence routing lookup to telecom block checks...\n" + perform_phone_tracking(clean_host)
         
     try:
         lookup_ip = socket.gethostbyname(clean_host)
