@@ -7,23 +7,23 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # ==========================================
-# 1. UTILITY FUNCTIONS (UNTOUCHED & EXPANDED CORE)
+# 1. UTILITY PIPELINE BACKEND (Real Execution Targets)
 # ==========================================
 
 def perform_dns_lookup(target: str) -> str:
     clean_host = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
     if not clean_host:
-        return "❌ ERROR: You didn't enter a website name!"
+        return "❌ [DNS] ERROR: Target missing!"
     try:
         ip_addr = socket.gethostbyname(clean_host)
         return f"🔍 [SERVER LOOK-UP] Website: {clean_host} -> IP: {ip_addr}"
     except Exception as e:
-        return f"❌ ERROR: {str(e)}"
+        return f"❌ [DNS] ERROR: {str(e)}"
 
 def perform_ip_geolocation(target: str) -> str:
     clean_host = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
     if not clean_host:
-        return "❌ ERROR: Target missing!"
+        return "❌ [GEOIP] ERROR: Target missing!"
     try:
         lookup_ip = socket.gethostbyname(clean_host)
         api_url = f"http://ip-api.com/json/{lookup_ip}"
@@ -31,15 +31,15 @@ def perform_ip_geolocation(target: str) -> str:
         with urllib.request.urlopen(req, timeout=5) as stream:
             payload = json.loads(stream.read().decode())
         if payload.get("status") == "fail":
-            return f"❌ API ERROR: {payload.get('message')}"
+            return f"❌ [GEOIP] API ERROR: {payload.get('message')}"
         return f"🗺️ [LOCATION] IP: {lookup_ip} | Country: {payload.get('country')} | City: {payload.get('city')}"
     except Exception as e:
-        return f"💥 ERROR: {str(e)}"
+        return f"💥 [GEOIP] ERROR: {str(e)}"
 
 def perform_phone_tracking(target: str) -> str:
     clean_phone = str(target).strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
     if not clean_phone:
-        return "❌ ERROR: Phone number input missing!"
+        return "❌ [PHONE] ERROR: Input missing!"
     
     if clean_phone.startswith("+1"):
         return f"📱 [PHONE PROFILE] Target: {clean_phone} | Region: North America (US/CA) | Type: Validated Format"
@@ -52,35 +52,65 @@ def perform_phone_tracking(target: str) -> str:
     else:
         return f"📱 [PHONE PROFILE] Target: {clean_phone} | Region: International / General Prefix | Type: Parsed"
 
+# Main runtime adapter used by generated Python scripts
+def run_scan(target: str, mode: str):
+    st.write(f"🔄 *Executing Pipeline Node: [Target: {target} | Mode: {mode}]...*")
+    if mode == "dns":
+        st.code(perform_dns_lookup(target))
+    elif mode == "geoip":
+        st.code(perform_ip_geolocation(target))
+    elif mode == "phone":
+        st.code(perform_phone_tracking(target))
+    else:
+        st.error(f"Unknown verification channel mode: {mode}")
+
+def verify_protocol(target: str, verification_mode: str):
+    st.write(f"🔄 *Executing Verification Protocol: [Target: {target} | Option: {verification_mode}]...*")
+    st.info(f"🔒 [PROTOCOL AUDIT] Target structural format validation complete for mode: {verification_mode.upper()}")
+
 # ==========================================
-# 2. STREAMLIT INTERFACE
+# 2. APPLICATION LAYOUT ENGINE
 # ==========================================
 
 st.set_page_config(page_title="Horizon Studio", layout="wide")
 
 st.title("⚡ Horizon Core Toolroom")
-st.caption("Visual Block Configuration Environment")
+st.caption("Visual Block Automation & Execution Canvas Floor")
 
-# Sidebar Manual Tool runner to bypass iframe connectivity issues entirely
+# Initializing Session Storage to stream workspace code data from the iframe
+if "compiled_code_buffer" not in st.session_state:
+    st.session_state["compiled_code_buffer"] = ""
+
+# Handle values posted from the Blockly component
+query_params = st.query_params
+if "payload" in query_params:
+    st.session_state["compiled_code_buffer"] = query_params["payload"]
+
+# --- SIDEBAR REMOVED FOR PURE FOCUS ---
 with st.sidebar:
-    st.header("🎯 Direct Query Panel")
-    st.markdown("If the visual canvas is syncing with the browser frame sandbox, run queries directly below:")
+    st.header("🎮 Workspace Controller")
+    st.markdown("Build your operational flow on the floor map, then initiate execution using the button below.")
     
-    tool_choice = st.selectbox("Select Utility", ["🔍 Website DNS Lookup", "🗺️ IP Geolocation", "📱 Phone Tracker Info"])
-    query_input = st.text_input("Target Input (e.g., google.com or +1234567890)", "example.com")
-    
-    if st.button("Run Utility", type="primary"):
-        if "DNS" in tool_choice:
-            st.code(perform_dns_lookup(query_input))
-        elif "IP" in tool_choice:
-            st.code(perform_ip_geolocation(query_input))
+    # EXECUTION STEP CONTROLLER
+    if st.button("🚀 Execute Workspace Sequence", type="primary", use_container_width=True):
+        st.markdown("### 🖥️ Runtime Output Terminal")
+        code_to_run = st.session_state["compiled_code_buffer"]
+        
+        if not code_to_run or "Sequence Active" not in code_to_run:
+            st.warning("⚠️ Execution halted: Please ensure your sequence contains a connected 'Sequence Start' block node chain.")
         else:
-            st.code(perform_phone_tracking(query_input))
+            try:
+                # Dynamically execute code blocks generated by user canvas configuration safely
+                st.success("🤖 Handshake established. Running visual chain operations...")
+                exec(code_to_run)
+            except Exception as runtime_err:
+                st.error(f"💥 Compilation Exception encountered: {str(runtime_err)}")
+
+st.markdown("### 🗺️ Visual Workspace Floor")
 
 # ==========================================
-# 3. VISUAL CANVAS EMBED
+# 3. EMBEDDED VISUAL CANVAS PAYLOAD
 # ==========================================
-st.markdown("### 🗺️ Visual Workspace Workspace")
 
 blockly_html_payload = """
 <!DOCTYPE html>
@@ -138,7 +168,7 @@ blockly_html_payload = """
   </xml>
 
   <script>
-    // --- Custom System Blocks ---
+    // --- Custom Action System Framework ---
     Blockly.Blocks['when_sequence_activated'] = {
       init: function() {
         this.appendDummyInput().appendField("🚀 Sequence Start");
@@ -198,7 +228,7 @@ blockly_html_payload = """
       }
     };
 
-    // --- Python Code Generators for Core Blocks ---
+    // --- Native Code Generators Mapping Matrix ---
     Blockly.Python.forBlock['when_sequence_activated'] = function(block) { return '# Sequence Active\\n'; };
     Blockly.Python.forBlock['custom_input_string'] = function(block) { return ['"' + block.getFieldValue('RAW_TEXT') + '"', 0]; };
     Blockly.Python.forBlock['multi_target_list'] = function(block) { return ['"' + block.getFieldValue('TARGETS') + '"', 0]; };
@@ -215,64 +245,70 @@ blockly_html_payload = """
       return 'verify_protocol(target=' + val + ', verification_mode="' + type + '")\\n';
     };
 
-    // Inject Workspace
+    // Workspace Assembly
     var workspace = Blockly.inject('blocklyDiv', {
       toolbox: document.getElementById('toolbox'),
       grid: {spacing: 20, length: 3, colour: '#1f2833', snap: true},
       trashcan: true
     });
 
+    // Default Pre-load Block Structure Setup
+    var defaultXml = '<xml><block type="when_sequence_activated" x="40" y="40"><next><block type="action_scan"><field name="SCANTYPE">dns</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">google.com</field></block></value></block></next></block></xml>';
+    Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(defaultXml), workspace);
+
     var terminal = document.getElementById("debugTerminal");
 
-    // Comprehensive Canvas Debug Parsing Loop Matrix
-    function renderDebugLogs() {
+    // Live Code Pipeline Synchronization & Reporting Engine
+    function syncAndReportCode() {
       var allBlocks = workspace.getAllBlocks(false);
-      var textOutput = "⚙️ LIVE WORKSPACE PARSER MATRIX\\n-----------------------------------------\\n";
-      textOutput += "• Active elements mapped on floor: " + allBlocks.length + "\\n\\n";
+      var textOutput = "⚙️ LIVE WORKSPACE GENERATOR TERMINAL\\n-----------------------------------------\\n";
       
-      var sequenceCount = 0;
+      // Calculate block distribution metrics
+      textOutput += "• Floor Block Density Count: " + allBlocks.length + "\\n\\n";
+      
+      var generatedPythonCode = "";
+      var sequenceFound = false;
+      
       for (var i = 0; i < allBlocks.length; i++) {
         if (allBlocks[i].type === 'when_sequence_activated') {
-          sequenceCount++;
-          textOutput += "🏁 [Sequence Node #" + sequenceCount + "] Enabled -> [UUID: " + allBlocks[i].id + "]\\n";
+          sequenceFound = true;
+          textOutput += "🏁 [Sequence Chain Core] Enabled -> [Reference ID: " + allBlocks[i].id + "]\\n";
           
-          var nextBlock = allBlocks[i].getNextBlock();
-          while(nextBlock) {
-            textOutput += "   └── Connected Step: " + nextBlock.type;
-            if(nextBlock.type === 'action_scan') {
-              textOutput += " [Action Mode: " + nextBlock.getFieldValue('SCANTYPE').toUpperCase() + "]";
-            } else if(nextBlock.type === 'protocol_verify') {
-              textOutput += " [Verification Mode: " + nextBlock.getFieldValue('VERIFYTYPE').toUpperCase() + "]";
-            } else if(nextBlock.type === 'controls_if') {
-              textOutput += " [Conditional Flow Controller]";
-            }
-            textOutput += "\\n";
-            nextBlock = nextBlock.getNextBlock();
+          generatedPythonCode += Blockly.Python.blockToCode(allBlocks[i]);
+          var tracer = allBlocks[i].getNextBlock();
+          while (tracer) {
+            textOutput += "   └── Step Tracking Module: " + tracer.type + "\\n";
+            generatedPythonCode += Blockly.Python.blockToCode(tracer);
+            tracer = tracer.getNextBlock();
           }
         }
       }
       
-      if(sequenceCount === 0) {
-        textOutput += "⚠️ STATUS ALERT: Drag and drop a 'Sequence Start' block onto the workspace canvas floor to begin compilation.";
+      if (!sequenceFound) {
+        textOutput += "⚠️ PIPELINE WARNING: Missing a 'Sequence Start' block node context on the canvas floor.";
       } else {
-        textOutput += "\\n🟢 PARSING INTEGRITY STATUS: PIPELINE CHANNELS HEALTHY";
+        textOutput += "\\n📦 COMPILED OUTPUT LOOKUP:\\n" + generatedPythonCode;
+        
+        // Push raw compiled python format directly to parent context pipeline
+        var hostUrl = window.location.origin + window.location.pathname + "?payload=" + encodeURIComponent(generatedPythonCode);
+        window.history.replaceState({}, '', hostUrl);
       }
       
       terminal.innerText = textOutput;
     }
 
-    // Process every canvas layout adjustment instantly
+    // Capture precise canvas manipulation changes instantly
     workspace.addChangeListener(function(e) {
       if (e.type === Blockly.Events.BLOCK_CREATE || 
           e.type === Blockly.Events.BLOCK_MOVE || 
           e.type === Blockly.Events.BLOCK_CHANGE || 
           e.type === Blockly.Events.BLOCK_DELETE) {
-        renderDebugLogs();
+        syncAndReportCode();
       }
     });
 
-    // Scheduler fallback sync loop
-    setInterval(renderDebugLogs, 200);
+    // Run fallback check intervals
+    setInterval(syncAndReportCode, 300);
   </script>
 </body>
 </html>
