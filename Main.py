@@ -38,7 +38,6 @@ def perform_ip_geolocation(target: str) -> str:
     if not clean_host:
         return "❌ ERROR: Target missing!"
         
-    # Cross-vector support: If user targets a phone number for Geolocation, bridge the vectors!
     if clean_host.startswith("+") or (clean_host.isdigit() and len(clean_host) > 6):
         try:
             if clean_host.startswith("08") and not clean_host.startswith("+"):
@@ -265,19 +264,30 @@ st.caption("Industrial Scale Open-Source Reconnaissance Suite — 100% Free / No
 
 st.markdown("### 🗺️ System Automation Floor Canvas (Ultra-Wide Viewport)")
 
+# Persistent Session Memory Keys
 if "synced_workspace_code" not in st.session_state:
     st.session_state["synced_workspace_code"] = ""
+if "serialized_block_state" not in st.session_state:
+    st.session_state["serialized_block_state"] = "{}"
 
-# ==========================================
-# 3. INTERACTIVE VISUAL CORE LAYOUT (BLOCKLY DEPLOYMENT INTERFACE)
-# ==========================================
-
+# Check for incoming matrix payload updates from the query params
 try:
     incoming_payload = st.query_params.get("payload_matrix", "")
     if incoming_payload:
         st.session_state["synced_workspace_code"] = incoming_payload
+        
+    incoming_state = st.query_params.get("block_state", "")
+    if incoming_state:
+        st.session_state["serialized_block_state"] = incoming_state
 except Exception:
     pass
+
+# Escape any quotation conflicts before string injection into JavaScript
+safe_json_state = st.session_state["serialized_block_state"].replace("'", "\\'")
+
+# ==========================================
+# 3. INTERACTIVE VISUAL CORE LAYOUT (BLOCKLY DEPLOYMENT INTERFACE)
+# ==========================================
 
 blockly_html_payload = f"""
 <!DOCTYPE html>
@@ -533,6 +543,16 @@ blockly_html_payload = f"""
       trashcan: true
     }});
 
+    // --- RESTORE BLOCK STATE MEMORY MATRIX ---
+    try {{
+      var stateToLoad = JSON.parse('{safe_json_state}');
+      if (stateToLoad && Object.keys(stateToLoad).length > 0) {{
+        Blockly.serialization.blocks.restore(stateToLoad, workspace);
+      }}
+    }} catch(err) {{
+      console.log("Memory State Clear / Fresh Initiation Sequence Run");
+    }}
+
     function processLiveDebugCompilations() {{
       var allBlocks = workspace.getAllBlocks(false);
       var generatedPythonCode = "";
@@ -550,8 +570,15 @@ blockly_html_payload = f"""
         }}
       }}
       
+      // Save block placement structure configuration matrix
+      var currentBlockStateObj = Blockly.serialization.blocks.save(workspace);
+      var serializedStateStr = JSON.stringify(currentBlockStateObj);
+      
       if(sequenceFound) {{
-        var targetUrl = window.parent.location.origin + window.parent.location.pathname + "?payload_matrix=" + encodeURIComponent(generatedPythonCode);
+        var targetUrl = window.parent.location.origin + window.parent.location.pathname + 
+                        "?payload_matrix=" + encodeURIComponent(generatedPythonCode) +
+                        "&block_state=" + encodeURIComponent(serializedStateStr);
+                        
         if(window.parent.location.search !== "?payload_matrix=" + encodeURIComponent(generatedPythonCode)) {{
            window.parent.history.replaceState({{}}, '', targetUrl);
         }}
