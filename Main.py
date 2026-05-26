@@ -129,9 +129,9 @@ def compile_and_execute_blocks(compiled_script_text: str):
 # 3. STREAMLIT APPLICATION INTERACTIVE VIEW
 # ==========================================
 
-st.set_page_config(page_title="EZHack Pro Workspace", layout="wide")
-st.title("⚡ EZHack Studio — Professional Pentest Workspace")
-st.caption("Integrated block development studio blending logic loops, variables, and network reconnaissance capabilities.")
+st.set_page_config(page_title="EZHack Unified Studio", layout="wide")
+st.title("⚡ EZHack Unified Studio")
+st.caption("Integrated development environment blending custom actions seamlessly into traditional structural code logic.")
 
 # System Memory Initialization
 if "console_terminal_logs" not in st.session_state:
@@ -147,9 +147,9 @@ with st.sidebar:
 left_control_column, right_display_column = st.columns([7, 5])
 
 with left_control_column:
-    st.markdown("### 🗺️ Studio Drag-and-Drop Arena")
+    st.markdown("### 🗺️ Native Studio Drag-and-Drop Arena")
     
-    # Fully static XML toolbox implementation layout with loaded external submodules
+    # Unified layout structure loading all submodules via script injections to allow variables and functions
     blockly_html_payload = """
     <!DOCTYPE html>
     <html>
@@ -170,23 +170,18 @@ with left_control_column:
       <div id="blocklyDiv"></div>
 
       <xml id="toolbox" style="display: none">
-        <category name="🌐 Recon Tools" colour="160">
+        <category name="🌐 Data Sources" colour="160">
           <block type="custom_input_string"></block>
           <block type="target"></block>
+          <block type="text"></block>
+          <block type="math_number"><field name="NUM">1</field></block>
         </category>
-        <category name="🎯 Attack Vectors" colour="20">
+        
+        <category name="🎯 Logic &amp; Controls" colour="210">
           <block type="action_scan"></block>
-          <block type="display_result"></block>
-        </category>
-        <sep></sep>
-        <category name="Logic Nodes" colour="210">
           <block type="controls_if"></block>
           <block type="logic_compare"></block>
           <block type="logic_operation"></block>
-          <block type="logic_negate"></block>
-          <block type="logic_boolean"></block>
-        </category>
-        <category name="Loop Controls" colour="120">
           <block type="controls_repeat_ext">
             <value name="TIMES">
               <block type="math_number"><field name="NUM">3</field></block>
@@ -194,16 +189,16 @@ with left_control_column:
           </block>
           <block type="controls_whileUntil"></block>
         </category>
-        <category name="Math &amp; Text" colour="230">
-          <block type="math_number"><field name="NUM">1</field></block>
-          <block type="math_arithmetic"></block>
-          <block type="text"></block>
+
+        <category name="🖥️ Console Outputs" colour="20">
+          <block type="display_result"></block>
           <block type="text_print"></block>
         </category>
-        <category name="Variables Loop" colour="330">
-          <block type="variables_get"><field name="VAR">target_ip</field></block>
-          <block type="variables_set"><field name="VAR">target_ip</field></block>
-        </category>
+
+        <sep></sep>
+        
+        <category name="⚙️ Variables Manager" colour="330" custom="VARIABLE"></category>
+        <category name="🛠️ Custom Functions" colour="290" custom="PROCEDURE"></category>
       </xml>
 
       <script>
@@ -290,7 +285,7 @@ with left_control_column:
 
 with right_display_column:
     st.markdown("### 📝 Code Generation Window")
-    st.write("Construct functions inside the arena, review the compiled pipeline sequence, and run it directly below:")
+    st.write("Review the compiled pipeline sequence, create dynamic parameters, and run execution blocks here:")
     
     user_pipeline_input = st.text_area(
         label="Active Script Execution Workspace Configuration Window:",
