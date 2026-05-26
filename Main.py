@@ -7,7 +7,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # ==========================================
-# 1. UTILITY FUNCTIONS (PROTECTED CORE)
+# 1. UTILITY FUNCTIONS (PROTECTED BACKEND MAP)
 # ==========================================
 
 def perform_dns_lookup(target: str) -> str:
@@ -52,7 +52,7 @@ def perform_phone_tracking(target: str) -> str:
     else:
         return f"📱 [PHONE PROFILE] Target: {clean_phone} | Region: International / General Prefix | Type: Parsed"
 
-# Main execution adapters called directly by compiled Python strings
+# Automation wrapper execution adapters
 def run_scan(target: str, mode: str):
     st.write(f"🔄 *Executing block step: [Target: {target} | Mode: {mode}]...*")
     if mode == "dns":
@@ -64,11 +64,11 @@ def run_scan(target: str, mode: str):
 
 def verify_protocol(target: str, verification_mode: str):
     st.write(f"🔄 *Executing block step: [Target: {target} | Option: {verification_mode}]...*")
-    st.info(f"🔒 [PROTOCOL AUDIT] Structure format verification check complete for: {verification_mode.upper()}")
+    st.info(f"🔒 [PROTOCOL AUDIT] Structural validation complete for: {verification_mode.upper()}")
 
 
 # ==========================================
-# 2. STREAMLIT INTERFACE & MAIN CANVAS
+# 2. STREAMLIT INTERFACE LAYER
 # ==========================================
 
 st.set_page_config(page_title="Horizon Studio", layout="wide")
@@ -76,39 +76,64 @@ st.set_page_config(page_title="Horizon Studio", layout="wide")
 st.title("⚡ Horizon Core Toolroom")
 st.caption("Visual Block Configuration Environment")
 
-# Initialize workspace buffer inside session state
-if "compiled_code_buffer" not in st.session_state:
-    st.session_state["compiled_code_buffer"] = ""
-
-# Handle iframe URL parameters tracking without breaking UI flow
-query_params = st.query_params
-if "payload" in query_params:
-    st.session_state["compiled_code_buffer"] = query_params["payload"]
-
 # Sidebar Sequence Trigger Terminal Panel
 with st.sidebar:
     st.header("🎮 Sequence Automation")
     st.markdown("Build your block pipeline on the workspace floor, then trigger execution below.")
     
-    # 🚀 NEW START BUTTON INTEGRATION
+    # Execution compilation trigger
     if st.button("🚀 Execute Workspace Sequence", type="primary", use_container_width=True):
         st.markdown("---")
         st.subheader("🖥️ Execution Terminal")
-        code_to_run = st.session_state["compiled_code_buffer"]
+        
+        # Read the synchronized string buffer directly from session memory securely
+        code_to_run = st.session_state.get("compiled_code_buffer", "")
         
         if not code_to_run or "Sequence Active" not in code_to_run:
             st.warning("⚠️ Execution Halted: Make sure your canvas chain contains a connected 'Sequence Start' block structure!")
         else:
             try:
                 st.success("🤖 Handshake established. Running visual block sequence:")
-                # Execute compiled code string dynamically safely using backend runtime mappings
                 exec(code_to_run)
             except Exception as runtime_err:
                 st.error(f"💥 Runtime Exception: {str(runtime_err)}")
 
-st.markdown("### 🗺️ Visual Workspace Workspace")
+st.markdown("### 🗺️ Visual Workspace Floor")
 
-# Embedded Canvas HTML Payload
+
+# ==========================================
+# 3. ### LOCKED CORE START ### - DO NOT TOUCH
+# ==========================================
+
+# High-fidelity custom event listener component to instantly sync iframe state to python memory
+def workspace_state_sync_bridge():
+    if "compiled_code_buffer" not in st.session_state:
+        st.session_state["compiled_code_buffer"] = ""
+        
+    # Standard HTML bridge pattern that accepts continuous structural posts without requiring link parameters
+    sync_code = """
+    <script>
+    window.addEventListener("message", function(event) {
+        if (event.data && event.data.type === "BLOCKLY_SYNC") {
+            const url = new URL(window.parent.location.href);
+            url.searchParams.set("payload", event.data.code);
+            window.parent.history.replaceState({}, "", url.toString());
+        }
+    });
+    </script>
+    """
+    components.html(sync_code, height=0, width=0)
+    
+    # Query checking parameter fallback matching layout rules safely
+    try:
+        payload = st.query_params.get("payload", "")
+        if payload:
+            st.session_state["compiled_code_buffer"] = payload
+    except Exception:
+        pass
+
+workspace_state_sync_bridge()
+
 blockly_html_payload = """
 <!DOCTYPE html>
 <html>
@@ -242,7 +267,7 @@ blockly_html_payload = """
       return 'verify_protocol(target=' + val + ', verification_mode="' + type + '")\\n';
     };
 
-    // Inject Workspace
+    // Inject Workspace Canvas Matrix
     var workspace = Blockly.inject('blocklyDiv', {
       toolbox: document.getElementById('toolbox'),
       grid: {spacing: 20, length: 3, colour: '#1f2833', snap: true},
@@ -285,9 +310,13 @@ blockly_html_payload = """
         textOutput += "⚠️ STATUS ALERT: Drag and drop a 'Sequence Start' block onto the workspace canvas floor to begin compilation.";
       } else {
         textOutput += "\\n🟢 PARSING INTEGRITY STATUS: PIPELINE CHANNELS HEALTHY";
-        // Push raw compiled python sequence format to browser context to synchronize state variables
+        
+        // Push the payload securely to top window history parameters to map into session state
         var hostUrl = window.location.origin + window.location.pathname + "?payload=" + encodeURIComponent(generatedPythonCode);
-        window.history.replaceState({}, '', hostUrl);
+        window.parent.history.replaceState({}, '', hostUrl);
+        
+        // Dual fallback stream postMessage channel matrix
+        window.parent.postMessage({type: "BLOCKLY_SYNC", code: generatedPythonCode}, "*");
       }
       
       terminal.innerText = textOutput;
@@ -304,7 +333,7 @@ blockly_html_payload = """
     });
 
     // Scheduler fallback sync loop
-    setInterval(renderDebugLogs, 200);
+    setInterval(renderDebugLogs, 250);
   </script>
 </body>
 </html>
@@ -313,7 +342,12 @@ blockly_html_payload = """
 components.html(blockly_html_payload, height=700, scrolling=False)
 
 # ==========================================
-# 3. SCROLLABLE LOWER GIMMICK MODULES
+# ### LOCKED CORE END ### - DO NOT TOUCH
+# ==========================================
+
+
+# ==========================================
+# 4. SCROLLABLE LOWER GIMMICK MODULES
 # ==========================================
 st.markdown("---")
 st.markdown("### 🎛️ Standalone Verification Terminals")
