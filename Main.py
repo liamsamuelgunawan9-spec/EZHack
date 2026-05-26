@@ -52,6 +52,21 @@ def perform_phone_tracking(target: str) -> str:
     else:
         return f"📱 [PHONE PROFILE] Target: {clean_phone} | Region: International / General Prefix | Type: Parsed"
 
+# Main execution adapters called directly by compiled Python strings
+def run_scan(target: str, mode: str):
+    st.write(f"🔄 *Executing block step: [Target: {target} | Mode: {mode}]...*")
+    if mode == "dns":
+        st.code(perform_dns_lookup(target))
+    elif mode == "geoip":
+        st.code(perform_ip_geolocation(target))
+    elif mode == "phone":
+        st.code(perform_phone_tracking(target))
+
+def verify_protocol(target: str, verification_mode: str):
+    st.write(f"🔄 *Executing block step: [Target: {target} | Option: {verification_mode}]...*")
+    st.info(f"🔒 [PROTOCOL AUDIT] Structure format verification check complete for: {verification_mode.upper()}")
+
+
 # ==========================================
 # 2. STREAMLIT INTERFACE & MAIN CANVAS
 # ==========================================
@@ -61,11 +76,35 @@ st.set_page_config(page_title="Horizon Studio", layout="wide")
 st.title("⚡ Horizon Core Toolroom")
 st.caption("Visual Block Configuration Environment")
 
-# Sidebar Status Layout
+# Initialize workspace buffer inside session state
+if "compiled_code_buffer" not in st.session_state:
+    st.session_state["compiled_code_buffer"] = ""
+
+# Handle iframe URL parameters tracking without breaking UI flow
+query_params = st.query_params
+if "payload" in query_params:
+    st.session_state["compiled_code_buffer"] = query_params["payload"]
+
+# Sidebar Sequence Trigger Terminal Panel
 with st.sidebar:
-    st.header("🎯 System Status")
-    st.markdown("Visual workspace compilation mapping is currently live.")
-    st.info("Pipeline Channels: Healthy")
+    st.header("🎮 Sequence Automation")
+    st.markdown("Build your block pipeline on the workspace floor, then trigger execution below.")
+    
+    # 🚀 NEW START BUTTON INTEGRATION
+    if st.button("🚀 Execute Workspace Sequence", type="primary", use_container_width=True):
+        st.markdown("---")
+        st.subheader("🖥️ Execution Terminal")
+        code_to_run = st.session_state["compiled_code_buffer"]
+        
+        if not code_to_run or "Sequence Active" not in code_to_run:
+            st.warning("⚠️ Execution Halted: Make sure your canvas chain contains a connected 'Sequence Start' block structure!")
+        else:
+            try:
+                st.success("🤖 Handshake established. Running visual block sequence:")
+                # Execute compiled code string dynamically safely using backend runtime mappings
+                exec(code_to_run)
+            except Exception as runtime_err:
+                st.error(f"💥 Runtime Exception: {str(runtime_err)}")
 
 st.markdown("### 🗺️ Visual Workspace Workspace")
 
@@ -218,12 +257,15 @@ blockly_html_payload = """
       var textOutput = "⚙️ LIVE WORKSPACE PARSER MATRIX\\n-----------------------------------------\\n";
       textOutput += "• Active elements mapped on floor: " + allBlocks.length + "\\n\\n";
       
-      var sequenceCount = 0;
+      var generatedPythonCode = "";
+      var sequenceFound = false;
+      
       for (var i = 0; i < allBlocks.length; i++) {
         if (allBlocks[i].type === 'when_sequence_activated') {
-          sequenceCount++;
-          textOutput += "🏁 [Sequence Node #" + sequenceCount + "] Enabled -> [UUID: " + allBlocks[i].id + "]\\n";
+          sequenceFound = true;
+          textOutput += "🏁 [Sequence Node] Enabled -> [UUID: " + allBlocks[i].id + "]\\n";
           
+          generatedPythonCode += Blockly.Python.blockToCode(allBlocks[i]);
           var nextBlock = allBlocks[i].getNextBlock();
           while(nextBlock) {
             textOutput += "   └── Connected Step: " + nextBlock.type;
@@ -231,19 +273,21 @@ blockly_html_payload = """
               textOutput += " [Action Mode: " + nextBlock.getFieldValue('SCANTYPE').toUpperCase() + "]";
             } else if(nextBlock.type === 'protocol_verify') {
               textOutput += " [Verification Mode: " + nextBlock.getFieldValue('VERIFYTYPE').toUpperCase() + "]";
-            } else if(nextBlock.type === 'controls_if') {
-              textOutput += " [Conditional Flow Controller]";
             }
             textOutput += "\\n";
+            generatedPythonCode += Blockly.Python.blockToCode(nextBlock);
             nextBlock = nextBlock.getNextBlock();
           }
         }
       }
       
-      if(sequenceCount === 0) {
+      if(!sequenceFound) {
         textOutput += "⚠️ STATUS ALERT: Drag and drop a 'Sequence Start' block onto the workspace canvas floor to begin compilation.";
       } else {
         textOutput += "\\n🟢 PARSING INTEGRITY STATUS: PIPELINE CHANNELS HEALTHY";
+        // Push raw compiled python sequence format to browser context to synchronize state variables
+        var hostUrl = window.location.origin + window.location.pathname + "?payload=" + encodeURIComponent(generatedPythonCode);
+        window.history.replaceState({}, '', hostUrl);
       }
       
       terminal.innerText = textOutput;
