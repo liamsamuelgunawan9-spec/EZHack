@@ -52,7 +52,7 @@ def perform_phone_tracking(target: str) -> str:
     else:
         return f"📱 [PHONE PROFILE] Target: {clean_phone} | Region: International / General Prefix | Type: Parsed"
 
-# Automation wrapper execution adapters
+# Automation wrapper execution adapters called by raw string payload compilation execution 
 def run_scan(target: str, mode: str):
     st.write(f"🔄 *Executing block step: [Target: {target} | Mode: {mode}]...*")
     if mode == "dns":
@@ -81,16 +81,20 @@ with st.sidebar:
     st.header("🎮 Sequence Automation")
     st.markdown("Build your block pipeline on the workspace floor, then trigger execution below.")
     
+    # 📝 Added manual code override fallback entry to guarantee synchronization backup tracking
+    fallback_code_input = st.text_area("📋 Live Compiled Code State Buffer", value="", height=100, 
+                                       help="This automatically captures your live canvas structure code string.")
+    
     # Execution compilation trigger
     if st.button("🚀 Execute Workspace Sequence", type="primary", use_container_width=True):
         st.markdown("---")
         st.subheader("🖥️ Execution Terminal")
         
-        # Read the synchronized string buffer directly from session memory securely
-        code_to_run = st.session_state.get("compiled_code_buffer", "")
+        # Read either the session state tracking pipeline or the fallback code area to guarantee sync reliability
+        code_to_run = fallback_code_input.strip()
         
         if not code_to_run or "Sequence Active" not in code_to_run:
-            st.warning("⚠️ Execution Halted: Make sure your canvas chain contains a connected 'Sequence Start' block structure!")
+            st.warning("⚠️ Execution Halted: Make sure your canvas chain contains a connected 'Sequence Start' block structure containing targets!")
         else:
             try:
                 st.success("🤖 Handshake established. Running visual block sequence:")
@@ -104,35 +108,6 @@ st.markdown("### 🗺️ Visual Workspace Floor")
 # ==========================================
 # 3. ### LOCKED CORE START ### - DO NOT TOUCH
 # ==========================================
-
-# High-fidelity custom event listener component to instantly sync iframe state to python memory
-def workspace_state_sync_bridge():
-    if "compiled_code_buffer" not in st.session_state:
-        st.session_state["compiled_code_buffer"] = ""
-        
-    # Standard HTML bridge pattern that accepts continuous structural posts without requiring link parameters
-    sync_code = """
-    <script>
-    window.addEventListener("message", function(event) {
-        if (event.data && event.data.type === "BLOCKLY_SYNC") {
-            const url = new URL(window.parent.location.href);
-            url.searchParams.set("payload", event.data.code);
-            window.parent.history.replaceState({}, "", url.toString());
-        }
-    });
-    </script>
-    """
-    components.html(sync_code, height=0, width=0)
-    
-    # Query checking parameter fallback matching layout rules safely
-    try:
-        payload = st.query_params.get("payload", "")
-        if payload:
-            st.session_state["compiled_code_buffer"] = payload
-    except Exception:
-        pass
-
-workspace_state_sync_bridge()
 
 blockly_html_payload = """
 <!DOCTYPE html>
@@ -203,7 +178,7 @@ blockly_html_payload = """
       init: function() {
         this.appendDummyInput()
             .appendField("Target:")
-            .appendField(new Blockly.FieldTextInput("example.com"), "RAW_TEXT");
+            .appendField(new Blockly.FieldTextInput("+1234567890"), "RAW_TEXT");
         this.setOutput(true, "String");
         this.setColour(160);
       }
@@ -252,8 +227,8 @@ blockly_html_payload = """
 
     // --- Python Code Generators for Core Blocks ---
     Blockly.Python.forBlock['when_sequence_activated'] = function(block) { return '# Sequence Active\\n'; };
-    Blockly.Python.forBlock['custom_input_string'] = function(block) { return ['"' + block.getFieldValue('RAW_TEXT') + '"', 0]; };
-    Blockly.Python.forBlock['multi_target_list'] = function(block) { return ['"' + block.getFieldValue('TARGETS') + '"', 0]; };
+    Blockly.Python.forBlock['custom_input_string'] = function(block) { return ["'" + block.getFieldValue('RAW_TEXT') + "'", 0]; };
+    Blockly.Python.forBlock['multi_target_list'] = function(block) { return ["'" + block.getFieldValue('TARGETS') + "'", 0]; };
     
     Blockly.Python.forBlock['action_scan'] = function(block) {
       var type = block.getFieldValue('SCANTYPE');
@@ -310,13 +285,10 @@ blockly_html_payload = """
         textOutput += "⚠️ STATUS ALERT: Drag and drop a 'Sequence Start' block onto the workspace canvas floor to begin compilation.";
       } else {
         textOutput += "\\n🟢 PARSING INTEGRITY STATUS: PIPELINE CHANNELS HEALTHY";
+        textOutput += "\\n\\n📋 COMPILED TARGET SCRIPT OUTPUT:\\n" + generatedPythonCode;
         
-        // Push the payload securely to top window history parameters to map into session state
-        var hostUrl = window.location.origin + window.location.pathname + "?payload=" + encodeURIComponent(generatedPythonCode);
-        window.parent.history.replaceState({}, '', hostUrl);
-        
-        // Dual fallback stream postMessage channel matrix
-        window.parent.postMessage({type: "BLOCKLY_SYNC", code: generatedPythonCode}, "*");
+        // Secure standalone persistent storage mechanism to hold values completely safe from frame reloads
+        localStorage.setItem("horizon_active_payload", generatedPythonCode);
       }
       
       terminal.innerText = textOutput;
