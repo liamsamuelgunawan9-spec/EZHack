@@ -128,7 +128,7 @@ def show_output_to_user(data_result_string: str):
 
 
 def compile_and_execute_blocks(compiled_script_text: str):
-    st.session_state["console_terminal_logs"] = "⚡ MONITOR STREAM ACTIVE...\n⚡ EXECUTING ACTIVE CANVAS BLOCKS:\n"
+    st.session_state["console_terminal_logs"] = "⚡ MONITOR STREAM ACTIVE...\n⚡ EXECUTING ACTIVE SEQUENCE CHAIN:\n"
     restricted_sandbox_globals = {
         "run_utility_scan": run_utility_scan,
         "show_output_to_user": show_output_to_user,
@@ -136,15 +136,15 @@ def compile_and_execute_blocks(compiled_script_text: str):
         "current_result": ""
     }
     
-    # Clean up empty strings or standalone headers out of execution runtime
+    # Clean workspace indicators or comments from runtime execution
     execution_code = ""
     for line in compiled_script_text.splitlines():
-        if "when_green_flag_clicked" in line or line.strip() == "pass":
+        if "when_sequence_activated" in line or line.strip() == "pass" or line.startswith("#"):
             continue
         execution_code += line + "\n"
         
     if not execution_code.strip():
-        st.session_state["console_terminal_logs"] += "\n⚠️ WARNING: Connect your actions directly under the Green Flag block to run!"
+        st.session_state["console_terminal_logs"] += "\n⚠️ WARNING: Connect your input/action blocks directly inside the 'When Sequence Activated' loop to run!"
         return
 
     try:
@@ -159,11 +159,33 @@ def compile_and_execute_blocks(compiled_script_text: str):
 st.set_page_config(page_title="EZHack Horizon Studio", layout="wide")
 
 if "console_terminal_logs" not in st.session_state:
-    st.session_state["console_terminal_logs"] = "💻 [READY] Attach modules inside the Green Flag loop and launch circuit..."
+    st.session_state["console_terminal_logs"] = "💻 [READY] Attach modules inside the Sequence Activated chain and launch..."
 
-# Setup memory text area default values
+# Create a clean default view state for the real-time backend script tracking
 if "live_compiled_code" not in st.session_state:
     st.session_state["live_compiled_code"] = "current_result = run_utility_scan('+15555550199', 'phone')\nshow_output_to_user(current_result)"
+
+# Inject a hidden native script container into Streamlit's actual window layout DOM 
+# This component receives the cross-iframe post messages instantly when workspace blocks are altered!
+components.html(
+    """
+    <script>
+    window.addEventListener("message", function(e) {
+        if(e.data && e.data.type === "BLOCKLY_CHANGED") {
+            // Find parent streamlit element state structures to force injection updates
+            const textareas = window.parent.document.getElementsByTagName("textarea");
+            for (let i = 0; i < textareas.length; i++) {
+                if (textareas[i].getAttribute("aria-label") === "hidden_transport_receiver") {
+                    textareas[i].value = e.data.code;
+                    textareas[i].dispatchEvent(new Event("input", { bubbles: true }));
+                }
+            }
+        }
+    });
+    </script>
+    """,
+    height=0
+)
 
 # ----------------------------------------------------
 # 🪐 TOP CONTROLS ROW
@@ -172,7 +194,7 @@ title_col, button_col_1, button_col_2 = st.columns([6, 3, 3])
 
 with title_col:
     st.title("⚡ Horizon Core Toolroom")
-    st.caption("Scratch-style environment built directly around cybersecurity recon operations.")
+    st.caption("Cyberpunk block architecture engineered for execution stream diagnostics.")
 
 with button_col_1:
     st.write("")
@@ -184,15 +206,15 @@ with button_col_2:
         st.session_state["console_terminal_logs"] = "Monitor buffer cleared."
         st.rerun()
 
-# Run current workspace script code layout structures 
+# Run active automation pipeline configuration
 if trigger_pipeline_run:
-    with st.spinner("Processing automated actions code sequences..."):
+    with st.spinner("Processing automated sequence logic..."):
         compile_and_execute_blocks(st.session_state["live_compiled_code"])
 
 safe_terminal_logs = st.session_state["console_terminal_logs"].replace("`", "'").replace("\\", "\\\\").replace("\n", "\\n")
 
 # ----------------------------------------------------
-# STAGE 1: VISUAL STUDIO SCRATCH CANVAS
+# STAGE 1: VISUAL STUDIO SEQUENCE WORKSPACE
 # ----------------------------------------------------
 st.markdown("### 🗺️ Visual Studio Workspace Canvas")
 
@@ -262,8 +284,8 @@ blockly_html_payload = f"""
   </div>
 
   <xml id="toolbox" style="display: none">
-    <category name="🏁 Trigger Events" colour="20">
-      <block type="when_green_flag_clicked"></block>
+    <category name="🏁 Sequence Starts" colour="0">
+      <block type="when_sequence_activated"></block>
     </category>
     <category name="🌐 Targets &amp; Inputs" colour="160">
       <block type="custom_input_string"></block>
@@ -277,14 +299,14 @@ blockly_html_payload = f"""
   </xml>
 
   <script>
-    // 🏁 Define our Scratch-style start event anchor block
-    Blockly.Blocks['when_green_flag_clicked'] = {{
+    // 🏁 Explicitly limit workspace to only 1 "When Sequence Activated" master track
+    Blockly.Blocks['when_sequence_activated'] = {{
       init: function() {{
         this.appendDummyInput()
-            .appendField("🟢 When Green Flag Clicked");
+            .appendField("🚀 When Sequence Activated");
         this.setNextStatement(true, null);
-        this.setColour(20);
-        this.setTooltip("The starting sequence block.");
+        this.setColour(0);
+        this.setTooltip("Master anchor execution chain header block.");
       }}
     }};
 
@@ -326,9 +348,9 @@ blockly_html_payload = f"""
       }}
     }};
 
-    // Text parser mapping rules
-    Blockly.Python.forBlock['when_green_flag_clicked'] = function(block) {{
-      return '# when_green_flag_clicked\\n';
+    // Translator parsing rules
+    Blockly.Python.forBlock['when_sequence_activated'] = function(block) {{
+      return '# when_sequence_activated\\n';
     }};
 
     Blockly.Python.forBlock['custom_input_string'] = function(block) {{
@@ -344,7 +366,7 @@ blockly_html_payload = f"""
 
     Blockly.Python.forBlock['display_result'] = function(block) {{
       return 'show_output_to_user(current_result)\\n';
-    }};;
+    }};
 
     var workspace = Blockly.inject('blocklyDiv', {{
       toolbox: document.getElementById('toolbox'),
@@ -352,41 +374,44 @@ blockly_html_payload = f"""
       trashcan: true
     }});
 
-    // Build the default setup connected cleanly into the Green Flag anchor block
-    var xmlText = '<xml><block type="when_green_flag_clicked" x="40" y="40"><next><block type="action_scan"><field name="SCANTYPE">phone</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">+15555550199</field></block></value><next><block type="display_result"></block></next></block></next></block></xml>';
+    // Set up workspace configuration template cleanly hooked under sequence activation chain
+    var xmlText = '<xml><block type="when_sequence_activated" x="40" y="40"><next><block type="action_scan"><field name="SCANTYPE">phone</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">+15555550199</field></block></value><next><block type="display_result"></block></next></block></next></block></xml>';
     Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xmlText), workspace);
 
-    // 🔄 REWRITTEN TRANSLATION INTERCEPTOR
-    // This looks for the Green Flag block and ONLY builds code that is snapped underneath it!
-    function compileGreenFlagChainOnly() {{
+    // 🔄 AUTOMATIC REAL-TIME MUTATION LISTENER
+    // This looks for the master sequence tracking node and updates code on EVERY keystroke, drop, or drag event!
+    function captureActiveSequenceChain() {{
       var topBlocks = workspace.getTopBlocks(true);
-      var greenFlagBlock = null;
+      var sequenceStartBlock = null;
       
       for (var i = 0; i < topBlocks.length; i++) {{
-        if (topBlocks[i].type === 'when_green_flag_clicked') {{
-          greenFlagBlock = topBlocks[i];
+        if (topBlocks[i].type === 'when_sequence_activated') {{
+          sequenceStartBlock = topBlocks[i];
           break;
         }}
       }}
       
-      var generatedCode = "";
-      if (greenFlagBlock) {{
-         // Only parse the code connected sequentially to the green flag block item layout
-         generatedCode = Blockly.Python.blockToCode(greenFlagBlock);
+      var finalCodeString = "";
+      if (sequenceStartBlock) {{
+         // ONLY translate blocks directly locked inside the Sequence Activated stack trace!
+         finalCodeString = Blockly.Python.blockToCode(sequenceStartBlock);
       }} else {{
-         generatedCode = "# ⚠️ Missing 'When Green Flag Clicked' block!";
+         finalCodeString = "# ⚠️ Missing 'When Sequence Activated' master chain header block!";
       }}
       
-      // Update text input element values instantly
-      if (window.parent.document.getElementById("hidden_code_transport")) {{
-         window.parent.document.getElementById("hidden_code_transport").value = generatedCode;
-      }}
+      // Dispatch the generated script code instantly across frame walls directly to parent stream
+      window.parent.postMessage({{
+         type: "BLOCKLY_CHANGED",
+         code: finalCodeString
+      }}, "*");
     }}
     
-    workspace.addChangeListener(compileGreenFlagChainOnly);
-    setTimeout(compileGreenFlagChainOnly, 500);
+    // Wire listener up to fire instantly on workspace layout adjustments
+    workspace.addChangeListener(captureActiveSequenceChain);
+    // Initial run buffer setup hook 
+    setTimeout(captureActiveSequenceChain, 200);
 
-    // Simple Floating Output Monitor Window Drag Rules
+    // Terminal Drag Setup Configuration
     var element = document.getElementById("draggableTerminal");
     var header = document.getElementById("terminalHeader");
     var activeDragging = false;
@@ -413,15 +438,23 @@ blockly_html_payload = f"""
 components.html(blockly_html_payload, height=620, scrolling=False)
 
 # ----------------------------------------------------
-# STAGE 2: BACKSTAGE TEXT TRANSLATION TERMINAL
+# STAGE 2: REAL-TIME TRANSLATION MONITOR SCREEN
 # ----------------------------------------------------
-st.markdown("---")
 st.markdown("### 📝 Code Translation Behind the Blocks")
-st.write("This box updates to show the Python script string that is generated when a block connects to the Green Flag:")
+st.write("Watch this container change in real-time as you drag or modify values inside the sequence track above:")
 
-# Real-time interactive text element acting as our direct data sync pipeline
-st.session_state["live_compiled_code"] = st.text_area(
-    label="Live Compiled Sequence String Buffer Output:",
+# Displays the live running execution block directly on-screen
+st.code(st.session_state["live_compiled_code"], language="python")
+
+# Hidden real-time message handler transport node
+# The iframe drops modified text code updates straight into this block via browser message listeners!
+hidden_transport_receiver = st.text_area(
+    label="hidden_transport_receiver",
     value=st.session_state["live_compiled_code"],
-    height=120
+    label_visibility="collapsed"
 )
+
+# Intercept and write change values directly back to state registers instantly
+if hidden_transport_receiver != st.session_state["live_compiled_code"]:
+    st.session_state["live_compiled_code"] = hidden_transport_receiver
+    st.rerun()
