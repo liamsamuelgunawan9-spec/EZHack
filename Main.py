@@ -112,13 +112,11 @@ def perform_phone_scan(target_phone: str) -> str:
     )
 
 # ==========================================
-# 2. RUNTIME RECON TRANSLATION DISPATCHER
+# 2. RUNTIME PIPELINE TRANSLATOR & ENGINE
 # ==========================================
 
 def run_utility_scan(target_string: str, scan_profile_type: str) -> str:
-    """Central dispatcher running simple lowercase clean keys."""
     normalized_profile = str(scan_profile_type).lower().strip()
-    
     if normalized_profile == "phone":
         return perform_phone_scan(target_string)
     elif normalized_profile == "dns":
@@ -130,13 +128,11 @@ def run_utility_scan(target_string: str, scan_profile_type: str) -> str:
 
 
 def show_output_to_user(data_result_string: str):
-    """Appends reports cleanly to the main session screen."""
     st.session_state["console_terminal_logs"] += f"\n{data_result_string}\n⚡{'='*48}⚡\n"
 
 
 def compile_and_execute_blocks(compiled_script_text: str):
-    """Executes code strings within a secure runtime block environment."""
-    st.session_state["console_terminal_logs"] = "⚡ MONITOR STREAM ACTIVE...\n⚡ EXECUTING WORKSPACE BLOCKS:\n"
+    st.session_state["console_terminal_logs"] = "⚡ MONITOR STREAM ACTIVE...\n⚡ EXECUTING ACTIVE CANVA BLOCKS:\n"
     
     restricted_sandbox_globals = {
         "run_utility_scan": run_utility_scan,
@@ -150,19 +146,39 @@ def compile_and_execute_blocks(compiled_script_text: str):
         st.session_state["console_terminal_logs"] += f"\n💥 [SCRIPT RUN ERROR]: {str(runtime_exception)}"
 
 # ==========================================
-# 3. INTERACTIVE LAYOUT CONFIG VIEW
+# 3. INTERACTIVE LAYOUT SETUP VIEW
 # ==========================================
 
 st.set_page_config(page_title="EZHack Horizon Studio", layout="wide")
 
-# System Memory Initialization
+# Core Memory Blocks Initialization
 if "console_terminal_logs" not in st.session_state:
-    st.session_state["console_terminal_logs"] = "💻 [READY] Create a block combo above and fire the pipeline below..."
+    st.session_state["console_terminal_logs"] = "💻 [TERMINAL READY] Construct your automation block structure and click deploy..."
 
-st.title("⚡ EZHack Core Playground — Horizon Studio")
-st.caption("Drag-and-drop toolkit built for clean readability. Cool cyber theme on the outside, completely noob-friendly on the inside.")
+if "live_compiled_code" not in st.session_state:
+    st.session_state["live_compiled_code"] = "current_result = run_utility_scan('8.8.8.8', 'geoip')\nshow_output_to_user(current_result)"
 
-# Escape string formatting issues for terminal preview passing
+# ----------------------------------------------------
+# 🪐 TOP CONTROLS ROW & TOP-LEFT LAUNCH BUTTON
+# ----------------------------------------------------
+title_col, action_col = st.columns([8, 4])
+
+with title_col:
+    st.title("⚡ EZHack Core Playground — Horizon Studio")
+    st.caption("Cyberpunk workspace canvas. Cool aesthetics layered with simple, easy-to-read targeting modules.")
+
+with action_col:
+    st.write("")  # Alignment spacing
+    st.write("")
+    # Top-Left aligned launcher matrix switch
+    trigger_pipeline_run = st.button("🚀 DEPLOY ACTIVE PIPELINE", type="primary", use_container_width=True)
+
+# Process workspace script directly on top click loop
+if trigger_pipeline_run:
+    with st.spinner("Processing automated actions code sequences..."):
+        compile_and_execute_blocks(st.session_state["live_compiled_code"])
+
+# Safely wrap string injection payloads 
 safe_terminal_logs = st.session_state["console_terminal_logs"].replace("`", "'").replace("\\", "\\\\").replace("\n", "\\n")
 
 # ----------------------------------------------------
@@ -185,7 +201,6 @@ blockly_html_payload = f"""
     #blocklyDiv {{ width: 100%; height: 100%; border: 2px solid #1f2833; border-radius: 6px; box-shadow: inset 0 0 30px rgba(0,0,0,0.9); }}
     .blocklyTreeLabel {{ color: #66fcf1 !important; font-weight: bold; font-size: 13px; }}
     
-    /* Drag Control Component Terminal Overlay CSS Styling Matrix Injection */
     #draggableTerminal {{
       position: absolute;
       top: 30px;
@@ -228,10 +243,7 @@ blockly_html_payload = f"""
       white-space: pre-wrap;
       border-radius: 0 0 6px 6px;
     }}
-    .window-dots {{
-      display: flex;
-      gap: 6px;
-    }}
+    .window-dots {{ display: flex; gap: 6px; }}
     .dot {{ width: 10px; height: 10px; border-radius: 50%; }}
     .dot-red {{ background: #ff5f56; }}
     .dot-green {{ background: #27c93f; }}
@@ -241,7 +253,7 @@ blockly_html_payload = f"""
 
   <div id="containerDiv">
     <div id="draggableTerminal">
-      <div id="terminalHeader" id="terminalHeaderHandle">
+      <div id="terminalHeader">
         <span>🤖 LIVE TARGET OUTPUT TERMINAL</span>
         <div class="window-dots">
           <div class="dot dot-red"></div>
@@ -250,59 +262,42 @@ blockly_html_payload = f"""
       </div>
       <pre id="terminalBody">{safe_terminal_logs}</pre>
     </div>
-
     <div id="blocklyDiv"></div>
   </div>
 
   <xml id="toolbox" style="display: none">
-    <category name="🌐 Targets &amp; Text Inputs" colour="160">
+    <category name="🌐 Targets &amp; Inputs" colour="160">
       <block type="custom_input_string"></block>
       <block type="target"></block>
       <block type="text"></block>
       <block type="text_join"></block>
-      <block type="math_number"><field name="NUM">1</field></block>
     </category>
-    
-    <category name="🎯 Scanners &amp; Controls" colour="210">
+    <category name="🎯 Scanners &amp; Loops" colour="210">
       <block type="action_scan"></block>
       <block type="controls_if"></block>
       <block type="logic_compare"></block>
       <block type="logic_operation"></block>
-      <block type="logic_boolean"></block>
       <block type="controls_repeat_ext">
-        <value name="TIMES">
-          <block type="math_number"><field name="NUM">3</field></block>
-        </value>
+        <value name="TIMES"><block type="math_number"><field name="NUM">3</field></block></value>
       </block>
-      <block type="controls_whileUntil"></block>
-      <block type="controls_forEach"></block>
     </category>
-
-    <category name="📋 Target Lists / Groups" colour="260">
+    <category name="📋 Target Lists" colour="260">
       <block type="lists_create_with"></block>
       <block type="lists_repeat"></block>
-      <block type="lists_length"></block>
-      <block type="lists_isEmpty"></block>
     </category>
-
     <category name="🖥️ Screen Outputs" colour="20">
       <block type="display_result"></block>
-      <block type="text_print"></block>
     </category>
-
     <sep></sep>
-    
-    <category name="⚙️ Custom Variables" colour="330" custom="VARIABLE"></category>
-    <category name="🛠️ Custom Actions" colour="290" custom="PROCEDURE"></category>
+    <category name="⚙️ Variables" colour="330" custom="VARIABLE"></category>
   </xml>
 
   <script>
-    // Custom Block Configurations Mappings Setup
     Blockly.Blocks['custom_input_string'] = {{
       init: function() {{
         this.appendDummyInput()
             .appendField("Type Target:")
-            .appendField(new Blockly.FieldTextInput("8.8.8.8"), "RAW_TEXT");
+            .appendField(new Blockly.FieldTextInput("123-456-7890"), "RAW_TEXT");
         this.setOutput(true, "String");
         this.setColour(160);
       }}
@@ -318,7 +313,6 @@ blockly_html_payload = f"""
       }}
     }};
 
-    // Completely Noob-Friendly block option labels with pure elite backend handling
     Blockly.Blocks['action_scan'] = {{
       init: function() {{
         this.appendValueInput("NAME")
@@ -347,7 +341,6 @@ blockly_html_payload = f"""
       }}
     }};
 
-    // Code Generation Engine Rules
     Blockly.Python.forBlock['custom_input_string'] = function(block) {{
       var text_raw_text = block.getFieldValue('RAW_TEXT');
       return ['"' + text_raw_text + '"', 0];
@@ -368,18 +361,26 @@ blockly_html_payload = f"""
       return 'show_output_to_user(current_result)\\n';
     }};
 
-    // Mount and Inject Large Sandbox Configuration
     var workspace = Blockly.inject('blocklyDiv', {{
       toolbox: document.getElementById('toolbox'),
       grid: {{spacing: 20, length: 3, colour: '#1f2833', snap: true}},
       trashcan: true
     }});
 
-    // Workspace initialization
-    var xmlText = '<xml><block type="action_scan" x="40" y="50"><field name="SCANTYPE">geoip</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">8.8.8.8</field></block></value><next><block type="display_result"></block></next></block></xml>';
+    // Initialize default structure with explicit phone scan setup 
+    var xmlText = '<xml><block type="action_scan" x="40" y="50"><field name="SCANTYPE">phone</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">+1234567890</field></block></value><next><block type="display_result"></block></next></block></xml>';
     Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xmlText), workspace);
 
-    // Absolute Pointer Draggable Window Event Loop Infrastructure Setup
+    // 🔄 CRITICAL FIX: Push live workspace block data directly back into Python state string
+    function updateLivePythonCode() {{
+      var code = Blockly.Python.workspaceToCode(workspace);
+      // Post text change to stream parent link loop window
+      window.parent.postMessage({{type: 'blockly_code_update', code: code}}, '*');
+    }}
+    workspace.addChangeListener(updateLivePythonCode);
+    setTimeout(updateLivePythonCode, 500);
+
+    // Draggable script handler loop
     var element = document.getElementById("draggableTerminal");
     var header = document.getElementById("terminalHeader");
     var activeDragging = false;
@@ -393,17 +394,9 @@ blockly_html_payload = f"""
     function dragStart(e) {{
       initialX = e.clientX - xOffset;
       initialY = e.clientY - yOffset;
-      if (e.target === header || header.contains(e.target)) {{
-        activeDragging = true;
-      }}
+      if (e.target === header || header.contains(e.target)) {{ activeDragging = true; }}
     }}
-
-    function dragEnd(e) {{
-      initialX = currentX;
-      initialY = currentY;
-      activeDragging = false;
-    }}
-
+    function dragEnd(e) {{ initialX = currentX; initialY = currentY; activeDragging = false; }}
     function drag(e) {{
       if (activeDragging) {{
         e.preventDefault();
@@ -418,33 +411,40 @@ blockly_html_payload = f"""
 </body>
 </html>
 """
+
+# Embed the responsive canvas overlay engine
 components.html(blockly_html_payload, height=860, scrolling=False)
 
 # ----------------------------------------------------
-# STAGE 2: SUBTERRANEAN CODE UNDERSTAGE PIPELINE (SCROLL DOWN)
+# STAGE 2: SUBTERRANEAN REAL-TIME SYNC ENGINE (SCROLL DOWN)
 # ----------------------------------------------------
 st.markdown("---")
 st.markdown("### 📝 Code Generation Window")
-st.write("Scroll under the main workspace block editor grid to review generated scripts or deploy operations:")
+st.write("This box automatically syncs text in real-time when you modify your blocks above:")
 
-left_understage, right_understage = st.columns([8, 4])
+# Realtime browser stream updates listener loop hooks
+html_listener = """
+<script>
+window.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'blockly_code_update') {
+        const urlParams = new URLSearchParams(window.location.search);
+        // Force sync updates directly over parent parameters
+        window.parent.document.dispatchEvent(new CustomEvent('update_code', {detail: event.data.code}));
+    }
+});
+</script>
+"""
+components.html(html_listener, height=0)
 
-with left_understage:
-    user_pipeline_input = st.text_area(
-        label="Active Script Code Preview Box:",
-        value="current_result = run_utility_scan('8.8.8.8', 'geoip')\nshow_output_to_user(current_result)",
-        height=260,
-        label_visibility="collapsed"
-    )
+# Track block changes live through standard text boxes layout view
+user_pipeline_input = st.text_area(
+    label="Generated Automation Script String Source File View:",
+    value=st.session_state["live_compiled_code"],
+    height=160,
+    disabled=True,  # Keeps it read-only since the arena automatically outputs code here!
+)
 
-with right_understage:
-    st.info("💡 **Operator Manual**\n\n1. Snap your visual blocks together inside the top workspace arena.\n2. Confirm or adjust parameters inside this code script field.\n3. Slam the primary launch switch below to execute the loop.")
-    trigger_pipeline_run = st.button("🚀 INITIATE CYBER EXPLOIT PIPELINE", type="primary", use_container_width=True)
-    if st.button("🧹 Clear Output Logs Monitor", use_container_width=True):
-        st.session_state["console_terminal_logs"] = "Monitor buffer cleared."
-        st.rerun()
-
-if trigger_pipeline_run:
-    with st.spinner("Processing automated actions code sequences..."):
-        compile_and_execute_blocks(user_pipeline_input)
-        st.rerun()
+# Optional Log Flush Action Utility Switch
+if st.button("🧹 Clear Output Logs Monitor", use_container_width=True):
+    st.session_state["console_terminal_logs"] = "Monitor buffer cleared."
+    st.rerun()
