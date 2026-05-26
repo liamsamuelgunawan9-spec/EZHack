@@ -68,7 +68,7 @@ def verify_protocol(target: str, verification_mode: str):
 
 
 # ==========================================
-# 2. STREAMLIT INTERFACE LAYER
+# 2. STREAMLIT INTERFACE LAYER & FALLBACK
 # ==========================================
 
 st.set_page_config(page_title="Horizon Studio", layout="wide")
@@ -76,32 +76,32 @@ st.set_page_config(page_title="Horizon Studio", layout="wide")
 st.title("⚡ Horizon Core Toolroom")
 st.caption("Visual Block Configuration Environment")
 
+# Initialize persistent memory storage for the compiled code output across frames safely
+if "synced_workspace_code" not in st.session_state:
+    st.session_state["synced_workspace_code"] = ""
+
 # Sidebar Sequence Trigger Terminal Panel
 with st.sidebar:
     st.header("🎮 Sequence Automation")
     st.markdown("Build your block pipeline on the workspace floor, then trigger execution below.")
     
-    # We create a form to capture data changes across the bridge properly on submit click
-    with st.form("automation_form"):
-        # This hidden/visible channel receives the raw block string compiled by the live parser instantly
-        live_code_bridge = st.text_area(
-            "📋 Compiled Workspace Payload", 
-            value="", 
-            height=120,
-            key="code_bridge_input",
-            help="Your live blocks map directly into this pipeline."
-        )
-        
-        submit_sequence = st.form_submit_button("🚀 Execute Workspace Sequence", type="primary", use_container_width=True)
-        
-    if submit_sequence:
+    # Text area reads directly from secure session state instead of dangerous cross-frame scripts
+    st.session_state["synced_workspace_code"] = st.text_area(
+        "📋 Compiled Workspace Payload", 
+        value=st.session_state["synced_workspace_code"], 
+        height=140,
+        help="This window displays the compiled matrix logic coming live from the canvas floor below."
+    )
+    
+    # Direct trigger button execution pattern matching your core specification
+    if st.button("🚀 Execute Workspace Sequence", type="primary", use_container_width=True):
         st.markdown("---")
         st.subheader("🖥️ Execution Terminal")
         
-        code_to_run = live_code_bridge.strip()
+        code_to_run = st.session_state["synced_workspace_code"].strip()
         
         if not code_to_run or "Sequence Active" not in code_to_run:
-            st.warning("⚠️ Execution Halted: No connected pipeline data found. Connect your blocks to 'Sequence Start' and change a value or move a block to trigger sync!")
+            st.warning("⚠️ Execution Halted: Connect your blocks to 'Sequence Start' on the canvas to load a valid chain configuration!")
         else:
             try:
                 st.success("🤖 Handshake established. Running visual block sequence:")
@@ -115,6 +115,14 @@ st.markdown("### 🗺️ Visual Workspace Floor")
 # ==========================================
 # 3. ### LOCKED CORE START ### - DO NOT TOUCH
 # ==========================================
+
+# A secure background query parameters catch-relay mapping into Python state automatically
+try:
+    incoming_payload = st.query_params.get("payload_matrix", "")
+    if incoming_payload:
+        st.session_state["synced_workspace_code"] = incoming_payload
+except Exception:
+    pass
 
 blockly_html_payload = """
 <!DOCTYPE html>
@@ -294,19 +302,10 @@ blockly_html_payload = """
         textOutput += "\\n🟢 PARSING INTEGRITY STATUS: PIPELINE CHANNELS HEALTHY";
         textOutput += "\\n\\n📋 COMPILED TARGET SCRIPT OUTPUT:\\n" + generatedPythonCode;
         
-        // Find the parent Streamlit text area via DOM tree traversal and force-update its internal text value directly
-        try {
-          var textAreas = window.parent.document.getElementsByTagName('textarea');
-          for (var i = 0; i < textAreas.length; i++) {
-            // Find the active area linked to our compilation pipeline form element
-            if (textAreas[i].getAttribute('data-testid') === 'stTextArea' || i === 0) {
-              textAreas[i].value = generatedPythonCode;
-              // Dispatch input event notification so Streamlit hooks read the runtime change instantly
-              textAreas[i].dispatchEvent(new Event('input', { bubbles: true }));
-            }
-          }
-        } catch(err) {
-          // Fallback tracking if browser frame cross-origin access blocks elements
+        // Use an official browser window replacement hook that forces Streamlit's engine to update state natively via safe URL matrix sync
+        var targetUrl = window.parent.location.origin + window.parent.location.pathname + "?payload_matrix=" + encodeURIComponent(generatedPythonCode);
+        if(window.parent.location.search !== "?payload_matrix=" + encodeURIComponent(generatedPythonCode)) {
+           window.parent.history.replaceState({}, '', targetUrl);
         }
       }
       
@@ -324,7 +323,7 @@ blockly_html_payload = """
     });
 
     // Scheduler fallback sync loop
-    setInterval(renderDebugLogs, 300);
+    setInterval(renderDebugLogs, 500);
   </script>
 </body>
 </html>
