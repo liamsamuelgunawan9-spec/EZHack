@@ -7,7 +7,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # ==========================================
-# 1. SIMPLIFIED RECON UTILITIES (BACKEND)
+# 1. CORE RECON RECOVERY UTILITIES
 # ==========================================
 
 def perform_dns_lookup(target: str) -> str:
@@ -108,7 +108,7 @@ def perform_phone_scan(target_phone: str) -> str:
     )
 
 # ==========================================
-# 2. RUNTIME PIPELINE TRANSLATOR & ENGINE
+# 2. RUNTIME TRANSLATOR ENGINE
 # ==========================================
 
 def run_utility_scan(target_string: str, scan_profile_type: str) -> str:
@@ -136,7 +136,6 @@ def compile_and_execute_blocks(compiled_script_text: str):
         "current_result": ""
     }
     
-    # Strip comments and sequence markers before dynamic execution
     execution_code = ""
     for line in compiled_script_text.splitlines():
         if "when_sequence_activated" in line or line.strip() == "pass" or line.strip().startswith("#"):
@@ -144,7 +143,7 @@ def compile_and_execute_blocks(compiled_script_text: str):
         execution_code += line + "\n"
         
     if not execution_code.strip():
-        st.session_state["console_terminal_logs"] += "\n⚠️ WARNING: Connect your inputs/actions to the 'When Sequence Activated' block to run!"
+        st.session_state["console_terminal_logs"] += "\n⚠️ WARNING: Connect your input/action blocks directly inside the 'When Sequence Activated' block to run!"
         return
 
     try:
@@ -153,32 +152,30 @@ def compile_and_execute_blocks(compiled_script_text: str):
         st.session_state["console_terminal_logs"] += f"\n💥 [SCRIPT RUN ERROR]: {str(runtime_exception)}"
 
 # ==========================================
-# 3. INTERACTIVE LAYOUT CONFIGURATION
+# 3. INTERACTIVE STREAMLIT GUI LAYOUT
 # ==========================================
 
 st.set_page_config(page_title="EZHack Horizon Studio", layout="wide")
 
 if "console_terminal_logs" not in st.session_state:
-    st.session_state["console_terminal_logs"] = "💻 [READY] Construct your sequence layout and hit launch circuit..."
+    st.session_state["console_terminal_logs"] = "💻 [READY] Attach modules inside the Sequence Activated chain..."
 
 if "live_compiled_code" not in st.session_state:
     st.session_state["live_compiled_code"] = "current_result = run_utility_scan('+15555550199', 'phone')\nshow_output_to_user(current_result)"
 
-# Receives live execution code string directly from the iframe via URL hashing trick
+# Process URL state loop changes coming out of the 0.1s interval script
 query_params = st.query_params
 if "code_sync" in query_params:
     incoming_code = query_params["code_sync"]
     if incoming_code != st.session_state["live_compiled_code"]:
         st.session_state["live_compiled_code"] = incoming_code
 
-# ----------------------------------------------------
-# 🪐 TOP CONTROLS ROW
-# ----------------------------------------------------
+# 🪐 CONTROLS NAVIGATION HEADER
 title_col, button_col_1, button_col_2 = st.columns([6, 3, 3])
 
 with title_col:
     st.title("⚡ Horizon Core Toolroom")
-    st.caption("Sequential block pipeline interface engineered for recon data diagnostics.")
+    st.caption("Sequence architecture automated live scanner layout engine.")
 
 with button_col_1:
     st.write("")
@@ -190,16 +187,13 @@ with button_col_2:
         st.session_state["console_terminal_logs"] = "Monitor buffer cleared."
         st.rerun()
 
-# Execute block sequences on request
 if trigger_pipeline_run:
-    with st.spinner("Processing automation pipeline paths..."):
+    with st.spinner("Processing running automation paths..."):
         compile_and_execute_blocks(st.session_state["live_compiled_code"])
 
 safe_terminal_logs = st.session_state["console_terminal_logs"].replace("`", "'").replace("\\", "\\\\").replace("\n", "\\n")
 
-# ----------------------------------------------------
-# STAGE 1: VISUAL STUDIO CHAIN CANVAS
-# ----------------------------------------------------
+# 🗺️ VISUAL CANVAS STAGE
 st.markdown("### 🗺️ Visual Studio Workspace Canvas")
 
 blockly_html_payload = f"""
@@ -268,7 +262,7 @@ blockly_html_payload = f"""
   </div>
 
   <xml id="toolbox" style="display: none">
-    <category name="🏁 Sequence Setup" colour="0">
+    <category name="🏁 Sequence Starts" colour="0">
       <block type="when_sequence_activated"></block>
     </category>
     <category name="🌐 Targets &amp; Inputs" colour="160">
@@ -283,14 +277,13 @@ blockly_html_payload = f"""
   </xml>
 
   <script>
-    // 🏁 Master Event Sequence Start Block Definition
+    // 🏁 Setup 'When Sequence Activated' Block Definition
     Blockly.Blocks['when_sequence_activated'] = {{
       init: function() {{
         this.appendDummyInput()
             .appendField("🚀 When Sequence Activated");
         this.setNextStatement(true, null);
         this.setColour(0);
-        this.setTooltip("The absolute master execution chain starting anchor block.");
       }}
     }};
 
@@ -332,7 +325,6 @@ blockly_html_payload = f"""
       }}
     }};
 
-    // Custom Python generation definitions for blocks
     Blockly.Python.forBlock['when_sequence_activated'] = function(block) {{
       return '# when_sequence_activated\\n';
     }};
@@ -358,61 +350,55 @@ blockly_html_payload = f"""
       trashcan: true
     }});
 
-    // Draw standard starting template inside the workspace editor
+    // Workspace initialization footprint
     var xmlText = '<xml><block type="when_sequence_activated" x="40" y="40"><next><block type="action_scan"><field name="SCANTYPE">phone</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">+15555550199</field></block></value><next><block type="display_result"></block></next></block></next></block></xml>';
     Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xmlText), workspace);
 
-    // 🎯 REWRITE: THE TARGETED CHAIN CRAWLER DETECTION ENGINE
-    // This function detects when a block is changed or added, but ONLY crawls down the root sequence anchor block!
-    var debounceTimer = null;
-    function processWorkspaceSequenceChange(event) {{
-      // Prevent flooding Streamlit on intermediate drag positions
-      if (event.type === Blockly.Events.BLOCK_MOVE && event.isUiChange) return;
+    // Track previously built code block states globally to minimize browser frame layout flashing
+    var globalLastCompiledCode = "";
 
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(function() {{
-        var topBlocks = workspace.getTopBlocks(false);
-        var rootSequenceBlock = null;
-        
-        // Step 1: Scan layout to find the single master sequence block
-        for (var i = 0; i < topBlocks.length; i++) {{
-          if (topBlocks[i].type === 'when_sequence_activated') {{
-            rootSequenceBlock = topBlocks[i];
-            break;
-          }}
+    // 🕒 AGGRESSIVE FORCE REFRESH LOOP RUNNING EXACTLY EVERY 0.1 SECONDS
+    setInterval(function() {{
+      var topBlocks = workspace.getTopBlocks(false);
+      var rootSequenceBlock = null;
+      
+      // Step 1: Find the sequence master block header on the canvas
+      for (var i = 0; i < topBlocks.length; i++) {{
+        if (topBlocks[i].type === 'when_sequence_activated') {{
+          rootSequenceBlock = topBlocks[i];
+          break;
         }}
-        
-        var generatedSequenceCode = "";
-        
-        // Step 2: Loop exclusively through blocks attached below the Master anchor
-        if (rootSequenceBlock) {{
-          var currentBlock = rootSequenceBlock.getNextBlock();
-          while (currentBlock) {{
-            // Translate the block using Blockly's standard Python engine rules
-            var blockCode = Blockly.Python.blockToCode(currentBlock);
-            if (typeof blockCode === 'string') {{
-              generatedSequenceCode += blockCode;
-            }} else if (Array.isArray(blockCode)) {{
-              generatedSequenceCode += blockCode[0];
-            }}
-            // Crawl sequentially down to the next connected node block item
-            currentBlock = currentBlock.getNextBlock();
+      }}
+      
+      var codeOutputPayload = "";
+      
+      // Step 2: Extract details ONLY down the connected chain nodes
+      if (rootSequenceBlock) {{
+        var currentBlock = rootSequenceBlock.getNextBlock();
+        while (currentBlock) {{
+          var blockCode = Blockly.Python.blockToCode(currentBlock);
+          if (typeof blockCode === 'string') {{
+            codeOutputPayload += blockCode;
+          }} else if (Array.isArray(blockCode)) {{
+            codeOutputPayload += blockCode[0];
           }}
-        }} else {{
-          generatedSequenceCode = "# ⚠️ Error: 'When Sequence Activated' block missing from layout canvas!";
+          currentBlock = currentBlock.getNextBlock();
         }}
+      }} else {{
+        codeOutputPayload = "# ⚠️ Error: 'When Sequence Activated' block missing from layout canvas!";
+      }}
 
-        // Step 3: Refresh the state by directly injecting parameters safely out to parent container window paths
-        var encodedCode = encodeURIComponent(generatedSequenceCode.trim());
-        var currentUrl = window.parent.location.href.split('?')[0];
-        window.parent.location.replace(currentUrl + "?code_sync=" + encodedCode);
-      }}, 300); // 300ms debounce ensures clean user typing captures
-    }}
+      // Step 3: If anything changed, write the update into URL state memory
+      codeOutputPayload = codeOutputPayload.trim();
+      if (codeOutputPayload !== globalLastCompiledCode) {{
+        globalLastCompiledCode = codeOutputPayload;
+        var encodedCode = encodeURIComponent(codeOutputPayload);
+        var cleanBaseUrl = window.parent.location.href.split('?')[0];
+        window.parent.location.replace(cleanBaseUrl + "?code_sync=" + encodedCode);
+      }}
+    }}, 100); // 🚀 Run verification cycle every 100ms flat!
 
-    // Hook the change detector into the workspace events pipeline
-    workspace.addChangeListener(processWorkspaceSequenceChange);
-
-    // Draggable Window Interface Rules
+    // Drag-drop floating workspace window engine rules
     var element = document.getElementById("draggableTerminal");
     var header = document.getElementById("terminalHeader");
     var activeDragging = false;
@@ -438,10 +424,6 @@ blockly_html_payload = f"""
 
 components.html(blockly_html_payload, height=620, scrolling=False)
 
-# ----------------------------------------------------
-# STAGE 2: VISIBLE PYTHON CODE TERMINAL OUTLET
-# ----------------------------------------------------
+# 📝 CODE MONITOR OUTPUT TERMINAL 
 st.markdown("### 📝 Code Translation Behind the Blocks")
-st.write("This stream displays the live, active sequence block chain structure translating directly into execution memory:")
-
 st.code(st.session_state["live_compiled_code"], language="python")
