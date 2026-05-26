@@ -7,33 +7,55 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # ==========================================
-# 1. CORE UTILITY INFRASTRUCTURE BACKEND
+# 1. CORE OSINT UTILITY ENGINE (BACKEND)
 # ==========================================
 
 def perform_dns_lookup(target: str) -> str:
     """Performs standard forward infrastructure DNS lookups."""
     clean_host = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
     if not clean_host:
-        return "Error: Missing operational target value."
+        return "❌ ERROR: Target identifier payload is null."
     try:
         ip_addr = socket.gethostbyname(clean_host)
-        return f"[DNS Query Complete]\nDomain String: {clean_host}\nResolved IPv4: {ip_addr}"
+        return (
+            f"🎯 [DNS INFRASTRUCTURE REPORT]\n"
+            f"  ├── TARGET DOMAIN : {clean_host}\n"
+            f"  └── RESOLVED IPV4 : {ip_addr}\n"
+            f"🟢 STATUS: TARGET RESPONDING & MAPPED SUCCESSFUL"
+        )
     except socket.gaierror:
-        return f"[DNS Query Fault]\nUnable to parse or map destination domain: '{clean_host}'"
+        return f"❌ [DNS MAP FAULT]\n  └── Hostname reference '{clean_host}' failed standard mapping loops."
     except Exception as e:
-        return f"[System Exception] DNS Lookup engine failure: {str(e)}"
+        return f"💥 [CRITICAL FAILURE] Pipeline Exception: {str(e)}"
+
+
+def perform_reverse_dns(target: str) -> str:
+    """Performs reverse lookups to find domains associated with an IP address."""
+    clean_ip = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
+    if not clean_ip:
+        return "❌ ERROR: Target IP address payload is null."
+    try:
+        host_meta = socket.gethostbyaddr(clean_ip)
+        return (
+            f"🔄 [REVERSE DNS IDENTIFICATION]\n"
+            f"  ├── TARGET IPV4  : {clean_ip}\n"
+            f"  └── HOST POINTER : {host_meta[0]}\n"
+            f"🟢 STATUS: REVERSE ROUTE DISCOVERED"
+        )
+    except Exception:
+        return f"❌ [REV-DNS FAULT]\n  └── Unable to resolve domain pointers from source IP '{clean_ip}'"
 
 
 def perform_ip_geolocation(target: str) -> str:
     """Queries an open-access lookup routing endpoint for network asset vectors."""
     clean_host = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
     if not clean_host:
-        return "Error: Missing operational target value."
+        return "❌ ERROR: Target identifier payload is null."
     try:
         try:
             lookup_ip = socket.gethostbyname(clean_host)
         except socket.gaierror:
-            return f"[GeoIP Map Fault]\nTarget string '{clean_host}' did not resolve to a verifiable routing address."
+            return f"❌ [GEOIP TRANSLATION FAULT]\n  └── Destination '{clean_host}' is unreachable or invalid."
 
         api_url = f"http://ip-api.com/json/{lookup_ip}"
         req = urllib.request.Request(api_url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -41,33 +63,34 @@ def perform_ip_geolocation(target: str) -> str:
             json_payload = json.loads(network_stream.read().decode())
             
         if json_payload.get("status") == "fail":
-            return f"[GeoIP Target Failure]\nResponse Code: {json_payload.get('message', 'Unknown endpoint error')}"
+            return f"❌ [GEOIP ENDPOINT METRICS ERROR]\n  └── Msg: {json_payload.get('message', 'Unknown api error')}"
             
         return (
-            f"[IP Geolocation Metrics]\n"
-            f"Input Reference: {clean_host}\n"
-            f"Target Address:  {json_payload.get('query')}\n"
-            f"Country / Code:  {json_payload.get('country')} ({json_payload.get('countryCode')})\n"
-            f"Region Name/City: {json_payload.get('regionName')}, {json_payload.get('city')}\n"
-            f"Network Provider: {json_payload.get('isp')}\n"
-            f"Routing Autonomous System: {json_payload.get('as')}"
+            f"🗺️ [GEOLOCATION NETWORK METRICS]\n"
+            f"  ├── LOOKUP VALUE : {clean_host}\n"
+            f"  ├── ROUTED IPV4  : {json_payload.get('query')}\n"
+            f"  ├── COUNTRY/CODE : {json_payload.get('country')} ({json_payload.get('countryCode')})\n"
+            f"  ├── CITY/REGION  : {json_payload.get('city')}, {json_payload.get('regionName')}\n"
+            f"  ├── PROVIDER ISP : {json_payload.get('isp')}\n"
+            f"  └── ASN AUTONOM  : {json_payload.get('as')}\n"
+            f"🟢 STATUS: NODE TELEMETRY ACCESSIBLE"
         )
     except Exception as e:
-        return f"[System Exception] Structural context retrieval crash: {str(e)}"
+        return f"💥 [CRITICAL GEOIP ENGINECRASH]: {str(e)}"
 
 
 def perform_phone_scan(target_phone: str) -> str:
     """Parses phone strings for multi-vector operational context metadata."""
     clean_phone = str(target_phone).strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
     if not clean_phone:
-        return "Error: Missing operational phone digits."
+        return "❌ ERROR: Telecom validation digits are null."
     
     is_intl = clean_phone.startswith("+")
-    country_est = "International Flag Detected" if is_intl else "North American Dial Plan / Local"
+    country_est = "🌍 International Dialing Structure" if is_intl else "🇺🇸 North American Plan Network"
     length = len(clean_phone)
     
-    mock_carriers = ["Verizon Wireless Routing", "AT&T Mobility Core", "T-Mobile USA Network", "Vodafone Carrier Link", "Orange Telecom Group"]
-    mock_line_types = ["Mobile / Cellular String", "Fixed VoIP Anchor", "Landline Copper Loop", "Premium Toll Routing Block"]
+    mock_carriers = ["Verizon Wireless Backbone", "AT&T Core Mobility", "T-Mobile USA Network Node", "Vodafone Global Routing Link", "Orange Telecom Switched Loop"]
+    mock_line_types = ["📱 Mobile/Cellular Node", "☎️ Landline Copper Loop Connection", "💻 Virtual Fixed VoIP Node", "📡 Premium Toll Routing Circuit"]
     
     seed_val = sum(ord(c) for c in clean_phone)
     random.seed(seed_val)
@@ -77,42 +100,43 @@ def perform_phone_scan(target_phone: str) -> str:
     exchange_code = clean_phone[1:4] if is_intl else clean_phone[0:3]
     
     return (
-        f"[Telecom Vector OSINT Report]\n"
-        f"Input Sequence:   {target_phone}\n"
-        f"Normalized Form:  {clean_phone}\n"
-        f"String Length:    {length} digits\n"
-        f"Regional Plan:    {country_est}\n"
-        f"Structural Format: {'Valid Range Verification Success' if length >= 7 else 'Invalid Length Profile Alert'}\n"
-        f"Assigned Exchange: Core Central Switch Block [+{exchange_code}-xxx]\n"
-        f"Line Allocation:  {selected_type}\n"
-        f"Active Operator:  {selected_carrier}\n"
-        f"Routing Status:   Operational / Live Route Validated"
+        f"📡 [TELECOM VECTOR OSINT INTELLIGENCE]\n"
+        f"  ├── INCOMING RAW VALUE : {target_phone}\n"
+        f"  ├── SCAN NORMALIZATION : {clean_phone}\n"
+        f"  ├── SEQUENCE BIT-SIZE  : {length} digits\n"
+        f"  ├── REGIONAL ROUTING   : {country_est}\n"
+        f"  ├── EXCHANGE BLOCK CODE: SWITCH LAYER [+{exchange_code}-xxx]\n"
+        f"  ├── ALLOCATION ASSIGNED: {selected_type}\n"
+        f"  └── INTERCEPT CARRIER  : {selected_carrier}\n"
+        f"🟢 STATUS: SIGNAL ROUTE PROFILE CONSTRUCTED SUCCESS"
     )
 
 # ==========================================
-# 2. RUNTIME TRANSLATION DISPATCHER
+# 2. RUNTIME RECON TRANSLATION DISPATCHER
 # ==========================================
 
 def run_utility_scan(target_string: str, scan_profile_type: str) -> str:
     """Central dispatcher function dynamically executed by the blockly string mapping sequence."""
     normalized_profile = str(scan_profile_type).lower().strip()
     
-    if "phone" in normalized_profile or str(target_string).startswith("+"):
+    if normalized_profile == "phone":
         return perform_phone_scan(target_string)
     elif normalized_profile == "dns":
         return perform_dns_lookup(target_string)
+    elif normalized_profile == "rev_dns":
+        return perform_reverse_dns(target_string)
     else:
         return perform_ip_geolocation(target_string)
 
 
 def show_output_to_user(data_result_string: str):
     """Invoked directly by the compiled 'display_result' block command to append logs."""
-    st.session_state["console_terminal_logs"] += f"\n{data_result_string}\n{'-'*40}"
+    st.session_state["console_terminal_logs"] += f"\n{data_result_string}\n⚡{'='*48}⚡\n"
 
 
 def compile_and_execute_blocks(compiled_script_text: str):
     """Safely executes code blocks by wrapping the text execution inside a structured runtime scope."""
-    st.session_state["console_terminal_logs"] = "==== Active Session Terminal Run ====\n"
+    st.session_state["console_terminal_logs"] = "⚡ SYSTEM LOG FEED ACTIVATED...\n⚡ RUNNING SPECIFIED PIPELINE SEQUENCES:\n"
     
     restricted_sandbox_globals = {
         "run_utility_scan": run_utility_scan,
@@ -123,21 +147,20 @@ def compile_and_execute_blocks(compiled_script_text: str):
     try:
         exec(compiled_script_text, restricted_sandbox_globals)
     except Exception as runtime_exception:
-        st.session_state["console_terminal_logs"] += f"\n[Execution Engine Error]: {str(runtime_exception)}"
+        st.session_state["console_terminal_logs"] += f"\n💥 [DEPLOYMENT EXCEPTION FAULT]: {str(runtime_exception)}"
 
 # ==========================================
-# 3. STREAMLIT APPLICATION INTERACTIVE VIEW
+# 3. INTERACTIVE LAYOUT CONFIG VIEW
 # ==========================================
 
-st.set_page_config(page_title="EZHack Pro OSINT Studio", layout="wide")
+st.set_page_config(page_title="EZHack Horizon Studio", layout="wide")
 
 # System Memory Initialization
 if "console_terminal_logs" not in st.session_state:
-    st.session_state["console_terminal_logs"] = "[Standby] Setup script sequences on the canvas playground above, click fire layout pipeline..."
+    st.session_state["console_terminal_logs"] = "💻 [CONSOLE IDLE] Map operations on the canvas grid overlay above and dispatch hacking automation pipeline..."
 
-# Main Section Header Elements
-st.title("⚡ EZHack Core Framework — Horizon Studio")
-st.caption("High-performance block compilation studio featuring draggable windows, custom logic arrays, and network telemetry diagnostic hooks.")
+st.title("⚡ EZHack Pro Cyber Recon Frame — Horizon Studio")
+st.caption("Visual drag-and-drop orchestration suite tailored for elite cyber reconnaissance, multi-target loop mapping, and pipeline injection.")
 
 # Escape string formatting issues for terminal preview passing
 safe_terminal_logs = st.session_state["console_terminal_logs"].replace("`", "'").replace("\\", "\\\\").replace("\n", "\\n")
@@ -145,7 +168,7 @@ safe_terminal_logs = st.session_state["console_terminal_logs"].replace("`", "'")
 # ----------------------------------------------------
 # STAGE 1: FULL-WINDOW ARENA DISPLAY CANVAS (TOP)
 # ----------------------------------------------------
-st.markdown("### 🗺️ Full Horizon Development Arena Workspace")
+st.markdown("### 🗺️ Full Horizon Cyber Arena Workspace Workspace")
 
 blockly_html_payload = f"""
 <!DOCTYPE html>
@@ -157,62 +180,59 @@ blockly_html_payload = f"""
   <script src="https://unpkg.com/blockly/python_compressed.js"></script>
   <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
   <style>
-    html, body {{ height: 100%; margin: 0; padding: 0; background-color: #111111; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }}
+    html, body {{ height: 100%; margin: 0; padding: 0; background-color: #0b0c10; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }}
     #containerDiv {{ position: relative; width: 100%; height: 840px; }}
-    #blocklyDiv {{ width: 100%; height: 100%; border: 2px solid #333; border-radius: 6px; box-shadow: inset 0 0 20px rgba(0,0,0,0.8); }}
-    .blocklyTreeLabel {{ color: #ffffff !important; font-size: 13px; }}
+    #blocklyDiv {{ width: 100%; height: 100%; border: 2px solid #1f2833; border-radius: 6px; box-shadow: inset 0 0 30px rgba(0,0,0,0.9); }}
+    .blocklyTreeLabel {{ color: #c5a100 !important; font-weight: bold; font-size: 13px; }}
     
-    /* Sleek Draggable Terminal Window Component Widget Layout Overlay */
+    /* Drag Control Component Terminal Overlay CSS Styling Matrix Injection */
     #draggableTerminal {{
       position: absolute;
       top: 30px;
       right: 30px;
-      width: 420px;
-      height: 380px;
+      width: 480px;
+      height: 440px;
       z-index: 999;
-      background: rgba(25, 25, 25, 0.95);
-      border: 1px solid #ff4b4b;
+      background: rgba(11, 12, 16, 0.93);
+      border: 2px solid #66fcf1;
       border-radius: 8px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+      box-shadow: 0 0 25px rgba(102, 252, 241, 0.3);
       display: flex;
       flex-direction: column;
     }}
     #terminalHeader {{
-      padding: 10px;
+      padding: 12px;
       cursor: move;
-      background: #222;
-      border-bottom: 1px solid #333;
-      color: #ff4b4b;
+      background: #1f2833;
+      border-bottom: 2px solid #45a29e;
+      color: #66fcf1;
       font-weight: bold;
-      font-size: 12px;
-      letter-spacing: 1px;
+      font-size: 11px;
+      letter-spacing: 1.5px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-radius: 7px 7px 0 0;
+      border-radius: 6px 6px 0 0;
       user-select: none;
     }}
     #terminalBody {{
       flex: 1;
-      padding: 10px;
+      padding: 15px;
       margin: 0;
-      background: #090909;
-      color: #00ff66;
+      background: #0b0c10;
+      color: #1fec79;
       font-family: 'Courier New', Courier, monospace;
       font-size: 12px;
+      line-height: 1.5;
       overflow-y: auto;
       white-space: pre-wrap;
-      border-radius: 0 0 7px 7px;
+      border-radius: 0 0 6px 6px;
     }}
     .window-dots {{
       display: flex;
       gap: 6px;
     }}
-    .dot {{
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-    }}
+    .dot {{ width: 10px; height: 10px; border-radius: 50%; }}
     .dot-red {{ background: #ff5f56; }}
     .dot-amber {{ background: #ffbd2e; }}
     .dot-green {{ background: #27c93f; }}
@@ -223,9 +243,9 @@ blockly_html_payload = f"""
   <div id="containerDiv">
     <div id="draggableTerminal">
       <div id="terminalHeader" id="terminalHeaderHandle">
-        <span>🖥️ CORE LOG MONITOR</span>
+        <span>🤖 STREAM TERMINAL TARGET MONITOR</span>
         <div class="window-dots">
-          <div class="dot dot-amber"></div>
+          <div class="dot dot-red"></div>
           <div class="dot dot-green"></div>
         </div>
       </div>
@@ -236,7 +256,7 @@ blockly_html_payload = f"""
   </div>
 
   <xml id="toolbox" style="display: none">
-    <category name="🌐 Data Sources &amp; Text" colour="160">
+    <category name="🌐 Targeting &amp; Strings" colour="160">
       <block type="custom_input_string"></block>
       <block type="target"></block>
       <block type="text"></block>
@@ -244,7 +264,7 @@ blockly_html_payload = f"""
       <block type="math_number"><field name="NUM">1</field></block>
     </category>
     
-    <category name="🎯 Logic &amp; Controls" colour="210">
+    <category name="🎯 Recon &amp; Logic Loops" colour="210">
       <block type="action_scan"></block>
       <block type="controls_if"></block>
       <block type="logic_compare"></block>
@@ -266,19 +286,19 @@ blockly_html_payload = f"""
       <block type="lists_isEmpty"></block>
     </category>
 
-    <category name="🖥️ Outputs" colour="20">
+    <category name="🖥️ Terminal Outputs" colour="20">
       <block type="display_result"></block>
       <block type="text_print"></block>
     </category>
 
     <sep></sep>
     
-    <category name="⚙️ Variables Manager" colour="330" custom="VARIABLE"></category>
-    <category name="🛠️ Custom Functions" colour="290" custom="PROCEDURE"></category>
+    <category name="⚙️ Workspace Variables" colour="330" custom="VARIABLE"></category>
+    <category name="🛠️ Custom Procedures" colour="290" custom="PROCEDURE"></category>
   </xml>
 
   <script>
-    // 1. Custom Block Logic Mappings
+    // Custom Block Configurations Mappings Setup
     Blockly.Blocks['custom_input_string'] = {{
       init: function() {{
         this.appendDummyInput()
@@ -303,10 +323,15 @@ blockly_html_payload = f"""
       init: function() {{
         this.appendValueInput("NAME")
             .setCheck(null)
-            .appendField("Run Scan Profile on");
+            .appendField("Target payload vector:");
         this.appendDummyInput()
-            .appendField("Scan Type:")
-            .appendField(new Blockly.FieldDropdown([["IP Geolocation Map","geoip"], ["DNS Infrastructure","dns"], ["Phone Vector OSINT","phone"]]), "SCANTYPE");
+            .appendField("Action:")
+            .appendField(new Blockly.FieldDropdown([
+              ["📱 Phone Vector OSINT","phone"], 
+              ["🗺️ IP Geolocation Map","geoip"], 
+              ["🔍 DNS Infrastructure","dns"],
+              ["🔄 Reverse DNS Pointer","rev_dns"]
+            ]), "SCANTYPE");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour(210);
@@ -315,14 +340,14 @@ blockly_html_payload = f"""
 
     Blockly.Blocks['display_result'] = {{
       init: function() {{
-        this.appendDummyInput().appendField("Log Result to Screen Console");
+        this.appendDummyInput().appendField("📟 Output to Stream Monitor Screen");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour(20);
       }}
     }};
 
-    // Code Generators
+    // Code Generation Engine Rules
     Blockly.Python.forBlock['custom_input_string'] = function(block) {{
       var text_raw_text = block.getFieldValue('RAW_TEXT');
       return ['"' + text_raw_text + '"', 0];
@@ -343,17 +368,18 @@ blockly_html_payload = f"""
       return 'show_output_to_user(current_result)\\n';
     }};
 
-    // 2. Initialize Core Blockly Workspace Studio Canvas
+    // Mount and Inject Large Sandbox Configuration
     var workspace = Blockly.inject('blocklyDiv', {{
       toolbox: document.getElementById('toolbox'),
-      grid: {{spacing: 20, length: 3, colour: '#252525', snap: true}},
+      grid: {{spacing: 20, length: 3, colour: '#1f2833', snap: true}},
       trashcan: true
     }});
 
+    // Workspace initialization
     var xmlText = '<xml><block type="action_scan" x="40" y="50"><field name="SCANTYPE">geoip</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">8.8.8.8</field></block></value><next><block type="display_result"></block></next></block></xml>';
     Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xmlText), workspace);
 
-    // 3. Absolute Pointer Draggable Window Event Loop Infrastructure Setup
+    // Absolute Pointer Draggable Window Event Loop Infrastructure Setup
     var element = document.getElementById("draggableTerminal");
     var header = document.getElementById("terminalHeader");
     var activeDragging = false;
@@ -398,8 +424,8 @@ components.html(blockly_html_payload, height=860, scrolling=False)
 # STAGE 2: SUBTERRANEAN CODE UNDERSTAGE PIPELINE (SCROLL DOWN)
 # ----------------------------------------------------
 st.markdown("---")
-st.markdown("### 📝 Subterranean Script Execution & Generation Hub")
-st.write("Scroll beneath the main workspace window here to review generated code syntax and trigger server pipelines manually:")
+st.markdown("### 📝 Subterranean Exploitation Script Generation Assembly Window")
+st.write("Scroll beneath the primary map arena workspace canvas to review structural code variables or fire deployment switches:")
 
 left_understage, right_understage = st.columns([8, 4])
 
@@ -412,13 +438,13 @@ with left_understage:
     )
 
 with right_understage:
-    st.info("💡 **IDE Workflow Tips**\n\n1. Arrange blocks on the top grid.\n2. Copy/Verify text strings inside the pipeline field buffer.\n3. Click below to fire runtime automation maps.")
-    trigger_pipeline_run = st.button("🚀 Fire Workspace Pipeline Execution", type="primary", use_container_width=True)
-    if st.button("🧹 Clear Output Logs Monitor", use_container_width=True):
-        st.session_state["console_terminal_logs"] = "Monitor log data cleared."
+    st.info("💡 **Hacker Workflow Manual**\n\n1. Snap recon components together inside the visual horizon top view.\n2. Verify the raw compilation metrics map correctly inside this text engine layout.\n3. Smash the terminal injection switch beneath to deploy operational actions.")
+    trigger_pipeline_run = st.button("🚀 INITIATE CYBER EXPLOIT PIPELINE", type="primary", use_container_width=True)
+    if st.button("🧹 Flush Monitor Streams Data", use_container_width=True):
+        st.session_state["console_terminal_logs"] = "Monitor buffer flushed."
         st.rerun()
 
 if trigger_pipeline_run:
-    with st.spinner("Processing network automation blocks execution sequences..."):
+    with st.spinner("Processing network telemetry loops execution sequences..."):
         compile_and_execute_blocks(user_pipeline_input)
         st.rerun()
