@@ -7,12 +7,12 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # ==========================================
-# 1. CORE INTERFACE LAYOUT & STYLING
+# 1. APPLICATION SETUP & THEME
 # ==========================================
 
 st.set_page_config(page_title="Horizon Studio Core", layout="wide")
 
-# Injection of cyber dark aesthetic variables
+# Fixed the unsafe_allow_html parameter to prevent layout crashes
 st.markdown(
     """
     <style>
@@ -31,7 +31,7 @@ st.title("⚡ Horizon Core Toolroom")
 st.caption("Visual Pipeline Engine Architecture")
 
 # ==========================================
-# 2. COMBINED WORKSPACE & LIVE PIPELINE CANVAS
+# 2. EMBEDDED VISUAL CANVAS ENGINE
 # ==========================================
 st.markdown("### 🗺️ Visual Workspace Floor")
 
@@ -54,7 +54,7 @@ blockly_html_payload = """
       overflow: hidden; 
     }
     
-    /* Top Toolbar Outside Grid Arena */
+    /* Top Control strip placed outside block arena workspace */
     #controlBar {
       height: 50px;
       background: #1f2833;
@@ -82,16 +82,24 @@ blockly_html_payload = """
       box-shadow: 0 0 15px rgba(102, 252, 241, 0.6);
     }
 
-    #containerDiv { position: relative; width: 100%; height: calc(100% - 52px); }
-    #blocklyDiv { width: 100%; height: 700px; }
+    #containerDiv { 
+      position: relative; 
+      width: 100%; 
+      height: calc(100% - 52px); 
+    }
     
-    /* Classic Floating Draggable Terminal Screen */
+    #blocklyDiv { 
+      width: 100%; 
+      height: 700px; 
+    }
+    
+    /* Side-by-side Monitor Layout Containers */
     #draggableTerminal {
       position: absolute;
       top: 20px;
       right: 20px;
-      width: 460px;
-      height: 340px;
+      width: 480px;
+      height: 330px;
       z-index: 999;
       background: rgba(11, 12, 16, 0.96);
       border: 2px solid #66fcf1;
@@ -100,6 +108,7 @@ blockly_html_payload = """
       display: flex;
       flex-direction: column;
     }
+    
     #terminalHeader {
       padding: 12px;
       cursor: move;
@@ -110,6 +119,7 @@ blockly_html_payload = """
       font-size: 11px;
       user-select: none;
     }
+    
     #terminalBody {
       flex: 1;
       padding: 15px;
@@ -121,23 +131,24 @@ blockly_html_payload = """
       white-space: pre-wrap;
     }
     
-    /* Lower Translation Output Logger Panel */
     #canvasDiagnostics {
       position: absolute;
       bottom: 40px;
-      left: 20px;
-      width: 440px;
-      height: 180px;
+      right: 20px;
+      width: 480px;
+      height: 260px;
       background: rgba(20, 24, 30, 0.95);
       border: 2px solid #1f2833;
       border-radius: 6px;
-      color: #66fcf1;
+      color: #1fec79;
       font-size: 11px;
       padding: 12px;
       overflow-y: auto;
       z-index: 998;
-      pointer-events: none;
       box-shadow: 0 0 15px rgba(31, 236, 121, 0.1);
+      font-family: monospace;
+      white-space: pre-wrap;
+      margin: 0;
     }
   </style>
 </head>
@@ -171,7 +182,7 @@ blockly_html_payload = """
   </xml>
 
   <script>
-    // Component Structural Custom Initialization
+    // Custom Blocks Schema Definitions
     Blockly.Blocks['when_sequence_activated'] = {
       init: function() {
         this.appendDummyInput().appendField("🚀 Start Block (Sequence)");
@@ -184,7 +195,7 @@ blockly_html_payload = """
       init: function() {
         this.appendDummyInput()
             .appendField("Type Target:")
-            .appendField(new Blockly.FieldTextInput("+15555550199"), "RAW_TEXT");
+            .appendField(new Blockly.FieldTextInput("google.com"), "RAW_TEXT");
         this.setOutput(true, "String");
         this.setColour(160);
       }
@@ -206,13 +217,13 @@ blockly_html_payload = """
       }
     };
 
-    // Translation Code Engine Mappings
+    // Translation Logic Mapping Engines
     Blockly.Python.forBlock['when_sequence_activated'] = function(block) { return '# [Start Sequence]\\n'; };
     Blockly.Python.forBlock['custom_input_string'] = function(block) { return ['"' + block.getFieldValue('RAW_TEXT') + '"', 0]; };
     Blockly.Python.forBlock['action_scan'] = function(block) {
       var type = block.getFieldValue('SCANTYPE');
       var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-      return 'run_utility_scan(' + val + ', "' + type + '")\\n';
+      return 'run_utility_scan(target=' + val + ', scan_mode="' + type + '")\\n';
     };
 
     var workspace = Blockly.inject('blocklyDiv', {
@@ -221,14 +232,14 @@ blockly_html_payload = """
       trashcan: true
     });
 
-    // Default Starting Configuration Elements
-    var xmlText = '<xml><block type="when_sequence_activated" x="40" y="40"><next><block type="action_scan"><field name="SCANTYPE">phone</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">+15555550199</field></block></value></block></next></block></xml>';
+    // Generate Default Starting Block Placements
+    var xmlText = '<xml><block type="when_sequence_activated" x="40" y="40"><next><block type="action_scan"><field name="SCANTYPE">dns</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">google.com</field></block></value></block></next></block></xml>';
     Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xmlText), workspace);
 
     var diagnosticsLogBox = document.getElementById("canvasDiagnostics");
     var terminalBodyBox = document.getElementById("terminalBody");
 
-    // Dynamic Live Code Compilation Updates
+    // Live Translation Loop logic running inside sandboxed browser window 
     function updateLiveTranslatedCode() {
       var allBlocks = workspace.getAllBlocks(false);
       var textOutput = "⚙️ LIVE TRANSLATED PYTHON CODE:\\n-----------------------------------\\n";
@@ -237,12 +248,15 @@ blockly_html_payload = """
       for (var i = 0; i < allBlocks.length; i++) {
         if (allBlocks[i].type === 'when_sequence_activated') {
           sequenceFound = true;
-          textOutput += "# Start Sequence Active Path\\n";
+          textOutput += "def execute_pipeline():\\n    # Start Sequence Active Path\\n";
           var nextBlock = allBlocks[i].getNextBlock();
           while (nextBlock) {
             var blockCode = Blockly.Python.blockToCode(nextBlock);
-            if (typeof blockCode === 'string') textOutput += blockCode;
-            else if (Array.isArray(blockCode)) textOutput += blockCode[0] + "\\n";
+            if (typeof blockCode === 'string') {
+              textOutput += "    " + blockCode;
+            } else if (Array.isArray(blockCode)) {
+              textOutput += "    " + blockCode[0] + "\\n";
+            }
             nextBlock = nextBlock.getNextBlock();
           }
         }
@@ -253,7 +267,7 @@ blockly_html_payload = """
       diagnosticsLogBox.innerText = textOutput;
     }
 
-    // Interactive Action Emulation Output Channels
+    // Fixed Syntax String Concat Bug Inside Execution Sequence Trigger
     function triggerPipelineProcessing() {
       var allBlocks = workspace.getAllBlocks(false);
       var streamLogs = "⚡ INITIALIZING PIPELINE DISPATCH SEQUENCE...\\n⚡ SYNCING RECON CORES...\\n\\n";
@@ -303,15 +317,14 @@ blockly_html_payload = """
       terminalBodyBox.innerText = streamLogs;
     }
 
-    // Attach button functionality to top-left bar outside canvas arena area
+    // Bind event hooks 
     document.getElementById("launchBtn").addEventListener("click", triggerPipelineProcessing);
-
-    // Track real-time movement changes instantly
     workspace.addChangeListener(updateLiveTranslatedCode);
+    
+    // Interval check fallbacks to capture text input value alterations
     setInterval(updateLiveTranslatedCode, 150);
-    setTimeout(updateLiveTranslatedCode, 250);
 
-    // Terminal Drag Setup Operations
+    // Draggable Terminal Element setup logic
     var windowFrame = document.getElementById("draggableTerminal");
     var topHeader = document.getElementById("terminalHeader");
     var isDragging = false;
@@ -335,5 +348,5 @@ blockly_html_payload = """
 </html>
 """
 
-# Render the layout components safely inside the fixed component arena
-components.html(blockly_html_payload, height=760, scrolling=False)
+# Render the application safely into an expanded layout frame
+components.html(blockly_html_payload, height=780, scrolling=False)
