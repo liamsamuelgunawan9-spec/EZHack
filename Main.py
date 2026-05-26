@@ -163,7 +163,7 @@ if "console_terminal_logs" not in st.session_state:
 if "live_compiled_code" not in st.session_state:
     st.session_state["live_compiled_code"] = "current_result = run_utility_scan('+15555550199', 'phone')\nshow_output_to_user(current_result)"
 
-# Synchronize internal backend structures directly from target parameter tracking
+# Synchronize parameters from URL string updates
 query_params = st.query_params
 if "code_sync" in query_params:
     incoming_code = query_params["code_sync"]
@@ -277,7 +277,6 @@ blockly_html_payload = f"""
   </xml>
 
   <script>
-    // Define custom sequence header block configuration attributes
     Blockly.Blocks['when_sequence_activated'] = {{
       init: function() {{
         this.appendDummyInput()
@@ -350,15 +349,13 @@ blockly_html_payload = f"""
       trashcan: true
     }});
 
-    // Draw foundational initialization block state hierarchy
     var xmlText = '<xml><block type="when_sequence_activated" id="sequence_root_node" x="40" y="40"><next><block type="action_scan"><field name="SCANTYPE">phone</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">+15555550199</field></block></value><next><block type="display_result"></block></next></block></next></block></xml>';
     Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xmlText), workspace);
 
     var lastRegisteredStateCode = "";
 
-    // 🕒 FIX: SEARCH ABSOLUTELY ALL BLOCKS EVERY 100MS FLAT TO DETECT THE ROOT STRUCUTRE
+    // 🕒 AGGRESSIVE LOOKUP: 0.1-second loop interval with corrected JavaScript brace nesting
     setInterval(function() {{
-      // getAllBlocks loops over every block object instance anywhere on the grid canvas
       var allWorkspaceBlocks = workspace.getAllBlocks(false);
       var targetSequenceHead = null;
       
@@ -371,14 +368,13 @@ blockly_html_payload = f"""
       
       var stringifiedBlockCode = "";
       
-      // Follow the structural sequence pipeline downward element by element
       if (targetSequenceHead) {{
         var executionStepBlock = targetSequenceHead.getNextBlock();
         while (executionStepBlock) {{
           var singleCompiledTranslation = Blockly.Python.blockToCode(executionStepBlock);
           if (typeof singleCompiledTranslation === 'string') {{
             stringifiedBlockCode += singleCompiledTranslation;
-          } else if (Array.isArray(singleCompiledTranslation)) {{
+          }} else if (Array.isArray(singleCompiledTranslation)) {{
             stringifiedBlockCode += singleCompiledTranslation[0];
           }}
           executionStepBlock = executionStepBlock.getNextBlock();
@@ -389,16 +385,15 @@ blockly_html_payload = f"""
 
       stringifiedBlockCode = stringifiedBlockCode.trim();
       
-      // If code layout output fluctuates, write update to parent runtime parameters immediately
       if (stringifiedBlockCode !== lastRegisteredStateCode) {{
         lastRegisteredStateCode = stringifiedBlockCode;
         var encodedValueString = encodeURIComponent(stringifiedBlockCode);
         var baseLocationUrl = window.parent.location.href.split('?')[0];
         window.parent.location.replace(baseLocationUrl + "?code_sync=" + encodedValueString);
       }}
-    }, 100);
+    }}, 100);
 
-    // Draggable canvas target terminal layout configuration rules
+    // Draggable window implementation logic
     var element = document.getElementById("draggableTerminal");
     var header = document.getElementById("terminalHeader");
     var activeDragging = false;
