@@ -11,7 +11,6 @@ import streamlit.components.v1 as components
 # ==========================================
 
 def perform_dns_lookup(target: str) -> str:
-    """Finds the IP address belonging to a website name."""
     clean_host = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
     if not clean_host:
         return "❌ ERROR: You didn't enter a website name!"
@@ -24,13 +23,12 @@ def perform_dns_lookup(target: str) -> str:
             f"🟢 SUCCESS: Found the server address!"
         )
     except socket.gaierror:
-        return f"❌ ERROR:\n  └── Could not find a server for '{clean_host}'. Check your spelling!"
+        return f"❌ ERROR:\n  └── Could not find a server for '{clean_host}'. Check spelling!"
     except Exception as e:
         return f"💥 SYSTEM CRASH: {str(e)}"
 
 
 def perform_reverse_dns(target: str) -> str:
-    """Finds the website domain name using an IP address."""
     clean_ip = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
     if not clean_ip:
         return "❌ ERROR: You didn't enter an IP address!"
@@ -47,7 +45,6 @@ def perform_reverse_dns(target: str) -> str:
 
 
 def perform_ip_geolocation(target: str) -> str:
-    """Finds the geographic location information of an IP or Domain."""
     clean_host = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
     if not clean_host:
         return "❌ ERROR: You didn't enter an IP or Website!"
@@ -80,7 +77,6 @@ def perform_ip_geolocation(target: str) -> str:
 
 
 def perform_phone_scan(target_phone: str) -> str:
-    """Breaks down a phone number into readable provider network details."""
     clean_phone = str(target_phone).strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
     if not clean_phone:
         return "❌ ERROR: You didn't enter any phone digits!"
@@ -132,8 +128,7 @@ def show_output_to_user(data_result_string: str):
 
 
 def compile_and_execute_blocks(compiled_script_text: str):
-    st.session_state["console_terminal_logs"] = "⚡ MONITOR STREAM ACTIVE...\n⚡ EXECUTING ACTIVE CANVA BLOCKS:\n"
-    
+    st.session_state["console_terminal_logs"] = "⚡ MONITOR STREAM ACTIVE...\n⚡ EXECUTING ACTIVE CANVAS BLOCKS:\n"
     restricted_sandbox_globals = {
         "run_utility_scan": run_utility_scan,
         "show_output_to_user": show_output_to_user,
@@ -151,38 +146,46 @@ def compile_and_execute_blocks(compiled_script_text: str):
 
 st.set_page_config(page_title="EZHack Horizon Studio", layout="wide")
 
-# Core Memory Blocks Initialization
+# Persistent Session Memory Backstops
 if "console_terminal_logs" not in st.session_state:
-    st.session_state["console_terminal_logs"] = "💻 [TERMINAL READY] Construct your automation block structure and click deploy..."
+    st.session_state["console_terminal_logs"] = "💻 [READY] Construct your layout and hit launch circuit..."
 
-if "live_compiled_code" not in st.session_state:
-    st.session_state["live_compiled_code"] = "current_result = run_utility_scan('8.8.8.8', 'geoip')\nshow_output_to_user(current_result)"
+# Check query string parameter for live block updates
+current_url_code = st.query_params.get("code", "")
+if current_url_code:
+    st.session_state["live_compiled_code"] = current_url_code
+elif "live_compiled_code" not in st.session_state:
+    st.session_state["live_compiled_code"] = "current_result = run_utility_scan('+1234567890', 'phone')\nshow_output_to_user(current_result)"
 
 # ----------------------------------------------------
-# 🪐 TOP CONTROLS ROW & TOP-LEFT LAUNCH BUTTON
+# 🪐 TOP-LEFT CONTROLS ROW (NO MORE SCROLLING)
 # ----------------------------------------------------
-title_col, action_col = st.columns([8, 4])
+title_col, button_col_1, button_col_2 = st.columns([6, 3, 3])
 
 with title_col:
-    st.title("⚡ EZHack Core Playground — Horizon Studio")
-    st.caption("Cyberpunk workspace canvas. Cool aesthetics layered with simple, easy-to-read targeting modules.")
+    st.title("⚡ Horizon Core Toolroom")
+    st.caption("Clean drag-and-drop workspace engine built for direct operations execution.")
 
-with action_col:
-    st.write("")  # Alignment spacing
+with button_col_1:
     st.write("")
-    # Top-Left aligned launcher matrix switch
-    trigger_pipeline_run = st.button("🚀 DEPLOY ACTIVE PIPELINE", type="primary", use_container_width=True)
+    trigger_pipeline_run = st.button("🚀 LAUNCH CIRCUIT PIPELINE", type="primary", use_container_width=True)
 
-# Process workspace script directly on top click loop
+with button_col_2:
+    st.write("")
+    if st.button("🧹 Flush Monitor Logs", use_container_width=True):
+        st.session_state["console_terminal_logs"] = "Monitor buffer cleared."
+        st.rerun()
+
+# Run current workspace parameters instantly on click
 if trigger_pipeline_run:
     with st.spinner("Processing automated actions code sequences..."):
         compile_and_execute_blocks(st.session_state["live_compiled_code"])
 
-# Safely wrap string injection payloads 
+# Safely wrap internal data frames for visual layout execution passing
 safe_terminal_logs = st.session_state["console_terminal_logs"].replace("`", "'").replace("\\", "\\\\").replace("\n", "\\n")
 
 # ----------------------------------------------------
-# STAGE 1: FULL-WINDOW ARENA DISPLAY CANVAS (TOP)
+# STAGE 1: FULL-WINDOW BLOCKLY GRID WORKSPACE
 # ----------------------------------------------------
 st.markdown("### 🗺️ Visual Studio Workspace Canvas")
 
@@ -198,17 +201,16 @@ blockly_html_payload = f"""
   <style>
     html, body {{ height: 100%; margin: 0; padding: 0; background-color: #0b0c10; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }}
     #containerDiv {{ position: relative; width: 100%; height: 840px; }}
-    #blocklyDiv {{ width: 100%; height: 100%; border: 2px solid #1f2833; border-radius: 6px; box-shadow: inset 0 0 30px rgba(0,0,0,0.9); }}
-    .blocklyTreeLabel {{ color: #66fcf1 !important; font-weight: bold; font-size: 13px; }}
+    #blocklyDiv {{ width: 100%; height: 100%; border: 2px solid #1f2833; border-radius: 6px; }}
     
     #draggableTerminal {{
       position: absolute;
       top: 30px;
       right: 30px;
-      width: 480px;
-      height: 440px;
+      width: 490px;
+      height: 460px;
       z-index: 999;
-      background: rgba(11, 12, 16, 0.94);
+      background: rgba(11, 12, 16, 0.96);
       border: 2px solid #66fcf1;
       border-radius: 8px;
       box-shadow: 0 0 25px rgba(102, 252, 241, 0.3);
@@ -223,7 +225,7 @@ blockly_html_payload = f"""
       color: #66fcf1;
       font-weight: bold;
       font-size: 11px;
-      letter-spacing: 1.5px;
+      letter-spacing: 1px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -241,7 +243,6 @@ blockly_html_payload = f"""
       line-height: 1.5;
       overflow-y: auto;
       white-space: pre-wrap;
-      border-radius: 0 0 6px 6px;
     }}
     .window-dots {{ display: flex; gap: 6px; }}
     .dot {{ width: 10px; height: 10px; border-radius: 50%; }}
@@ -270,26 +271,13 @@ blockly_html_payload = f"""
       <block type="custom_input_string"></block>
       <block type="target"></block>
       <block type="text"></block>
-      <block type="text_join"></block>
     </category>
-    <category name="🎯 Scanners &amp; Loops" colour="210">
+    <category name="🎯 Scanners &amp; Actions" colour="210">
       <block type="action_scan"></block>
-      <block type="controls_if"></block>
-      <block type="logic_compare"></block>
-      <block type="logic_operation"></block>
-      <block type="controls_repeat_ext">
-        <value name="TIMES"><block type="math_number"><field name="NUM">3</field></block></value>
-      </block>
     </category>
-    <category name="📋 Target Lists" colour="260">
-      <block type="lists_create_with"></block>
-      <block type="lists_repeat"></block>
-    </category>
-    <category name="🖥️ Screen Outputs" colour="20">
+    <category name="🖥️ Monitor Controls" colour="20">
       <block type="display_result"></block>
     </category>
-    <sep></sep>
-    <category name="⚙️ Variables" colour="330" custom="VARIABLE"></category>
   </xml>
 
   <script>
@@ -297,7 +285,7 @@ blockly_html_payload = f"""
       init: function() {{
         this.appendDummyInput()
             .appendField("Type Target:")
-            .appendField(new Blockly.FieldTextInput("123-456-7890"), "RAW_TEXT");
+            .appendField(new Blockly.FieldTextInput("555-0199"), "RAW_TEXT");
         this.setOutput(true, "String");
         this.setColour(160);
       }}
@@ -342,13 +330,11 @@ blockly_html_payload = f"""
     }};
 
     Blockly.Python.forBlock['custom_input_string'] = function(block) {{
-      var text_raw_text = block.getFieldValue('RAW_TEXT');
-      return ['"' + text_raw_text + '"', 0];
+      return ['"' + block.getFieldValue('RAW_TEXT') + '"', 0];
     }};
 
     Blockly.Python.forBlock['target'] = function(block) {{
-      var field_target = block.getFieldValue('Target');
-      return ['"' + field_target + '"', 0];
+      return ['"' + block.getFieldValue('Target') + '"', 0];
     }};
 
     Blockly.Python.forBlock['action_scan'] = function(block) {{
@@ -367,84 +353,42 @@ blockly_html_payload = f"""
       trashcan: true
     }});
 
-    // Initialize default structure with explicit phone scan setup 
+    // Setup clear structural defaults
     var xmlText = '<xml><block type="action_scan" x="40" y="50"><field name="SCANTYPE">phone</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">+1234567890</field></block></value><next><block type="display_result"></block></next></block></xml>';
     Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xmlText), workspace);
 
-    // 🔄 CRITICAL FIX: Push live workspace block data directly back into Python state string
+    // Dynamic Query Parameter Auto-sync Rule 
     function updateLivePythonCode() {{
       var code = Blockly.Python.workspaceToCode(workspace);
-      // Post text change to stream parent link loop window
-      window.parent.postMessage({{type: 'blockly_code_update', code: code}}, '*');
+      var currentUrl = new URL(window.parent.location.href);
+      currentUrl.searchParams.set("code", code);
+      window.parent.history.replaceState({{}}, "", currentUrl.toString());
     }}
+    
     workspace.addChangeListener(updateLivePythonCode);
-    setTimeout(updateLivePythonCode, 500);
+    setTimeout(updateLivePythonCode, 400);
 
-    // Draggable script handler loop
+    // Draggable Window Configs
     var element = document.getElementById("draggableTerminal");
     var header = document.getElementById("terminalHeader");
     var activeDragging = false;
-    var currentX, currentY, initialX, initialY;
-    var xOffset = 0, yOffset = 0;
+    var currentX, currentY, initialX, initialY, xOffset = 0, yOffset = 0;
 
-    header.addEventListener("mousedown", dragStart, false);
-    document.addEventListener("mouseup", dragEnd, false);
-    document.addEventListener("mousemove", drag, false);
-
-    function dragStart(e) {{
-      initialX = e.clientX - xOffset;
-      initialY = e.clientY - yOffset;
-      if (e.target === header || header.contains(e.target)) {{ activeDragging = true; }}
-    }}
-    function dragEnd(e) {{ initialX = currentX; initialY = currentY; activeDragging = false; }}
-    function drag(e) {{
+    header.addEventListener("mousedown", function(e) {{
+      initialX = e.clientX - xOffset; initialY = e.clientY - yOffset;
+      if (e.target === header || header.contains(e.target)) activeDragging = true;
+    }}, false);
+    document.addEventListener("mouseup", function() {{ activeDragging = false; }}, false);
+    document.addEventListener("mousemove", function(e) {{
       if (activeDragging) {{
         e.preventDefault();
-        currentX = e.clientX - initialX;
-        currentY = e.clientY - initialY;
-        xOffset = currentX;
-        yOffset = currentY;
+        currentX = e.clientX - initialX; currentY = e.clientY - initialY;
+        xOffset = currentX; yOffset = currentY;
         element.style.transform = "translate3d(" + currentX + "px, " + currentY + "px, 0)";
       }}
-    }}
+    }}, false);
   </script>
 </body>
 </html>
 """
-
-# Embed the responsive canvas overlay engine
 components.html(blockly_html_payload, height=860, scrolling=False)
-
-# ----------------------------------------------------
-# STAGE 2: SUBTERRANEAN REAL-TIME SYNC ENGINE (SCROLL DOWN)
-# ----------------------------------------------------
-st.markdown("---")
-st.markdown("### 📝 Code Generation Window")
-st.write("This box automatically syncs text in real-time when you modify your blocks above:")
-
-# Realtime browser stream updates listener loop hooks
-html_listener = """
-<script>
-window.addEventListener('message', function(event) {
-    if (event.data && event.data.type === 'blockly_code_update') {
-        const urlParams = new URLSearchParams(window.location.search);
-        // Force sync updates directly over parent parameters
-        window.parent.document.dispatchEvent(new CustomEvent('update_code', {detail: event.data.code}));
-    }
-});
-</script>
-"""
-components.html(html_listener, height=0)
-
-# Track block changes live through standard text boxes layout view
-user_pipeline_input = st.text_area(
-    label="Generated Automation Script String Source File View:",
-    value=st.session_state["live_compiled_code"],
-    height=160,
-    disabled=True,  # Keeps it read-only since the arena automatically outputs code here!
-)
-
-# Optional Log Flush Action Utility Switch
-if st.button("🧹 Clear Output Logs Monitor", use_container_width=True):
-    st.session_state["console_terminal_logs"] = "Monitor buffer cleared."
-    st.rerun()
