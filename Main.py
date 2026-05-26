@@ -1,22 +1,19 @@
-import os
-import json
-import random
 import streamlit as st
 import streamlit.components.v1 as components
 
 # ==========================================
-# 1. CORE INTERFACE ARCHITECTURE
+# 1. CORE INTERFACE LAYOUT
 # ==========================================
 
 st.set_page_config(page_title="EZHack Horizon Studio", layout="wide")
 
+# Top Header Bar
 st.title("⚡ Horizon Core Toolroom")
-st.caption("Multi-sequence layout compilation engine.")
+st.caption("Visual Configuration Engine")
 
 # ==========================================
-# 2. VISUAL CANVAS EMBED WITH FLOATING TERMINAL UI
+# 2. COMBINED WORKSPACE & EXECUTION CANVAS
 # ==========================================
-st.markdown("### 🗺️ Visual Studio Workspace Canvas")
 
 blockly_html_payload = """
 <!DOCTYPE html>
@@ -33,19 +30,48 @@ blockly_html_payload = """
       margin: 0; 
       padding: 0; 
       background-color: #0b0c10; 
-      font-family: sans-serif; 
+      font-family: monospace; 
       overflow: hidden; 
     }
-    #containerDiv { position: relative; width: 100%; height: 600px; }
-    #blocklyDiv { width: 100%; height: 100%; border: 2px solid #1f2833; border-radius: 6px; }
     
-    /* Draggable Terminal Styling Window */
+    /* Top Toolbar Component */
+    #controlBar {
+      height: 50px;
+      background: #1f2833;
+      border-bottom: 2px solid #45a29e;
+      display: flex;
+      align-items: center;
+      padding-left: 20px;
+    }
+    
+    #launchBtn {
+      background: #1fec79;
+      color: #0b0c10;
+      border: none;
+      padding: 8px 20px;
+      font-size: 12px;
+      font-weight: bold;
+      border-radius: 4px;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(31, 236, 121, 0.4);
+      transition: all 0.2s ease;
+    }
+    
+    #launchBtn:hover {
+      background: #66fcf1;
+      box-shadow: 0 0 15px rgba(102, 252, 241, 0.6);
+    }
+
+    #containerDiv { position: relative; width: 100%; height: calc(100% - 52px); }
+    #blocklyDiv { width: 100%; height: 100%; }
+    
+    /* Classic Draggable Cyber Terminal */
     #draggableTerminal {
       position: absolute;
       top: 20px;
       right: 20px;
-      width: 440px;
-      height: 320px;
+      width: 460px;
+      height: 340px;
       z-index: 999;
       background: rgba(11, 12, 16, 0.96);
       border: 2px solid #66fcf1;
@@ -55,7 +81,7 @@ blockly_html_payload = """
       flex-direction: column;
     }
     #terminalHeader {
-      padding: 10px;
+      padding: 12px;
       cursor: move;
       background: #1f2833;
       border-bottom: 2px solid #45a29e;
@@ -66,46 +92,47 @@ blockly_html_payload = """
     }
     #terminalBody {
       flex: 1;
-      padding: 12px;
+      padding: 15px;
       margin: 0;
       background: #0b0c10;
       color: #1fec79;
-      font-family: monospace;
       font-size: 12px;
       overflow-y: auto;
       white-space: pre-wrap;
     }
     
-    /* Internal Engine Status Box */
+    /* Lower Diagnostic Box */
     #canvasDiagnostics {
       position: absolute;
-      bottom: 15px;
-      left: 15px;
-      width: 390px;
-      height: 140px;
+      bottom: 20px;
+      left: 20px;
+      width: 400px;
+      height: 120px;
       background: rgba(20, 24, 30, 0.95);
-      border: 2px solid #1fec79;
+      border: 2px solid #1f2833;
       border-radius: 6px;
-      color: #1fec79;
-      font-family: monospace;
+      color: #45a29e;
       font-size: 11px;
       padding: 12px;
       overflow-y: auto;
       z-index: 998;
       pointer-events: none;
-      box-shadow: 0 0 15px rgba(31, 236, 121, 0.2);
     }
   </style>
 </head>
 <body>
 
+  <div id="controlBar">
+    <button id="launchBtn">🚀 LAUNCH CIRCUIT PIPELINE</button>
+  </div>
+
   <div id="containerDiv">
     <div id="draggableTerminal">
       <div id="terminalHeader">🤖 LIVE MONITOR OUTPUT STREAM</div>
-      <pre id="terminalBody">💻 [READY] Awaiting system pipeline generation execution signals...</pre>
+      <pre id="terminalBody">💻 [SYSTEM IDLE] Setup a sequence on the workspace canvas and click 'LAUNCH CIRCUIT PIPELINE'...</pre>
     </div>
     
-    <div id="canvasDiagnostics">⚙️ EVENT ENGINE SYSTEM LOGGER:<br>🟢 Core systems ready. Drop a layout block to execute tracking...</div>
+    <div id="canvasDiagnostics">⚙️ LIVE ANALYSIS TRANSLATOR:<br>Awaiting block arrangement validation...</div>
     
     <div id="blocklyDiv"></div>
   </div>
@@ -123,7 +150,7 @@ blockly_html_payload = """
   </xml>
 
   <script>
-    // Define Block Schematics Internals
+    // Define Workspace Custom Blocks
     Blockly.Blocks['when_sequence_activated'] = {
       init: function() {
         this.appendDummyInput().appendField("🚀 Start Block (Sequence)");
@@ -136,7 +163,7 @@ blockly_html_payload = """
       init: function() {
         this.appendDummyInput()
             .appendField("Type Target:")
-            .appendField(new Blockly.FieldTextInput("+15555550199"), "RAW_TEXT");
+            .appendField(new Blockly.FieldTextInput("example.com"), "RAW_TEXT");
         this.setOutput(true, "String");
         this.setColour(160);
       }
@@ -158,7 +185,7 @@ blockly_html_payload = """
       }
     };
 
-    // Code compilation generator linkages
+    // Mapping code translation strings
     Blockly.Python.forBlock['when_sequence_activated'] = function(block) { return '# [Start Sequence]\\n'; };
     Blockly.Python.forBlock['custom_input_string'] = function(block) { return ['"' + block.getFieldValue('RAW_TEXT') + '"', 0]; };
     Blockly.Python.forBlock['action_scan'] = function(block) {
@@ -173,83 +200,97 @@ blockly_html_payload = """
       trashcan: true
     });
 
-    // Populate the initial layout components
+    // Populate standard workspace setup
     var xmlText = '<xml><block type="when_sequence_activated" x="40" y="40"><next><block type="action_scan"><field name="SCANTYPE">phone</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">+15555550199</field></block></value></block></next></block></xml>';
     Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xmlText), workspace);
 
     var diagnosticsLogBox = document.getElementById("canvasDiagnostics");
     var terminalBodyBox = document.getElementById("terminalBody");
 
-    // ⚡ INSTANT LIVE RE-COMPILER RUNTIME MATRIX
-    function compileAndRenderLayout() {
+    // Real-time translation loop tracker
+    function updateCodeView() {
       var allBlocks = workspace.getAllBlocks(false);
-      var sequenceCount = 0;
+      var textOutput = "⚙️ GENERATED TRANSLATION SCRIPT:\\n-----------------------------------\\n";
       
-      var loggerReport = "⚙️ ENGINE DIAGNOSTICS LOG:<br>✨ Total Blocks Active: " + allBlocks.length + "<br>";
-      var virtualTerminalConsoleStream = "⚡ MONITOR STREAM ACTIVE...\\n⚡ EXECUTING ACTIVE SEQUENCE CHAINS:\\n\\n";
+      var sequenceFound = false;
+      for (var i = 0; i < allBlocks.length; i++) {
+        if (allBlocks[i].type === 'when_sequence_activated') {
+          sequenceFound = true;
+          textOutput += "# Start Sequence Chain Found\\n";
+          var nextBlock = allBlocks[i].getNextBlock();
+          while (nextBlock) {
+            var blockCode = Blockly.Python.blockToCode(nextBlock);
+            if (typeof blockCode === 'string') textOutput += blockCode;
+            else if (Array.isArray(blockCode)) textOutput += blockCode[0] + "\\n";
+            nextBlock = nextBlock.getNextBlock();
+          }
+        }
+      }
+      if (!sequenceFound) {
+        textOutput += "# ⚠️ Status: Connect blocks to a 'Start Block' node.";
+      }
+      diagnosticsLogBox.innerText = textOutput;
+    }
+
+    // Pipeline Execution Stream
+    function executePipeline() {
+      var allBlocks = workspace.getAllBlocks(false);
+      var consoleStream = "⚡ PIPELINE RUN SIGNAL RECEIVED...\\n⚡ INITIALIZING CORES...\\n\\n";
+      var runsCount = 0;
 
       for (var i = 0; i < allBlocks.length; i++) {
         if (allBlocks[i].type === 'when_sequence_activated') {
-          sequenceCount++;
-          loggerReport += "<span style='color:#66fcf1;'>🏁 Registered Sequence #" + sequenceCount + " (ID: " + allBlocks[i].id.substring(0,5) + ")</span><br>";
-          virtualTerminalConsoleStream += "▶️ [Sequence #" + sequenceCount + " Started]\\n";
+          runsCount++;
+          consoleStream += "▶️ [Executing Layout Chain #" + runsCount + "]\\n";
           
-          var nextBlock = allBlocks[i].getNextBlock();
-          var directSteps = 0;
+          var current = allBlocks[i].getNextBlock();
+          if (!current) {
+            consoleStream += "   └── ⚠️ Empty path. Attach action modules below the Start block.\\n";
+          }
           
-          while (nextBlock) {
-            directSteps++;
-            if (nextBlock.type === 'action_scan') {
-              var selectedMode = nextBlock.getFieldValue('SCANTYPE');
-              // Extract text target value fields safely
-              var targetInputStr = "[Empty Target Input]";
-              var targetBlock = nextBlock.getInputTargetBlock('NAME');
+          while (current) {
+            if (current.type === 'action_scan') {
+              var selectedMode = current.getFieldValue('SCANTYPE');
+              var inputVal = "[Empty Input]";
+              var targetBlock = current.getInputTargetBlock('NAME');
               if (targetBlock && targetBlock.getFieldValue('RAW_TEXT')) {
-                targetInputStr = targetBlock.getFieldValue('RAW_TEXT');
+                inputVal = targetBlock.getFieldValue('RAW_TEXT');
               }
               
-              virtualTerminalConsoleStream += "   ├── Running: [" + selectedMode.toUpperCase() + "] Mode on target: " + targetInputStr + "\\n";
+              consoleStream += "   ├── Calling: " + selectedMode.toUpperCase() + " Module on target [" + inputVal + "]\\n";
               
-              // Localized simulation mock updates
               if (selectedMode === "phone") {
-                virtualTerminalConsoleStream += "   └── 📡 [SCAN REPORT]: Target: " + targetInputStr + " | Location Code: US/CA | Active Circuit Verification: OK\\n";
+                consoleStream += "   └── 📡 [SCAN INITIALIZED]: Routing number trace... Data structure validated successfully.\\n";
               } else if (selectedMode === "dns") {
-                virtualTerminalConsoleStream += "   └── 🔍 [SCAN REPORT]: Host resolve check performed on string target target successfully.\\n";
+                consoleStream += "   └── 🔍 [RESOLVE INITIALIZED]: Fetching address record context mappings... Check complete.\\n";
               } else {
-                virtualTerminalConsoleStream += "   └── 🗺️ [SCAN REPORT]: Query parsed through provider routing blocks successfully.\\n";
+                consoleStream += "   └── 🗺️ [GEOLOCATION INITIALIZED]: Mapping coordinates data path... Verification sequence completed.\\n";
               }
             }
-            nextBlock = nextBlock.getNextBlock();
+            current = current.getNextBlock();
           }
-          loggerReport += "   └── Connected chain path height: " + directSteps + " blocks.\\n";
-          virtualTerminalConsoleStream += "   └── ✔️ Sequence sequence path processing finished.\\n\\n";
+          consoleStream += "   └── ✔️ Layout pipeline branch evaluation done.\\n\\n";
         }
       }
 
-      if (sequenceCount === 0) {
-        loggerReport += "<span style='color:#ff3366;'>⚠️ CRITICAL STATUS: Missing Sequence Start block!</span><br>";
-        virtualTerminalConsoleStream += "⚠️ WARNING: Connect modules into an active Start Block component to run analytics processing loops.";
+      if (runsCount === 0) {
+        consoleStream += "❌ EXECUTION ABORTED: Missing a 'Start Block (Sequence)' step on the layout floor.";
+      } else {
+        consoleStream += "🟢 ALL RECON CIRCUITS PROCESSED SUCCESSFULLY.";
       }
 
-      diagnosticsLogBox.innerHTML = loggerReport;
-      terminalBodyBox.innerText = virtualTerminalConsoleStream;
+      terminalBodyBox.innerText = consoleStream;
     }
 
-    // Assign change monitors for explicit canvas event trigger reactions
-    workspace.addChangeListener(function(event) {
-      if (event.type === Blockly.Events.BLOCK_CREATE || 
-          event.type === Blockly.Events.BLOCK_MOVE || 
-          event.type === Blockly.Events.BLOCK_CHANGE || 
-          event.type === Blockly.Events.BLOCK_DELETE) {
-        compileAndRenderLayout();
-      }
-    });
+    // Attach button listener directly outside the canvas frame floor
+    document.getElementById("launchBtn").addEventListener("click", executePipeline);
 
-    // 0.1s heartbeat checking system loops to capture ongoing typing changes instantly
-    setInterval(compileAndRenderLayout, 100);
-    setTimeout(compileAndRenderLayout, 200);
+    // Watch workspace edits dynamically
+    workspace.addChangeListener(updateCodeView);
+    setInterval(updateCodeView, 200);
+    setTimeout(updateCodeView, 300);
 
-    // Terminal Drag Setup Operations
+    // Draggable Window Script Config Structure
     var windowFrame = document.getElementById("draggableTerminal");
     var topHeader = document.getElementById("terminalHeader");
     var isDragging = false;
@@ -273,4 +314,4 @@ blockly_html_payload = """
 </html>
 """
 
-components.html(blockly_html_payload, height=620, scrolling=False)
+components.html(blockly_html_payload, height=680, scrolling=False)
