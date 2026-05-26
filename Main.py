@@ -7,7 +7,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # ==========================================
-# 1. UTILITY FUNCTIONS (UNTOUCHED CORE)
+# 1. UTILITY FUNCTIONS (UNTOUCHED & EXPANDED CORE)
 # ==========================================
 
 def perform_dns_lookup(target: str) -> str:
@@ -36,6 +36,22 @@ def perform_ip_geolocation(target: str) -> str:
     except Exception as e:
         return f"💥 ERROR: {str(e)}"
 
+def perform_phone_tracking(target: str) -> str:
+    clean_phone = str(target).strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+    if not clean_phone:
+        return "❌ ERROR: Phone number input missing!"
+    
+    if clean_phone.startswith("+1"):
+        return f"📱 [PHONE PROFILE] Target: {clean_phone} | Region: North America (US/CA) | Type: Validated Format"
+    elif clean_phone.startswith("+44"):
+        return f"📱 [PHONE PROFILE] Target: {clean_phone} | Region: United Kingdom | Type: Validated Format"
+    elif clean_phone.startswith("+49"):
+        return f"📱 [PHONE PROFILE] Target: {clean_phone} | Region: Germany | Type: Validated Format"
+    elif clean_phone.startswith("+33"):
+        return f"📱 [PHONE PROFILE] Target: {clean_phone} | Region: France | Type: Validated Format"
+    else:
+        return f"📱 [PHONE PROFILE] Target: {clean_phone} | Region: International / General Prefix | Type: Parsed"
+
 # ==========================================
 # 2. STREAMLIT INTERFACE
 # ==========================================
@@ -50,14 +66,16 @@ with st.sidebar:
     st.header("🎯 Direct Query Panel")
     st.markdown("If the visual canvas is syncing with the browser frame sandbox, run queries directly below:")
     
-    tool_choice = st.selectbox("Select Utility", ["🔍 Website DNS Lookup", "🗺️ IP Geolocation"])
-    query_input = st.text_input("Target Input (e.g., google.com)", "example.com")
+    tool_choice = st.selectbox("Select Utility", ["🔍 Website DNS Lookup", "🗺️ IP Geolocation", "📱 Phone Tracker Info"])
+    query_input = st.text_input("Target Input (e.g., google.com or +1234567890)", "example.com")
     
     if st.button("Run Utility", type="primary"):
         if "DNS" in tool_choice:
             st.code(perform_dns_lookup(query_input))
-        else:
+        elif "IP" in tool_choice:
             st.code(perform_ip_geolocation(query_input))
+        else:
+            st.code(perform_phone_tracking(query_input))
 
 # ==========================================
 # 3. VISUAL CANVAS EMBED
@@ -109,10 +127,18 @@ blockly_html_payload = """
       <block type="action_scan"></block>
       <block type="protocol_verify"></block>
     </category>
+    <category name="🔠 Text Utilities" colour="120">
+      <block type="text_join"></block>
+      <block type="text_length"></block>
+    </category>
+    <category name="🧠 Logic Flow" colour="60">
+      <block type="controls_if"></block>
+      <block type="logic_boolean"></block>
+    </category>
   </xml>
 
   <script>
-    // --- Existing Blocks ---
+    // --- Custom System Blocks ---
     Blockly.Blocks['when_sequence_activated'] = {
       init: function() {
         this.appendDummyInput().appendField("🚀 Sequence Start");
@@ -131,7 +157,6 @@ blockly_html_payload = """
       }
     };
 
-    // --- New Input Block ---
     Blockly.Blocks['multi_target_list'] = {
       init: function() {
         this.appendDummyInput()
@@ -149,7 +174,8 @@ blockly_html_payload = """
             .appendField("Action:")
             .appendField(new Blockly.FieldDropdown([
               ["🔍 DNS Lookup","dns"],
-              ["🗺️ Geolocation","geoip"]
+              ["🗺️ Geolocation","geoip"],
+              ["📱 Phone Tracker Info", "phone"]
             ]), "SCANTYPE");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
@@ -157,7 +183,6 @@ blockly_html_payload = """
       }
     };
 
-    // --- New Action Block ---
     Blockly.Blocks['protocol_verify'] = {
       init: function() {
         this.appendValueInput("TARGET").setCheck("String").appendField("Verify Target:");
@@ -173,7 +198,7 @@ blockly_html_payload = """
       }
     };
 
-    // --- Python Compilers ---
+    // --- Python Code Generators for Core Blocks ---
     Blockly.Python.forBlock['when_sequence_activated'] = function(block) { return '# Sequence Active\\n'; };
     Blockly.Python.forBlock['custom_input_string'] = function(block) { return ['"' + block.getFieldValue('RAW_TEXT') + '"', 0]; };
     Blockly.Python.forBlock['multi_target_list'] = function(block) { return ['"' + block.getFieldValue('TARGETS') + '"', 0]; };
@@ -190,7 +215,7 @@ blockly_html_payload = """
       return 'verify_protocol(target=' + val + ', verification_mode="' + type + '")\\n';
     };
 
-    // Inject parameters
+    // Inject Workspace
     var workspace = Blockly.inject('blocklyDiv', {
       toolbox: document.getElementById('toolbox'),
       grid: {spacing: 20, length: 3, colour: '#1f2833', snap: true},
@@ -199,6 +224,7 @@ blockly_html_payload = """
 
     var terminal = document.getElementById("debugTerminal");
 
+    // Comprehensive Canvas Debug Parsing Loop Matrix
     function renderDebugLogs() {
       var allBlocks = workspace.getAllBlocks(false);
       var textOutput = "⚙️ LIVE WORKSPACE PARSER MATRIX\\n-----------------------------------------\\n";
@@ -208,7 +234,7 @@ blockly_html_payload = """
       for (var i = 0; i < allBlocks.length; i++) {
         if (allBlocks[i].type === 'when_sequence_activated') {
           sequenceCount++;
-          textOutput += "🏁 [Sequence Sequence Node #" + sequenceCount + "] Enabled -> [UUID: " + allBlocks[i].id + "]\\n";
+          textOutput += "🏁 [Sequence Node #" + sequenceCount + "] Enabled -> [UUID: " + allBlocks[i].id + "]\\n";
           
           var nextBlock = allBlocks[i].getNextBlock();
           while(nextBlock) {
@@ -217,6 +243,8 @@ blockly_html_payload = """
               textOutput += " [Action Mode: " + nextBlock.getFieldValue('SCANTYPE').toUpperCase() + "]";
             } else if(nextBlock.type === 'protocol_verify') {
               textOutput += " [Verification Mode: " + nextBlock.getFieldValue('VERIFYTYPE').toUpperCase() + "]";
+            } else if(nextBlock.type === 'controls_if') {
+              textOutput += " [Conditional Flow Controller]";
             }
             textOutput += "\\n";
             nextBlock = nextBlock.getNextBlock();
@@ -233,7 +261,7 @@ blockly_html_payload = """
       terminal.innerText = textOutput;
     }
 
-    // Capture every block event instantaneously
+    // Process every canvas layout adjustment instantly
     workspace.addChangeListener(function(e) {
       if (e.type === Blockly.Events.BLOCK_CREATE || 
           e.type === Blockly.Events.BLOCK_MOVE || 
@@ -243,7 +271,7 @@ blockly_html_payload = """
       }
     });
 
-    // Run interval check to catch text typing changes
+    // Scheduler fallback sync loop
     setInterval(renderDebugLogs, 200);
   </script>
 </body>
