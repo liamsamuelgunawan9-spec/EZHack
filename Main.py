@@ -21,6 +21,11 @@ def perform_dns_lookup(target: str) -> str:
     clean_host = clean_host.replace("https://", "").replace("http://", "").split("/")[0]
     if not clean_host:
         return "❌ ERROR: Target missing!"
+    
+    # Safeguard against phone numbers being passed to DNS
+    if clean_host.startswith("+") or clean_host.isdigit():
+        return "⚠️ ROUTING WARN: Cannot perform DNS Server Resolve on a phone number structure. Use 'Global Mobile OSINT Trace' instead."
+        
     try:
         ip_addr = socket.gethostbyname(clean_host)
         return f"🔍 [SERVER LOOK-UP] Website: {clean_host} -> Resolved IP Address: {ip_addr}"
@@ -33,6 +38,11 @@ def perform_ip_geolocation(target: str) -> str:
     clean_host = clean_host.replace("https://", "").replace("http://", "").split("/")[0]
     if not clean_host:
         return "❌ ERROR: Target missing!"
+        
+    # Safeguard against phone numbers being passed to GeoIP
+    if clean_host.startswith("+") or clean_host.isdigit():
+        return "⚠️ ROUTING WARN: Cannot perform IP Geolocation on a raw mobile phone string. Use 'Global Mobile OSINT Trace' instead."
+        
     try:
         lookup_ip = socket.gethostbyname(clean_host)
         api_url = f"http://ip-api.com/json/{lookup_ip}"
@@ -85,6 +95,9 @@ def perform_whois_lookup(target: str) -> str:
     clean_host = clean_host.replace("https://", "").replace("http://", "").split("/")[0]
     if not clean_host:
         return "❌ ERROR: Target domain missing!"
+    if clean_host.startswith("+") or clean_host.isdigit():
+        return "⚠️ ROUTING WARN: WHOIS registries track web domains, not phone metadata strings."
+        
     try:
         api_url = f"https://rdap.org/domain/{clean_host}"
         req = urllib.request.Request(api_url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -112,6 +125,8 @@ def perform_dns_records_extract(target: str, record_type: str) -> str:
     clean_host = clean_host.replace("https://", "").replace("http://", "").split("/")[0]
     if not clean_host:
         return "❌ ERROR: Domain missing for DNS Extraction!"
+    if clean_host.startswith("+") or clean_host.isdigit():
+        return "⚠️ ROUTING WARN: DNS zones belong to domains, not phone indicators."
     
     try:
         base_ip = socket.gethostbyname(clean_host)
@@ -128,6 +143,8 @@ def perform_dns_records_extract(target: str, record_type: str) -> str:
 
 def perform_http_header_audit(target: str) -> str:
     clean_url = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
+    if clean_url.startswith("+") or clean_url.isdigit():
+        return "⚠️ ROUTING WARN: HTTP Headers require web endpoints, not telecommunication footprints."
     if not clean_url.startswith("http"):
         clean_url = "https://" + clean_url
     try:
@@ -155,6 +172,8 @@ def perform_subdomain_ct_logs(target: str) -> str:
     clean_host = clean_host.replace("https://", "").replace("http://", "").split("/")[0]
     if not clean_host:
         return "❌ ERROR: Target asset missing."
+    if clean_host.startswith("+") or clean_host.isdigit():
+        return "⚠️ ROUTING WARN: Subdomains belong to web infrastructure records, not cellular tracks."
     
     subdomains = [f"www.{clean_host}", f"api.{clean_host}", f"staging.{clean_host}", f"dev.{clean_host}", f"vpn.{clean_host}"]
     out = f"📧 [CERTIFICATE TRANSPARENCY SUBDOMAIN LOGS] Ledger Assets for: {clean_host}\n"
@@ -169,6 +188,9 @@ def perform_threat_intelligence(target: str) -> str:
     clean_host = clean_host.replace("https://", "").replace("http://", "").split("/")[0]
     if not clean_host:
         return "❌ ERROR: Missing target data vector."
+    if clean_host.startswith("+") or clean_host.isdigit():
+        return "⚠️ ROUTING WARN: Threat intelligence endpoint checks require web addresses or servers."
+        
     try:
         lookup_ip = socket.gethostbyname(clean_host)
         reputation_score = random.randint(94, 100)
@@ -218,7 +240,6 @@ st.set_page_config(page_title="Horizon OSINT Workspace", layout="wide")
 st.title("🛰️ Horizon Passive Intelligence Core")
 st.caption("Industrial Scale Open-Source Reconnaissance Suite — 100% Free / Non-Intrusive")
 
-# Canvas is now the primary field asset. Execution elements sit cleanly below.
 st.markdown("### 🗺️ System Automation Floor Canvas (Ultra-Wide Viewport)")
 
 if "synced_workspace_code" not in st.session_state:
@@ -248,7 +269,6 @@ blockly_html_payload = f"""
     #workspaceWrapper {{ display: flex; flex-direction: column; height: 880px; padding: 5px; box-sizing: border-box; position: relative; }}
     #blocklyDiv {{ flex: 1; border: 2px solid #45a29e; border-radius: 6px; position: relative; }}
     
-    /* Integrated Terminal Layout embedded directly inside workspace frame constraints */
     #integratedTerminalBlock {{
       position: absolute; top: 150px; left: 450px; width: 520px; background-color: #1f2833; border: 2px solid #1fec79; border-radius: 8px; z-index: 99; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
     }}
@@ -317,15 +337,12 @@ blockly_html_payload = f"""
       }}
     }}
 
-    // Workspace dragging tracker sync to achieve real off-screen coordinate panning behavior
     var workspaceDiv = document.getElementById('blocklyDiv');
     var termWindow = document.getElementById('integratedTerminalBlock');
     
-    // Track relative window layout shifts cleanly
     var currentTermX = 450;
     var currentTermY = 150;
     
-    // Internal Drag Handling logic inside blockly arena view layers
     var isDraggingWindow = false;
     var startX, startY;
 
@@ -350,7 +367,6 @@ blockly_html_payload = f"""
     }};
 
     // --- Custom Blockly Element Implementations ---
-    
     Blockly.Blocks['when_sequence_activated'] = {{
       init: function() {{
         this.appendDummyInput().appendField("🚀 Sequence Start");
@@ -372,7 +388,7 @@ blockly_html_payload = f"""
         this.appendDummyInput()
             .appendField("📱 Preset Phone Target")
             .appendField(new Blockly.FieldDropdown([["🇮🇩 +62","+62"], ["🇺🇸 +1","+1"], ["🇬🇧 +44","+44"]]), "CC_PREFIX")
-            .appendField(new Blockly.FieldTextInput("8123456789"), "PHONE_BODY"); // Scrubbed leak cleanly code layout target
+            .appendField(new Blockly.FieldTextInput("8123456789"), "PHONE_BODY");
         this.setOutput(true, "String");
         this.setColour(160);
       }}
@@ -494,18 +510,6 @@ blockly_html_payload = f"""
       trashcan: true
     }});
 
-    // Listen to blockly coordinate viewpoint transformations to seamlessly offset the terminal location grid positioning context
-    workspace.addChangeListener(function(e) {{
-      if (e.type === Blockly.Events.VIEWPORT_CHANGE) {{
-        var canvasMetrics = workspace.getMetrics();
-        // Shift terminal window tracking values synchronously along with user mouse scroll panning sequences
-        var calculatedLeft = currentTermX + canvasMetrics.viewX;
-        var calculatedTop = currentTermY + canvasMetrics.viewY;
-        
-        // This locks it in place relative to your blocks so it acts like a true arena object layout profile!
-      }}
-    }});
-
     function processLiveDebugCompilations() {{
       var allBlocks = workspace.getAllBlocks(false);
       var generatedPythonCode = "";
@@ -548,7 +552,6 @@ components.html(blockly_html_payload, height=900, scrolling=False)
 # Lower Utility Controls Zone
 st.markdown("---")
 st.markdown("### 🖥️ Main Engine Pipeline Terminal")
-st.info("Scroll down here only to deploy/execute the current visual automation roadmap manifest compiled above.")
 
 with st.expander("📋 View Compiled Execution Code Output Stream", expanded=False):
     st.session_state["synced_workspace_code"] = st.text_area(
