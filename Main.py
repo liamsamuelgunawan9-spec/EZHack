@@ -152,18 +152,18 @@ left_control_column, right_display_column = st.columns([7, 5])
 with left_control_column:
     st.markdown("### 🗺️ Blockly Drag-and-Drop Arena")
     
-    # Secure iframe wrapper layout with embedded block definitions
+    # Modernized, valid Blockly payload compatible with script sandboxes
     blockly_html_payload = """
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
-      <title>Blockly Frame</title>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/blockly/10.4.3/blockly.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/blockly/10.4.3/python.min.js"></script>
+      <title>Blockly Environment</title>
+      <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+      <script src="https://unpkg.com/blockly/python_compressed.js"></script>
       <style>
-        html, body { height: 100%; margin: 0; padding: 0; background-color: #1e1e1e; font-family: sans-serif; color: #fff; overflow: hidden; }
-        #blocklyDiv { width: 100%; height: 440px; border: 1px solid #444; border-radius: 4px; }
+        html, body { height: 100%; margin: 0; padding: 0; background-color: #1e1e1e; font-family: sans-serif; }
+        #blocklyDiv { width: 100%; height: 460px; border: 1px solid #444; border-radius: 4px; }
         .blocklyTreeLabel { color: #fff !important; font-size: 13px; }
       </style>
     </head>
@@ -179,28 +179,21 @@ with left_control_column:
           <block type="display_result"></block>
         </category>
         <sep></sep>
-        <category name="Logic Nodes" colour="210" custom="LOGIC">
-          <block type="controls_if"></block>
-          <block type="logic_compare"></block>
-          <block type="logic_operation"></block>
-          <block type="logic_boolean"></block>
-        </category>
+        <category name="Logic Nodes" colour="210" custom="LOGIC"></category>
         <category name="Loop Controls" colour="120">
           <block type="controls_repeat_ext">
             <value name="TIMES">
               <block type="math_number"><field name="NUM">3</field></block>
             </value>
           </block>
-          <block type="controls_whileUntil"></block>
         </category>
         <category name="Math Elements" colour="230">
           <block type="math_number"><field name="NUM">1</field></block>
-          <block type="math_arithmetic"></block>
         </category>
       </xml>
 
       <script>
-        // Define Custom Blocks
+        // Custom Blocks Definitions
         Blockly.Blocks['custom_input_string'] = {
           init: function() {
             this.appendDummyInput()
@@ -244,44 +237,42 @@ with left_control_column:
           }
         };
 
-        // Code Generation Mapping Definitions
-        javascript:void(0);
-        
-        Blockly.Python['custom_input_string'] = function(block) {
+        // Modern Python Generation Syntax Mapping
+        Blockly.Python.forBlock['custom_input_string'] = function(block) {
           var text_raw_text = block.getFieldValue('RAW_TEXT');
-          return ['"' + text_raw_text + '"', Blockly.Python.ORDER_ATOMIC];
+          return ['"' + text_raw_text + '"', 0];
         };
 
-        Blockly.Python['target'] = function(block) {
+        Blockly.Python.forBlock['target'] = function(block) {
           var field_target = block.getFieldValue('Target');
-          return ['"' + field_target + '"', Blockly.Python.ORDER_ATOMIC];
+          return ['"' + field_target + '"', 0];
         };
 
-        Blockly.Python['action_scan'] = function(block) {
+        Blockly.Python.forBlock['action_scan'] = function(block) {
           var dropdown_scantype = block.getFieldValue('SCANTYPE');
-          var value_name = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+          var value_name = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
           return 'current_result = run_utility_scan(' + value_name + ', "' + dropdown_scantype + '")\\n';
         };
 
-        Blockly.Python['display_result'] = function(block) {
+        Blockly.Python.forBlock['display_result'] = function(block) {
           return 'show_output_to_user(current_result)\\n';
         };
 
-        // Mount Workspace
+        // Inject Blockly
         var workspace = Blockly.inject('blocklyDiv', {
           toolbox: document.getElementById('toolbox'),
           grid: {spacing: 20, length: 3, colour: '#333', snap: true},
           trashcan: true
         });
 
-        // Initialize default node layout
+        // Add starting elements to workspace
         var xmlText = '<xml><block type="action_scan" x="40" y="50"><field name="SCANTYPE">geoip</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">8.8.8.8</field></block></value><next><block type="display_result"></block></next></block></xml>';
         Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xmlText), workspace);
       </script>
     </body>
     </html>
     """
-    components.html(blockly_html_payload, height=460, scrolling=False)
+    components.html(blockly_html_payload, height=480, scrolling=False)
 
 with right_display_column:
     st.markdown("### 📝 Code Generation Buffer View")
