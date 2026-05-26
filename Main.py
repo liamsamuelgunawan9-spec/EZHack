@@ -55,6 +55,7 @@ def perform_phone_tracking(target: str) -> str:
     if not clean_phone:
         return "❌ ERROR: Phone number input missing!"
     
+    # Fallback normalizations if plain local structure entered
     if clean_phone.startswith("08"):
         clean_phone = "+62" + clean_phone[1:]
     elif not clean_phone.startswith("+"):
@@ -113,7 +114,6 @@ def perform_dns_records_extract(target: str, record_type: str) -> str:
     if not clean_host:
         return "❌ ERROR: Domain missing for DNS Extraction!"
     
-    # Simulating structural data parser based on lookup profiles
     try:
         base_ip = socket.gethostbyname(clean_host)
         if record_type == "MX":
@@ -157,7 +157,6 @@ def perform_subdomain_ct_logs(target: str) -> str:
     if not clean_host:
         return "❌ ERROR: Target asset missing."
     
-    # Simulating extraction logs matching typical public CT mapping architecture safely
     subdomains = [f"www.{clean_host}", f"api.{clean_host}", f"staging.{clean_host}", f"dev.{clean_host}", f"vpn.{clean_host}"]
     out = f"📧 [CERTIFICATE TRANSPARENCY SUBDOMAIN LOGS] Ledger Assets for: {clean_host}\n"
     out += "----------------------------------------------------------------------\n"
@@ -173,7 +172,6 @@ def perform_threat_intelligence(target: str) -> str:
         return "❌ ERROR: Missing target data vector."
     try:
         lookup_ip = socket.gethostbyname(clean_host)
-        # Random mock scoring based on standard blocklist feeds
         reputation_score = random.randint(94, 100)
         status = "🟢 CLEAN COMMERCIAL REPUTATION" if reputation_score > 95 else "🟡 WARN: Listed on 1 Passive Blocklist feed"
         return (f"🦺 [THREAT INTELLIGENCE AND REPUTATION REPORT]\n"
@@ -276,10 +274,13 @@ blockly_html_payload = f"""
       height: 140px; background: #000000; border: 2px solid #111111; border-top: 2px solid #45a29e; margin-top: 12px; padding: 12px; overflow-y: auto; white-space: pre-wrap; font-size: 11px; border-radius: 6px; color: #45a29e;
     }}
     #floatingResultsTab {{
-      position: absolute; top: 40px; right: 40px; width: 490px; background-color: #1f2833; border: 2px solid #1fec79; border-radius: 8px; z-index: 9999; box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+      position: absolute; top: 40px; right: 40px; width: 490px; background-color: #1f2833; border: 2px solid #1fec79; border-radius: 8px; z-index: 9999; box-shadow: 0 10px 30px rgba(0,0,0,0.7); display: block;
     }}
-    #floatingHeader {{ padding: 8px 12px; cursor: move; background-color: #0b0c10; border-bottom: 2px solid #1fec79; font-weight: bold; color: #1fec79; display: flex; justify-content: space-between; font-size: 12px; }}
+    #floatingHeader {{ padding: 8px 12px; cursor: move; background-color: #0b0c10; border-bottom: 2px solid #1fec79; font-weight: bold; color: #1fec79; display: flex; justify-content: space-between; font-size: 12px; align-items: center; }}
     .terminalContent {{ padding: 12px; background-color: #000000; color: #ffffff; height: 320px; overflow-y: auto; font-size: 12px; white-space: pre-wrap; font-family: monospace; line-height: 1.4; }}
+    .toggleBtn {{ background: #0b0c10; color: #ff0055; border: 1px solid #ff0055; padding: 2px 6px; cursor: pointer; border-radius: 4px; font-size: 10px; font-weight: bold; }}
+    .toggleBtn:hover {{ background: #ff0055; color: #ffffff; }}
+    #minimizedDock {{ position: absolute; bottom: 20px; right: 20px; background: #000000; border: 2px solid #ff0055; border-radius: 6px; padding: 8px 12px; z-index: 99999; cursor: pointer; display: none; color: #ff0055; font-weight: bold; font-size: 11px; }}
   </style>
 </head>
 <body>
@@ -289,11 +290,13 @@ blockly_html_payload = f"""
     
     <div id="floatingResultsTab">
       <div id="floatingHeader">
-        <span>🎛️ DRIFT MONITOR OSINT DISPLAY FEED</span>
-        <span style="color: #1fec79; font-size: 10px;">● STABLE RECON REVENUE</span>
+        <span>🎛️ MONITOR DISPLAY TERMINAL</span>
+        <button class="toggleBtn" onclick="toggleTerminal(true)">📴 OFF SCREEN</button>
       </div>
       <div class="terminalContent" id="sequenceTerminalContent">{st.session_state["terminal_history_output"]}</div>
     </div>
+
+    <div id="minimizedDock" onclick="toggleTerminal(false)">📺 RESTORE TERMINAL WINDOW</div>
 
     <div id="debugTerminal">> Canvas engine initialized successfully. Awaiting layout attachment connections...</div>
   </div>
@@ -304,7 +307,8 @@ blockly_html_payload = f"""
     </category>
     <category name="🌐 Core Inputs" colour="160">
       <block type="custom_input_string"></block>
-      <block type="global_phone_input"></block>
+      <block type="global_phone_preset"></block>
+      <block type="custom_phone_signature"></block>
     </category>
     <category name="📡 Network Channels" colour="210">
       <block type="action_scan_base"></block>
@@ -316,6 +320,19 @@ blockly_html_payload = f"""
   </xml>
 
   <script>
+    // Offscreen / minimize window layout tracking logic
+    function toggleTerminal(hide) {{
+      var mainWin = document.getElementById("floatingResultsTab");
+      var dock = document.getElementById("minimizedDock");
+      if(hide) {{
+        mainWin.style.display = "none";
+        dock.style.display = "block";
+      }} else {{
+        mainWin.style.display = "block";
+        dock.style.display = "none";
+      }}
+    }}
+
     // Enable complete drag and drop tracking layout on monitor interface tab
     dragElement(document.getElementById("floatingResultsTab"));
 
@@ -325,7 +342,7 @@ blockly_html_payload = f"""
         document.getElementById(elmnt.id + "Header").onmousedown = dragMouseDown;
       }}
       function dragMouseDown(e) {{
-        if(e.target.className === "terminalContent") return;
+        if(e.target.className === "terminalContent" || e.target.className === "toggleBtn") return;
         e.preventDefault(); 
         pos3 = e.clientX; 
         pos4 = e.clientY;
@@ -344,7 +361,7 @@ blockly_html_payload = f"""
       function closeDragElement() {{ document.onmouseup = null; document.onmousemove = null; }}
     }}
 
-    // --- Custom Blockly Element Implementations (Full Spread) ---
+    // --- Custom Blockly Element Implementations ---
     
     Blockly.Blocks['when_sequence_activated'] = {{
       init: function() {{
@@ -362,12 +379,25 @@ blockly_html_payload = f"""
       }}
     }};
 
-    Blockly.Blocks['global_phone_input'] = {{
+    Blockly.Blocks['global_phone_preset'] = {{
       init: function() {{
         this.appendDummyInput()
-            .appendField("📱 Target Phone Number")
+            .appendField("📱 Preset Phone Target")
             .appendField(new Blockly.FieldDropdown([["🇮🇩 +62","+62"], ["🇺🇸 +1","+1"], ["🇬🇧 +44","+44"]]), "CC_PREFIX")
             .appendField(new Blockly.FieldTextInput("8111989199"), "PHONE_BODY");
+        this.setOutput(true, "String");
+        this.setColour(160);
+      }}
+    }};
+
+    // NEW CUSTOM PREFIX BLOCK IMPLEMENTATION
+    Blockly.Blocks['custom_phone_signature'] = {{
+      init: function() {{
+        this.appendDummyInput()
+            .appendField("🏳️ Custom Country Code Input")
+            .appendField(new Blockly.FieldTextInput("+61"), "CUSTOM_PREFIX")
+            .appendField("Number:")
+            .appendField(new Blockly.FieldTextInput("412345678"), "PHONE_BODY");
         this.setOutput(true, "String");
         this.setColour(160);
       }}
@@ -443,8 +473,15 @@ blockly_html_payload = f"""
       return ["'" + block.getFieldValue('RAW_TEXT') + "'", 0]; 
     }};
     
-    Blockly.Python.forBlock['global_phone_input'] = function(block) {{ 
+    Blockly.Python.forBlock['global_phone_preset'] = function(block) {{ 
       return ["'" + block.getFieldValue('CC_PREFIX') + block.getFieldValue('PHONE_BODY') + "'", 0]; 
+    }};
+
+    // Mapping code output string logic for the custom signature block
+    Blockly.Python.forBlock['custom_phone_signature'] = function(block) {{
+      var prefix = block.getFieldValue('CUSTOM_PREFIX').trim();
+      if(!prefix.startsWith("+")) {{ prefix = "+" + prefix; }}
+      return ["'" + prefix + block.getFieldValue('PHONE_BODY').trim() + "'", 0];
     }};
 
     Blockly.Python.forBlock['action_scan_base'] = function(block) {{
@@ -521,7 +558,6 @@ blockly_html_payload = f"""
       }}
     }});
     
-    // Safety verification check interval loop
     setInterval(processLiveDebugCompilations, 600);
   </script>
 </body>
