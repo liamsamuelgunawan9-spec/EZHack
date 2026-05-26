@@ -129,9 +129,9 @@ def compile_and_execute_blocks(compiled_script_text: str):
 # 3. STREAMLIT APPLICATION INTERACTIVE VIEW
 # ==========================================
 
-st.set_page_config(page_title="EZHack Unified Studio", layout="wide")
-st.title("⚡ EZHack Unified Studio")
-st.caption("Integrated development environment blending custom actions seamlessly into traditional structural code logic.")
+st.set_page_config(page_title="EZHack Pro Studio", layout="wide")
+st.title("⚡ EZHack Core Framework — Grand Studio")
+st.caption("A massive unified block development environment layout blending vectors, loop arrays, and structural data maps.")
 
 # System Memory Initialization
 if "console_terminal_logs" not in st.session_state:
@@ -147,21 +147,20 @@ with st.sidebar:
 left_control_column, right_display_column = st.columns([7, 5])
 
 with left_control_column:
-    st.markdown("### 🗺️ Native Studio Drag-and-Drop Arena")
+    st.markdown("### 🗺️ Expanded High-Capacity Arena")
     
-    # Unified layout structure loading all submodules via script injections to allow variables and functions
     blockly_html_payload = """
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
-      <title>Blockly Studio Environment</title>
+      <title>Blockly Large Studio</title>
       <script src="https://unpkg.com/blockly/blockly.min.js"></script>
       <script src="https://unpkg.com/blockly/python_compressed.js"></script>
       <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
       <style>
         html, body { height: 100%; margin: 0; padding: 0; background-color: #1e1e1e; font-family: sans-serif; }
-        #blocklyDiv { width: 100%; height: 630px; border: 1px solid #444; border-radius: 4px; }
+        #blocklyDiv { width: 100%; height: 790px; border: 1px solid #444; border-radius: 4px; }
         .blocklyTreeLabel { color: #fff !important; font-size: 13px; }
       </style>
     </head>
@@ -170,10 +169,11 @@ with left_control_column:
       <div id="blocklyDiv"></div>
 
       <xml id="toolbox" style="display: none">
-        <category name="🌐 Data Sources" colour="160">
+        <category name="🌐 Data Sources &amp; Text" colour="160">
           <block type="custom_input_string"></block>
           <block type="target"></block>
           <block type="text"></block>
+          <block type="text_join"></block>
           <block type="math_number"><field name="NUM">1</field></block>
         </category>
         
@@ -182,15 +182,24 @@ with left_control_column:
           <block type="controls_if"></block>
           <block type="logic_compare"></block>
           <block type="logic_operation"></block>
+          <block type="logic_boolean"></block>
           <block type="controls_repeat_ext">
             <value name="TIMES">
               <block type="math_number"><field name="NUM">3</field></block>
             </value>
           </block>
           <block type="controls_whileUntil"></block>
+          <block type="controls_forEach"></block>
         </category>
 
-        <category name="🖥️ Console Outputs" colour="20">
+        <category name="📋 Target Lists / Arrays" colour="260">
+          <block type="lists_create_with"></block>
+          <block type="lists_repeat"></block>
+          <block type="lists_length"></block>
+          <block type="lists_isEmpty"></block>
+        </category>
+
+        <category name="🖥️ Outputs" colour="20">
           <block type="display_result"></block>
           <block type="text_print"></block>
         </category>
@@ -267,35 +276,35 @@ with left_control_column:
           return 'show_output_to_user(current_result)\\n';
         };
 
-        // Mount and Inject Stable Workspace Layout Configuration
+        // Mount and Inject Large Sandbox Configuration
         var workspace = Blockly.inject('blocklyDiv', {
           toolbox: document.getElementById('toolbox'),
           grid: {spacing: 20, length: 3, colour: '#333', snap: true},
           trashcan: true
         });
 
-        // Initialize default workspace architecture layout
+        // Setup a baseline default visual block map
         var xmlText = '<xml><block type="action_scan" x="40" y="50"><field name="SCANTYPE">geoip</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">8.8.8.8</field></block></value><next><block type="display_result"></block></next></block></xml>';
         Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xmlText), workspace);
       </script>
     </body>
     </html>
     """
-    components.html(blockly_html_payload, height=650, scrolling=False)
+    components.html(blockly_html_payload, height=810, scrolling=False)
 
 with right_display_column:
     st.markdown("### 📝 Code Generation Window")
-    st.write("Review the compiled pipeline sequence, create dynamic parameters, and run execution blocks here:")
+    st.write("Review the compiled logic loops, wrap multiple targets into functions, and fire execution blocks below:")
     
     user_pipeline_input = st.text_area(
         label="Active Script Execution Workspace Configuration Window:",
         value="current_result = run_utility_scan('8.8.8.8', 'geoip')\nshow_output_to_user(current_result)",
-        height=470,
+        height=630,
         label_visibility="collapsed"
     )
     
     trigger_pipeline_run = st.button("🚀 Fire Workspace Pipeline Execution", type="primary", use_container_width=True)
 
 if trigger_pipeline_run:
-    with st.spinner("Processing visual configurations..."):
+    with st.spinner("Processing structural layout configs..."):
         compile_and_execute_blocks(user_pipeline_input)
