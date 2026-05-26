@@ -7,7 +7,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # ==========================================
-# 1. RECON RECOVERY UTILITIES
+# 1. RECON RECOVERY UTILITIES (BACKEND)
 # ==========================================
 
 def perform_dns_lookup(target: str) -> str:
@@ -108,7 +108,7 @@ def perform_phone_scan(target_phone: str) -> str:
     )
 
 # ==========================================
-# 2. RUNTIME PIPELINE ENGINE
+# 2. RUNTIME PIPELINE EXECUTION ENGINE
 # ==========================================
 
 def run_utility_scan(target_string: str, scan_profile_type: str) -> str:
@@ -143,7 +143,7 @@ def compile_and_execute_blocks(compiled_script_text: str):
         execution_code += line + "\n"
         
     if not execution_code.strip():
-        st.session_state["console_terminal_logs"] += "\n⚠️ WARNING: Connect your components to an active start block on the canvas to process layout."
+        st.session_state["console_terminal_logs"] += "\n⚠️ WARNING: Connect modules to a Start Block sequence chain to process logic."
         return
 
     try:
@@ -152,29 +152,20 @@ def compile_and_execute_blocks(compiled_script_text: str):
         st.session_state["console_terminal_logs"] += f"\n💥 [SCRIPT RUN ERROR]: {str(runtime_exception)}"
 
 # ==========================================
-# 3. INTERACTIVE STREAMLIT INTERFACE
+# 3. INTERACTIVE STREAMLIT GUI
 # ==========================================
 
 st.set_page_config(page_title="EZHack Horizon Studio", layout="wide")
 
 if "console_terminal_logs" not in st.session_state:
-    st.session_state["console_terminal_logs"] = "💻 [READY] Drag components onto the grid canvas stage..."
+    st.session_state["console_terminal_logs"] = "💻 [READY] Pipeline stream fully operational..."
 
-if "live_compiled_code" not in st.session_state:
-    st.session_state["live_compiled_code"] = "# Waiting for active block configuration layout sequences..."
-
-# Catch the real-time background parameters sent by the 0.1s JS loop
-query_params = st.query_params
-if "code_sync" in query_params:
-    incoming_code = query_params["code_sync"]
-    if incoming_code != st.session_state["live_compiled_code"]:
-        st.session_state["live_compiled_code"] = incoming_code
-
+# Layout Architecture Headers
 title_col, button_col_1, button_col_2 = st.columns([6, 3, 3])
 
 with title_col:
     st.title("⚡ Horizon Core Toolroom")
-    st.caption("Multi-sequence layout compilation engine.")
+    st.caption("Native framework pipeline compiler interface.")
 
 with button_col_1:
     st.write("")
@@ -186,13 +177,9 @@ with button_col_2:
         st.session_state["console_terminal_logs"] = "Monitor buffer cleared."
         st.rerun()
 
-if trigger_pipeline_run:
-    with st.spinner("Processing running workspace sequences..."):
-        compile_and_execute_blocks(st.session_state["live_compiled_code"])
-
 safe_terminal_logs = st.session_state["console_terminal_logs"].replace("`", "'").replace("\\", "\\\\").replace("\n", "\\n")
 
-# 🗺️ BLOCKLY WORKSPACE PAYLOAD
+# 🗺️ BLOCKLY WORKSPACE SECTION (WITH STREAMLIT FRAMEWORK BACKCHANNEL)
 st.markdown("### 🗺️ Visual Studio Workspace Canvas")
 
 blockly_html_payload = f"""
@@ -201,6 +188,7 @@ blockly_html_payload = f"""
 <head>
   <meta charset="utf-8">
   <title>Blockly Workspace</title>
+  <script src="https://cdn.jsdelivr.net/npm/streamlit-component-lib@1.3.0/dist/index.min.js"></script>
   <script src="https://unpkg.com/blockly/blockly.min.js"></script>
   <script src="https://unpkg.com/blockly/python_compressed.js"></script>
   <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
@@ -245,23 +233,23 @@ blockly_html_payload = f"""
       white-space: pre-wrap;
     }}
     
-    /* Internal Canvas Realtime Logger Box */
     #canvasDiagnostics {{
       position: absolute;
       bottom: 15px;
       left: 15px;
-      width: 380px;
+      width: 390px;
       height: 140px;
-      background: rgba(20, 24, 30, 0.9);
-      border: 1px solid #ff0055;
-      border-radius: 4px;
-      color: #ff3377;
+      background: rgba(20, 24, 30, 0.95);
+      border: 2px solid #1fec79;
+      border-radius: 6px;
+      color: #1fec79;
       font-family: monospace;
       font-size: 11px;
-      padding: 10px;
+      padding: 12px;
       overflow-y: auto;
       z-index: 998;
       pointer-events: none;
+      box-shadow: 0 0 15px rgba(31, 236, 121, 0.2);
     }}
   </style>
 </head>
@@ -273,7 +261,7 @@ blockly_html_payload = f"""
       <pre id="terminalBody">{safe_terminal_logs}</pre>
     </div>
     
-    <div id="canvasDiagnostics">⚙️ ENGINE DIAGNOSTICS LOG:<br>🚀 System online. Awaiting changes...</div>
+    <div id="canvasDiagnostics">⚙️ EVENT ENGINE SYSTEM LOGGER:<br>🟢 Core system initialized. Drop a block to trigger sync...</div>
     
     <div id="blocklyDiv"></div>
   </div>
@@ -294,7 +282,7 @@ blockly_html_payload = f"""
   </xml>
 
   <script>
-    // 🏁 Define Custom Blocks
+    // Define Workspace Core Custom Blocks
     Blockly.Blocks['when_sequence_activated'] = {{
       init: function() {{
         this.appendDummyInput().appendField("🚀 Start Block (Sequence)");
@@ -339,8 +327,7 @@ blockly_html_payload = f"""
       }}
     }};
 
-    // Python translation generators
-    Blockly.Python.forBlock['when_sequence_activated'] = function(block) {{ return '# [Start Sequence Block]\\n'; }};
+    Blockly.Python.forBlock['when_sequence_activated'] = function(block) {{ return '# [Start Sequence]\\n'; }};
     Blockly.Python.forBlock['custom_input_string'] = function(block) {{ return ['"' + block.getFieldValue('RAW_TEXT') + '"', 0]; }};
     Blockly.Python.forBlock['action_scan'] = function(block) {{
       var type = block.getFieldValue('SCANTYPE');
@@ -355,35 +342,33 @@ blockly_html_payload = f"""
       trashcan: true
     }});
 
-    // Build the initial starting layout elements
+    // Draw initial layout
     var xmlText = '<xml><block type="when_sequence_activated" x="40" y="40"><next><block type="action_scan"><field name="SCANTYPE">phone</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">+15555550199</field></block></value><next><block type="display_result"></block></next></block></next></block></xml>';
     Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xmlText), workspace);
 
-    var lastRegisteredStateCode = "";
     var logBox = document.getElementById("canvasDiagnostics");
+    var lastSentTranslation = "";
 
-    // 🕒 HIGH-SPEED 0.1-SECOND SCANNER & LOGGING MATRIX
-    setInterval(function() {{
+    // ⚡ THE COMPILER ENGINE UTILITY FUNCTION
+    function compileAndSyncWorkspace() {{
       var allBlocks = workspace.getAllBlocks(false);
       var sequenceCount = 0;
       var totalCombinedScript = "";
       
-      var logOutput = "⚙️ REAL-TIME CANVAS BLOCKS TOTAL: " + allBlocks.length + "<br>";
+      var telemetryLog = "⚙️ LIVE ENGINE STATUS REPORT:<br>✨ Total Blocks Placed: " + allBlocks.length + "<br>";
 
-      // Loop through all canvas structures to locate and register every separate start block
       for (var i = 0; i < allBlocks.length; i++) {{
         if (allBlocks[i].type === 'when_sequence_activated') {{
           sequenceCount++;
-          logOutput += "👉 Found Start Block [" + sequenceCount + "] (ID: " + allBlocks[i].id.substring(0,6) + ")<br>";
+          telemetryLog += "<span style='color:#66fcf1;'>🏁 Registered Start Block #" + sequenceCount + " (" + allBlocks[i].id.substring(0,5) + ")</span><br>";
           
           totalCombinedScript += "# ---- Sequence #" + sequenceCount + " ----\\n";
           
-          // Trace down this specific start block's connected children lines
           var connectedBlock = allBlocks[i].getNextBlock();
-          var stepCount = 0;
+          var localChainHeight = 0;
           
           while (connectedBlock) {{
-            stepCount++;
+            localChainHeight++;
             var componentCode = Blockly.Python.blockToCode(connectedBlock);
             if (typeof componentCode === 'string') {{
               totalCombinedScript += componentCode;
@@ -392,30 +377,44 @@ blockly_html_payload = f"""
             }}
             connectedBlock = connectedBlock.getNextBlock();
           }}
-          logOutput += "   └── Nested connected chain height: " + stepCount + " blocks.<br>";
+          telemetryLog += "   └── Connected sequence runtime path depth: " + localChainHeight + " blocks.<br>";
         }}
       }}
 
       if (sequenceCount === 0) {{
         totalCombinedScript = "# ⚠️ Error: Active Start Block missing from canvas layout stage!";
-        logOutput += "<span style='color:#ff0000;'>⚠️ CRITICAL: 0 Start Blocks found! Connect modules inside a Start Block loop!</span><br>";
+        telemetryLog += "<span style='color:#ff3366;'>⚠️ CRITICAL STATUS: Place a Start Block onto the canvas workspace floor!</span><br>";
       }}
 
-      // Display logs into the interface diagnostic panel
-      logBox.innerHTML = logOutput;
-
+      logBox.innerHTML = telemetryLog;
       totalCombinedScript = totalCombinedScript.trim();
 
-      // Trigger automatic background page sync updates if code differs
-      if (totalCombinedScript !== lastRegisteredStateCode) {{
-        lastRegisteredStateCode = totalCombinedScript;
-        var encodedValueString = encodeURIComponent(totalCombinedScript);
-        var baseLocationUrl = window.parent.location.href.split('?')[0];
-        window.parent.location.replace(baseLocationUrl + "?code_sync=" + encodedValueString);
+      if (totalCombinedScript !== lastSentTranslation) {{
+        lastSentTranslation = totalCombinedScript;
+        // 🚀 CRITICAL FIX: Send data natively back up using standard Streamlit messaging channels
+        if (window.Streamlit) {{
+          window.Streamlit.setComponentValue(totalCombinedScript);
+        }}
       }}
-    }}, 100);
+    }}
 
-    // Terminal Drag Setup rules
+    // 🎯 TRIGGER EVENT 1: INSTANT ACTION CAPTURE BY NATIVE BLOCKLY LISTENERS
+    workspace.addChangeListener(function(event) {{
+      if (event.type === Blockly.Events.BLOCK_CREATE || 
+          event.type === Blockly.Events.BLOCK_MOVE || 
+          event.type === Blockly.Events.BLOCK_CHANGE || 
+          event.type === Blockly.Events.BLOCK_DELETE) {{
+        compileAndSyncWorkspace();
+      }}
+    }});
+
+    // 🕒 TRIGGER EVENT 2: 0.1-SECOND BACKUP GUARD INTERVAL HEARTBEAT
+    setInterval(compileAndSyncWorkspace, 100);
+
+    // Initial load execution fire
+    setTimeout(compileAndSyncWorkspace, 250);
+
+    // Draggable Window Config rules
     var element = document.getElementById("draggableTerminal");
     var header = document.getElementById("terminalHeader");
     var activeDragging = false;
@@ -439,7 +438,16 @@ blockly_html_payload = f"""
 </html>
 """
 
-components.html(blockly_html_payload, height=620, scrolling=False)
+# Receive data instantly directly from our custom bi-directional window component channel
+live_blocks_data_stream = components.html(blockly_html_payload, height=620, scrolling=False)
+
+# Safely catch data output variables returning down the message channel
+if live_blocks_data_stream is not None:
+    st.session_state["live_compiled_code"] = str(live_blocks_data_stream).strip()
+
+if trigger_pipeline_run:
+    with st.spinner("Processing running workspace sequences..."):
+        compile_and_execute_blocks(st.session_state["live_compiled_code"])
 
 # ==========================================
 # 4. MONITOR ENGINE TERMINAL TRANSLATION
