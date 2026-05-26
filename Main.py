@@ -135,8 +135,20 @@ def compile_and_execute_blocks(compiled_script_text: str):
         "print": lambda *args: show_output_to_user(" ".join(map(str, args))),
         "current_result": ""
     }
+    
+    # Clean up empty strings or standalone headers out of execution runtime
+    execution_code = ""
+    for line in compiled_script_text.splitlines():
+        if "when_green_flag_clicked" in line or line.strip() == "pass":
+            continue
+        execution_code += line + "\n"
+        
+    if not execution_code.strip():
+        st.session_state["console_terminal_logs"] += "\n⚠️ WARNING: Connect your actions directly under the Green Flag block to run!"
+        return
+
     try:
-        exec(compiled_script_text, restricted_sandbox_globals)
+        exec(execution_code, restricted_sandbox_globals)
     except Exception as runtime_exception:
         st.session_state["console_terminal_logs"] += f"\n💥 [SCRIPT RUN ERROR]: {str(runtime_exception)}"
 
@@ -147,9 +159,9 @@ def compile_and_execute_blocks(compiled_script_text: str):
 st.set_page_config(page_title="EZHack Horizon Studio", layout="wide")
 
 if "console_terminal_logs" not in st.session_state:
-    st.session_state["console_terminal_logs"] = "💻 [READY] Construct your layout and hit launch circuit..."
+    st.session_state["console_terminal_logs"] = "💻 [READY] Attach modules inside the Green Flag loop and launch circuit..."
 
-# Initialize fallback string block code input text
+# Setup memory text area default values
 if "live_compiled_code" not in st.session_state:
     st.session_state["live_compiled_code"] = "current_result = run_utility_scan('+15555550199', 'phone')\nshow_output_to_user(current_result)"
 
@@ -160,7 +172,7 @@ title_col, button_col_1, button_col_2 = st.columns([6, 3, 3])
 
 with title_col:
     st.title("⚡ Horizon Core Toolroom")
-    st.caption("Visual automation interface built for network diagnostic utilities testing.")
+    st.caption("Scratch-style environment built directly around cybersecurity recon operations.")
 
 with button_col_1:
     st.write("")
@@ -172,16 +184,15 @@ with button_col_2:
         st.session_state["console_terminal_logs"] = "Monitor buffer cleared."
         st.rerun()
 
-# Execution process block
+# Run current workspace script code layout structures 
 if trigger_pipeline_run:
-    with st.spinner("Executing current pipeline setup..."):
+    with st.spinner("Processing automated actions code sequences..."):
         compile_and_execute_blocks(st.session_state["live_compiled_code"])
 
-# Escape sequence clean-up
 safe_terminal_logs = st.session_state["console_terminal_logs"].replace("`", "'").replace("\\", "\\\\").replace("\n", "\\n")
 
 # ----------------------------------------------------
-# STAGE 1: WORKSPACE GENERATOR CANVAS
+# STAGE 1: VISUAL STUDIO SCRATCH CANVAS
 # ----------------------------------------------------
 st.markdown("### 🗺️ Visual Studio Workspace Canvas")
 
@@ -251,18 +262,32 @@ blockly_html_payload = f"""
   </div>
 
   <xml id="toolbox" style="display: none">
+    <category name="🏁 Trigger Events" colour="20">
+      <block type="when_green_flag_clicked"></block>
+    </category>
     <category name="🌐 Targets &amp; Inputs" colour="160">
       <block type="custom_input_string"></block>
     </category>
     <category name="🎯 Scanners &amp; Actions" colour="210">
       <block type="action_scan"></block>
     </category>
-    <category name="🖥️ Monitor Controls" colour="20">
+    <category name="🖥️ Monitor Controls" colour="65">
       <block type="display_result"></block>
     </category>
   </xml>
 
   <script>
+    // 🏁 Define our Scratch-style start event anchor block
+    Blockly.Blocks['when_green_flag_clicked'] = {{
+      init: function() {{
+        this.appendDummyInput()
+            .appendField("🟢 When Green Flag Clicked");
+        this.setNextStatement(true, null);
+        this.setColour(20);
+        this.setTooltip("The starting sequence block.");
+      }}
+    }};
+
     Blockly.Blocks['custom_input_string'] = {{
       init: function() {{
         this.appendDummyInput()
@@ -297,8 +322,13 @@ blockly_html_payload = f"""
         this.appendDummyInput().appendField("📟 Print Results to Monitor Screen");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
-        this.setColour(20);
+        this.setColour(65);
       }}
+    }};
+
+    // Text parser mapping rules
+    Blockly.Python.forBlock['when_green_flag_clicked'] = function(block) {{
+      return '# when_green_flag_clicked\\n';
     }};
 
     Blockly.Python.forBlock['custom_input_string'] = function(block) {{
@@ -314,7 +344,7 @@ blockly_html_payload = f"""
 
     Blockly.Python.forBlock['display_result'] = function(block) {{
       return 'show_output_to_user(current_result)\\n';
-    }};
+    }};;
 
     var workspace = Blockly.inject('blocklyDiv', {{
       toolbox: document.getElementById('toolbox'),
@@ -322,19 +352,41 @@ blockly_html_payload = f"""
       trashcan: true
     }});
 
-    var xmlText = '<xml><block type="action_scan" x="40" y="50"><field name="SCANTYPE">phone</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">+15555550199</field></block></value><next><block type="display_result"></block></next></block></xml>';
+    // Build the default setup connected cleanly into the Green Flag anchor block
+    var xmlText = '<xml><block type="when_green_flag_clicked" x="40" y="40"><next><block type="action_scan"><field name="SCANTYPE">phone</field><value name="NAME"><block type="custom_input_string"><field name="RAW_TEXT">+15555550199</field></block></value><next><block type="display_result"></block></next></block></next></block></xml>';
     Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xmlText), workspace);
 
-    // Global workspace listener - Triggers automatically on any value modification or connection adjustments
-    workspace.addChangeListener(function(event) {{
-      var code = Blockly.Python.workspaceToCode(workspace);
-      // Updates an input field hidden inside the wrapper frame to bypass iframe insulation barriers
-      if(window.parent.document.getElementById("hidden_code_transport")) {{
-         window.parent.document.getElementById("hidden_code_transport").value = code;
+    // 🔄 REWRITTEN TRANSLATION INTERCEPTOR
+    // This looks for the Green Flag block and ONLY builds code that is snapped underneath it!
+    function compileGreenFlagChainOnly() {{
+      var topBlocks = workspace.getTopBlocks(true);
+      var greenFlagBlock = null;
+      
+      for (var i = 0; i < topBlocks.length; i++) {{
+        if (topBlocks[i].type === 'when_green_flag_clicked') {{
+          greenFlagBlock = topBlocks[i];
+          break;
+        }}
       }}
-    }});
+      
+      var generatedCode = "";
+      if (greenFlagBlock) {{
+         // Only parse the code connected sequentially to the green flag block item layout
+         generatedCode = Blockly.Python.blockToCode(greenFlagBlock);
+      }} else {{
+         generatedCode = "# ⚠️ Missing 'When Green Flag Clicked' block!";
+      }}
+      
+      // Update text input element values instantly
+      if (window.parent.document.getElementById("hidden_code_transport")) {{
+         window.parent.document.getElementById("hidden_code_transport").value = generatedCode;
+      }}
+    }}
+    
+    workspace.addChangeListener(compileGreenFlagChainOnly);
+    setTimeout(compileGreenFlagChainOnly, 500);
 
-    // Simple Terminal Dragger Engine Setup
+    // Simple Floating Output Monitor Window Drag Rules
     var element = document.getElementById("draggableTerminal");
     var header = document.getElementById("terminalHeader");
     var activeDragging = false;
@@ -361,15 +413,15 @@ blockly_html_payload = f"""
 components.html(blockly_html_payload, height=620, scrolling=False)
 
 # ----------------------------------------------------
-# STAGE 2: BACKSTAGE RAW WORKSPACE INTERCEPTOR
+# STAGE 2: BACKSTAGE TEXT TRANSLATION TERMINAL
 # ----------------------------------------------------
 st.markdown("---")
 st.markdown("### 📝 Code Translation Behind the Blocks")
-st.write("If changes inside your drag-and-drop workspace aren't showing instantly, verify or type/paste your desired script structure manually here:")
+st.write("This box updates to show the Python script string that is generated when a block connects to the Green Flag:")
 
-# Direct editing textarea box acting as our direct global sync path
+# Real-time interactive text element acting as our direct data sync pipeline
 st.session_state["live_compiled_code"] = st.text_area(
-    label="Live Pipeline Script Code Terminal Structure:",
+    label="Live Compiled Sequence String Buffer Output:",
     value=st.session_state["live_compiled_code"],
     height=120
 )
