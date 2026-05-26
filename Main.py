@@ -131,14 +131,11 @@ def compile_and_execute_blocks(compiled_script_text: str):
 
 st.set_page_config(page_title="EZHack Pro Workspace", layout="wide")
 st.title("⚡ EZHack Core Framework — Hyper Studio")
-st.caption("Visual block operational workspace running loops, logic paths, variables, and network infrastructure diagnostics.")
+st.caption("Visual block operational workspace running loops, custom functions, variables, and network infrastructure diagnostics.")
 
 # System Memory Initialization
 if "console_terminal_logs" not in st.session_state:
     st.session_state["console_terminal_logs"] = "System Monitor Standby. Setup workspace blocks, generate, and run pipeline..."
-
-if "compiled_block_code" not in st.session_state:
-    st.session_state["compiled_block_code"] = "current_result = run_utility_scan('8.8.8.8', 'geoip')\nshow_output_to_user(current_result)"
 
 # Setup Sidebar Target Console Log
 with st.sidebar:
@@ -150,9 +147,9 @@ with st.sidebar:
 left_control_column, right_display_column = st.columns([7, 5])
 
 with left_control_column:
-    st.markdown("### 🗺️ Blockly Drag-and-Drop Arena")
+    st.markdown("### 🗺️ Huge Blockly Drag-and-Drop Arena")
     
-    # Modernized, valid Blockly payload compatible with script sandboxes
+    # Modernized, expanded Blockly sandbox with custom procedure categories
     blockly_html_payload = """
     <!DOCTYPE html>
     <html>
@@ -163,7 +160,7 @@ with left_control_column:
       <script src="https://unpkg.com/blockly/python_compressed.js"></script>
       <style>
         html, body { height: 100%; margin: 0; padding: 0; background-color: #1e1e1e; font-family: sans-serif; }
-        #blocklyDiv { width: 100%; height: 460px; border: 1px solid #444; border-radius: 4px; }
+        #blocklyDiv { width: 100%; height: 630px; border: 1px solid #444; border-radius: 4px; }
         .blocklyTreeLabel { color: #fff !important; font-size: 13px; }
       </style>
     </head>
@@ -186,10 +183,14 @@ with left_control_column:
               <block type="math_number"><field name="NUM">3</field></block>
             </value>
           </block>
+          <block type="controls_whileUntil"></block>
         </category>
         <category name="Math Elements" colour="230">
           <block type="math_number"><field name="NUM">1</field></block>
+          <block type="math_arithmetic"></block>
         </category>
+        <category name="Variables" colour="330" custom="VARIABLE"></category>
+        <category name="Functions Block" colour="290" custom="PROCEDURE"></category>
       </xml>
 
       <script>
@@ -272,21 +273,22 @@ with left_control_column:
     </body>
     </html>
     """
-    components.html(blockly_html_payload, height=480, scrolling=False)
+    components.html(blockly_html_payload, height=650, scrolling=False)
 
 with right_display_column:
-    st.markdown("### 📝 Code Generation Buffer View")
-    st.write("Review and fire code generated from your drag-and-drop workspace layout:")
+    st.markdown("### 📝 Code Generation Window")
+    st.write("Construct functions inside the arena, review the compiled pipeline sequence, and run it directly below:")
     
+    # Text input area setup to directly copy-paste code from your Blockly work session
     user_pipeline_input = st.text_area(
-        label="Active Generated Code Buffer Window:",
-        value=st.session_state["compiled_block_code"],
-        height=280,
+        label="Active Script Execution Workspace Configuration Window:",
+        value="current_result = run_utility_scan('8.8.8.8', 'geoip')\nshow_output_to_user(current_result)",
+        height=470,
         label_visibility="collapsed"
     )
     
     trigger_pipeline_run = st.button("🚀 Fire Workspace Pipeline Execution", type="primary", use_container_width=True)
 
 if trigger_pipeline_run:
-    with st.spinner("Processing visual workspace configurations..."):
+    with st.spinner("Processing visual configurations..."):
         compile_and_execute_blocks(user_pipeline_input)
