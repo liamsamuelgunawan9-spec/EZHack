@@ -52,19 +52,22 @@ def perform_phone_tracking(target: str) -> str:
     else:
         return f"📱 [PHONE PROFILE] Target: {clean_phone} | Region: International / General Prefix | Type: Parsed"
 
-# Automation wrapper execution adapters called by raw string payload compilation execution 
+# Custom tracking collectors to feed into the workspace iframe directly
+if "terminal_history_output" not in st.session_state:
+    st.session_state["terminal_history_output"] = "🚀 System Ready. Awaiting Sequence Trigger Execution..."
+
 def run_scan(target: str, mode: str):
-    st.write(f"🔄 *Executing block step: [Target: {target} | Mode: {mode}]...*")
     if mode == "dns":
-        st.code(perform_dns_lookup(target))
+        res = perform_dns_lookup(target)
     elif mode == "geoip":
-        st.code(perform_ip_geolocation(target))
+        res = perform_ip_geolocation(target)
     elif mode == "phone":
-        st.code(perform_phone_tracking(target))
+        res = perform_phone_tracking(target)
+    st.session_state["terminal_history_output"] += f"\\n[SCAN RUNNER] Target: {target} | Mode: {mode}\\n{res}\\n"
 
 def verify_protocol(target: str, verification_mode: str):
-    st.write(f"🔄 *Executing block step: [Target: {target} | Option: {verification_mode}]...*")
-    st.info(f"🔒 [PROTOCOL AUDIT] Structural validation complete for: {verification_mode.upper()}")
+    res = f"🔒 [PROTOCOL AUDIT] Structural validation complete for: {verification_mode.upper()} on {target}"
+    st.session_state["terminal_history_output"] += f"\\n[VERIFIER] Target: {target}\\n{res}\\n"
 
 
 # ==========================================
@@ -76,7 +79,6 @@ st.set_page_config(page_title="Horizon Studio", layout="wide")
 st.title("⚡ Horizon Core Toolroom")
 st.caption("Visual Block Configuration Environment")
 
-# Initialize persistent memory storage for the compiled code output across frames safely
 if "synced_workspace_code" not in st.session_state:
     st.session_state["synced_workspace_code"] = ""
 
@@ -85,7 +87,6 @@ with st.sidebar:
     st.header("🎮 Sequence Automation")
     st.markdown("Build your block pipeline on the workspace floor, then trigger execution below.")
     
-    # Text area reads directly from secure session state instead of dangerous cross-frame scripts
     st.session_state["synced_workspace_code"] = st.text_area(
         "📋 Compiled Workspace Payload", 
         value=st.session_state["synced_workspace_code"], 
@@ -93,21 +94,18 @@ with st.sidebar:
         help="This window displays the compiled matrix logic coming live from the canvas floor below."
     )
     
-    # Direct trigger button execution pattern matching your core specification
     if st.button("🚀 Execute Workspace Sequence", type="primary", use_container_width=True):
-        st.markdown("---")
-        st.subheader("🖥️ Execution Terminal")
-        
         code_to_run = st.session_state["synced_workspace_code"].strip()
         
         if not code_to_run or "Sequence Active" not in code_to_run:
-            st.warning("⚠️ Execution Halted: Connect your blocks to 'Sequence Start' on the canvas to load a valid chain configuration!")
+            st.warning("⚠️ Execution Halted: Connect your blocks to 'Sequence Start' on the canvas!")
         else:
             try:
-                st.success("🤖 Handshake established. Running visual block sequence:")
+                # Flush the clean logging header first
+                st.session_state["terminal_history_output"] = "🛰️ RUNNING NEW SEQUENCE PAYLOAD MATRIX...\\n-----------------------------------------\\n"
                 exec(code_to_run)
             except Exception as runtime_err:
-                st.error(f"💥 Runtime Exception: {str(runtime_err)}")
+                st.session_state["terminal_history_output"] += f"\\n💥 RUNTIME EXCEPTION: {str(runtime_err)}\\n"
 
 st.markdown("### 🗺️ Visual Workspace Floor")
 
@@ -116,7 +114,6 @@ st.markdown("### 🗺️ Visual Workspace Floor")
 # 3. ### LOCKED CORE START ### - DO NOT TOUCH
 # ==========================================
 
-# A secure background query parameters catch-relay mapping into Python state automatically
 try:
     incoming_payload = st.query_params.get("payload_matrix", "")
     if incoming_payload:
@@ -124,7 +121,7 @@ try:
 except Exception:
     pass
 
-blockly_html_payload = """
+blockly_html_payload = f"""
 <!DOCTYPE html>
 <html>
 <head>
@@ -133,27 +130,73 @@ blockly_html_payload = """
   <script src="https://unpkg.com/blockly/python_compressed.js"></script>
   <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
   <style>
-    html, body { height: 100%; margin: 0; padding: 0; background-color: #0b0c10; font-family: monospace; color: #1fec79; }
-    #workspaceWrapper { display: flex; flex-direction: column; height: 680px; padding: 5px; box-sizing: border-box; }
-    #blocklyDiv { flex: 1; border: 2px solid #45a29e; border-radius: 6px; box-shadow: 0 0 15px rgba(69, 162, 158, 0.15); }
-    #debugTerminal { 
-      height: 180px; 
+    html, body {{ height: 100%; margin: 0; padding: 0; background-color: #0b0c10; font-family: monospace; color: #1fec79; overflow: hidden; }}
+    #workspaceWrapper {{ display: flex; flex-direction: column; height: 680px; padding: 5px; box-sizing: border-box; position: relative; }}
+    #blocklyDiv {{ flex: 1; border: 2px solid #45a29e; border-radius: 6px; box-shadow: 0 0 15px rgba(69, 162, 158, 0.15); }}
+    #debugTerminal {{ 
+      height: 140px; 
       background: #000000; 
       border: 2px solid #ff0055; 
       margin-top: 12px; 
       padding: 12px; 
       overflow-y: auto; 
       white-space: pre-wrap; 
-      font-size: 12px;
+      font-size: 11px;
       border-radius: 6px;
       box-shadow: 0 0 15px rgba(255, 0, 85, 0.1);
-    }
+    }}
+    
+    /* Draggable Window Container Styling */
+    #floatingResultsTab {{
+      position: absolute;
+      top: 40px;
+      right: 40px;
+      width: 420px;
+      background-color: #1f2833;
+      border: 2px solid #1fec79;
+      border-radius: 8px;
+      z-index: 9999;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+    }}
+    #floatingHeader {{
+      padding: 8px 12px;
+      cursor: move;
+      background-color: #0b0c10;
+      border-bottom: 2px solid #1fec79;
+      font-weight: bold;
+      color: #1fec79;
+      display: flex;
+      justify-content: space-between;
+      border-top-left-radius: 6px;
+      border-top-right-radius: 6px;
+      font-size: 12px;
+    }}
+    .terminalContent {{
+      padding: 12px;
+      background-color: #000000;
+      color: #ffffff;
+      height: 250px;
+      overflow-y: auto;
+      font-size: 12px;
+      white-space: pre-wrap;
+      border-bottom-left-radius: 6px;
+      border-bottom-right-radius: 6px;
+    }}
   </style>
 </head>
 <body>
 
   <div id="workspaceWrapper">
     <div id="blocklyDiv"></div>
+    
+    <div id="floatingResultsTab">
+      <div id="floatingHeader">
+        <span>🎛️ DRIFT DRAGGABLE RESULTS TERMINAL</span>
+        <span style="color: #ff0055; font-size: 10px;">● LIVE</span>
+      </div>
+      <div class="terminalContent" id="sequenceTerminalContent">{st.session_state["terminal_history_output"]}</div>
+    </div>
+
     <div id="debugTerminal">> Awaiting block placement events...</div>
   </div>
 
@@ -180,37 +223,76 @@ blockly_html_payload = """
   </xml>
 
   <script>
+    // Drag Window System Logic
+    dragElement(document.getElementById("floatingResultsTab"));
+
+    function dragElement(elmnt) {
+      var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+      if (document.getElementById(elmnt.id + "Header")) {
+        document.getElementById(elmnt.id + "Header").onmousedown = dragMouseDown;
+      } else {
+        elmnt.onmousedown = dragMouseDown;
+      }
+
+      function dragMouseDown(e) {
+        e = e || window.event;
+        // Verify we aren't clicking inside the scrolling console text area itself
+        if(e.target.className === "terminalContent") return;
+        e.preventDefault();
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        document.onmouseup = closeDragElement;
+        document.onmousemove = elementDrag;
+      }
+
+      function elementDrag(e) {
+        e = e || window.event;
+        e.preventDefault();
+        pos1 = pos3 - e.clientX;
+        pos2 = pos4 - e.clientY;
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+        elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+      }
+
+      function closeDragElement() {
+        document.onmouseup = null;
+        document.onmousemove = null;
+      }
+    }
+
     // --- Custom System Blocks ---
-    Blockly.Blocks['when_sequence_activated'] = {
-      init: function() {
+    Blockly.Blocks['when_sequence_activated'] = {{
+      init: function() {{
         this.appendDummyInput().appendField("🚀 Sequence Start");
         this.setNextStatement(true, null);
         this.setColour(0);
-      }
-    };
+      }}
+    }};
 
-    Blockly.Blocks['custom_input_string'] = {
-      init: function() {
+    Blockly.Blocks['custom_input_string'] = {{
+      init: function() {{
         this.appendDummyInput()
             .appendField("Target:")
             .appendField(new Blockly.FieldTextInput("+1234567890"), "RAW_TEXT");
         this.setOutput(true, "String");
         this.setColour(160);
-      }
-    };
+      }}
+    }};
 
-    Blockly.Blocks['multi_target_list'] = {
-      init: function() {
+    Blockly.Blocks['multi_target_list'] = {{
+      init: function() {{
         this.appendDummyInput()
             .appendField("Multi-Targets:")
             .appendField(new Blockly.FieldTextInput("target1.com, target2.com"), "TARGETS");
         this.setOutput(true, "String");
         this.setColour(160);
-      }
-    };
+      }}
+    }};
 
-    Blockly.Blocks['action_scan'] = {
-      init: function() {
+    Blockly.Blocks['action_scan'] = {{
+      init: function() {{
         this.appendValueInput("NAME").setCheck("String").appendField("Scan Target:");
         this.appendDummyInput()
             .appendField("Action:")
@@ -222,11 +304,11 @@ blockly_html_payload = """
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour(210);
-      }
-    };
+      }}
+    }};
 
-    Blockly.Blocks['protocol_verify'] = {
-      init: function() {
+    Blockly.Blocks['protocol_verify'] = {{
+      init: function() {{
         this.appendValueInput("TARGET").setCheck("String").appendField("Verify Target:");
         this.appendDummyInput()
             .appendField("Check Option:")
@@ -237,37 +319,37 @@ blockly_html_payload = """
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour(210);
-      }
-    };
+      }}
+    }};
 
     // --- Python Code Generators for Core Blocks ---
-    Blockly.Python.forBlock['when_sequence_activated'] = function(block) { return '# Sequence Active\\n'; };
-    Blockly.Python.forBlock['custom_input_string'] = function(block) { return ["'" + block.getFieldValue('RAW_TEXT') + "'", 0]; };
-    Blockly.Python.forBlock['multi_target_list'] = function(block) { return ["'" + block.getFieldValue('TARGETS') + "'", 0]; };
+    Blockly.Python.forBlock['when_sequence_activated'] = function(block) {{ return '# Sequence Active\\n'; }};
+    Blockly.Python.forBlock['custom_input_string'] = function(block) {{ return ["'" + block.getFieldValue('RAW_TEXT') + "'", 0]; }};
+    Blockly.Python.forBlock['multi_target_list'] = function(block) {{ return ["'" + block.getFieldValue('TARGETS') + "'", 0]; }};
     
-    Blockly.Python.forBlock['action_scan'] = function(block) {
+    Blockly.Python.forBlock['action_scan'] = function(block) {{
       var type = block.getFieldValue('SCANTYPE');
       var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
       return 'run_scan(target=' + val + ', mode="' + type + '")\\n';
-    };
+    }};
 
-    Blockly.Python.forBlock['protocol_verify'] = function(block) {
+    Blockly.Python.forBlock['protocol_verify'] = function(block) {{
       var type = block.getFieldValue('VERIFYTYPE');
       var val = Blockly.Python.valueToCode(block, 'TARGET', 0) || "''";
       return 'verify_protocol(target=' + val + ', verification_mode="' + type + '")\\n';
-    };
+    }};
 
     // Inject Workspace Canvas Matrix
-    var workspace = Blockly.inject('blocklyDiv', {
+    var workspace = Blockly.inject('blocklyDiv', {{
       toolbox: document.getElementById('toolbox'),
-      grid: {spacing: 20, length: 3, colour: '#1f2833', snap: true},
+      grid: {{spacing: 20, length: 3, colour: '#1f2833', snap: true}},
       trashcan: true
-    });
+    }});
 
     var terminal = document.getElementById("debugTerminal");
 
     // Comprehensive Canvas Debug Parsing Loop Matrix
-    function renderDebugLogs() {
+    function renderDebugLogs() {{
       var allBlocks = workspace.getAllBlocks(false);
       var textOutput = "⚙️ LIVE WORKSPACE PARSER MATRIX\\n-----------------------------------------\\n";
       textOutput += "• Active elements mapped on floor: " + allBlocks.length + "\\n\\n";
@@ -275,52 +357,51 @@ blockly_html_payload = """
       var generatedPythonCode = "";
       var sequenceFound = false;
       
-      for (var i = 0; i < allBlocks.length; i++) {
-        if (allBlocks[i].type === 'when_sequence_activated') {
+      for (var i = 0; i < allBlocks.length; i++) {{
+        if (allBlocks[i].type === 'when_sequence_activated') {{
           sequenceFound = true;
           textOutput += "🏁 [Sequence Node] Enabled -> [UUID: " + allBlocks[i].id + "]\\n";
           
           generatedPythonCode += Blockly.Python.blockToCode(allBlocks[i]);
           var nextBlock = allBlocks[i].getNextBlock();
-          while(nextBlock) {
+          while(nextBlock) {{
             textOutput += "   └── Connected Step: " + nextBlock.type;
-            if(nextBlock.type === 'action_scan') {
+            if(nextBlock.type === 'action_scan') {{
               textOutput += " [Action Mode: " + nextBlock.getFieldValue('SCANTYPE').toUpperCase() + "]";
-            } else if(nextBlock.type === 'protocol_verify') {
+            }} else if(nextBlock.type === 'protocol_verify') {{
               textOutput += " [Verification Mode: " + nextBlock.getFieldValue('VERIFYTYPE').toUpperCase() + "]";
-            }
+            }}
             textOutput += "\\n";
             generatedPythonCode += Blockly.Python.blockToCode(nextBlock);
             nextBlock = nextBlock.getNextBlock();
-          }
-        }
-      }
+          }}
+        }}
+      }}
       
-      if(!sequenceFound) {
+      if(!sequenceFound) {{
         textOutput += "⚠️ STATUS ALERT: Drag and drop a 'Sequence Start' block onto the workspace canvas floor to begin compilation.";
-      } else {
+      }} else {{
         textOutput += "\\n🟢 PARSING INTEGRITY STATUS: PIPELINE CHANNELS HEALTHY";
         textOutput += "\\n\\n📋 COMPILED TARGET SCRIPT OUTPUT:\\n" + generatedPythonCode;
         
-        // Use an official browser window replacement hook that forces Streamlit's engine to update state natively via safe URL matrix sync
         var targetUrl = window.parent.location.origin + window.parent.location.pathname + "?payload_matrix=" + encodeURIComponent(generatedPythonCode);
-        if(window.parent.location.search !== "?payload_matrix=" + encodeURIComponent(generatedPythonCode)) {
-           window.parent.history.replaceState({}, '', targetUrl);
-        }
-      }
+        if(window.parent.location.search !== "?payload_matrix=" + encodeURIComponent(generatedPythonCode)) {{
+           window.parent.history.replaceState({{}}, '', targetUrl);
+        }}
+      }}
       
       terminal.innerText = textOutput;
-    }
+    }}
 
     // Process every canvas layout adjustment instantly
-    workspace.addChangeListener(function(e) {
+    workspace.addChangeListener(function(e) {{
       if (e.type === Blockly.Events.BLOCK_CREATE || 
           e.type === Blockly.Events.BLOCK_MOVE || 
           e.type === Blockly.Events.BLOCK_CHANGE || 
-          e.type === Blockly.Events.BLOCK_DELETE) {
+          e.type === Blockly.Events.BLOCK_DELETE) {{
         renderDebugLogs();
-      }
-    });
+      }}
+    }});
 
     // Scheduler fallback sync loop
     setInterval(renderDebugLogs, 500);
