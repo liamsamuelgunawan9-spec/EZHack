@@ -284,7 +284,7 @@ def run_scan(target: str, mode: str, structural_param: str = "all", ip_found: bo
     else:
         res = "⚠️ Error: Block matching parameter structure error."
         
-    st.session_state["terminal_history_output"] += f"\\n[ENGINE TRACE] Activating Module -> {mode.upper()}\\n{res}\\n"
+    st.session_state["terminal_history_output"] += f"\n[ENGINE TRACE] Activating Module -> {mode.upper()}\n{res}\n"
 
 
 # ==========================================
@@ -298,26 +298,13 @@ st.caption("Industrial Scale Open-Source Reconnaissance Suite — 100% Free / No
 
 st.markdown("### 🗺️ System Automation Floor Canvas (Ultra-Wide Viewport)")
 
-# ==============================================================================
-# 🔥 [CRITICAL PROTECTED CORE] STATE PERSISTENCE FACTOR
-# Keeps track of query parameters across mutator modifications and widget resets.
-# ==============================================================================
+# Initialize session storage variables safely
 if "synced_workspace_code" not in st.session_state:
-    st.session_state["synced_workspace_code"] = ""
-
-try:
-    incoming_payload = st.query_params.get("payload_matrix", "")
-    if incoming_payload:
-        st.session_state["synced_workspace_code"] = incoming_payload
-except Exception:
-    pass
-# ==============================================================================
+    st.session_state["synced_workspace_code"] = "# Drag blocks inside canvas to generate orchestration code here"
 
 # ==============================================================================
-# 🔐 [CRITICAL PROTECTED CORE] EMBEDDED BLOCKLY ENGINE & DOM WRAPPER TEMPLATE
-# The canvas is enclosed in a strict fallback system container. This stops
-# Blockly from losing elements when a mutator box opens/closes.
-# DO NOT RENAME THE ID ATTRIBUTES OR THE ENGINE WILL LOSE ATTACHMENT MARKS!
+# 🔐 EMBEDDED BLOCKLY ENGINE & DOM WRAPPER TEMPLATE
+# URL state-push modifications have been completely decoupled to prevent TypeErrors.
 # ==============================================================================
 blockly_html_payload = f"""
 <!DOCTYPE html>
@@ -467,7 +454,7 @@ blockly_html_payload = f"""
       }}
     }};
 
-    // --- Dynamic Mutator Configuration Blocks for the Blue Gear Icon ---
+    // --- Dynamic Mutator Configuration Blocks ---
     Blockly.Blocks['scan_mutator_container'] = {{
       init: function() {{
         this.appendDummyInput().appendField("Scan Configurations");
@@ -645,80 +632,37 @@ blockly_html_payload = f"""
       grid: {{ spacing: 25, length: 3, colour: '#1f2833', snap: true }}, 
       trashcan: true
     }});
-
-    function processLiveDebugCompilations() {{
-      var allBlocks = workspace.getAllBlocks(false);
-      var generatedPythonCode = "";
-      var sequenceFound = false;
-      
-      for (var i = 0; i < allBlocks.length; i++) {{
-        if (allBlocks[i].type === 'when_sequence_activated') {{
-          sequenceFound = true;
-          generatedPythonCode += Blockly.Python.blockToCode(allBlocks[i]);
-          var nextBlock = allBlocks[i].getNextBlock();
-          while(nextBlock) {{
-            generatedPythonCode += Blockly.Python.blockToCode(nextBlock);
-            nextBlock = nextBlock.getNextBlock();
-          }}
-        }}
-      }}
-      
-      if(sequenceFound) {{
-        var targetUrl = window.parent.location.origin + window.parent.location.pathname + "?payload_matrix=" + encodeURIComponent(generatedPythonCode);
-        if(window.parent.location.search !== "?payload_matrix=" + encodeURIComponent(generatedPythonCode)) {{
-           window.parent.history.replaceState({{}}, '', targetUrl);
-        }}
-      }}
-    }}
-
-    workspace.addChangeListener(function(e) {{
-      if (e.type === Blockly.Events.BLOCK_CREATE || e.type === Blockly.Events.BLOCK_MOVE || e.type === Blockly.Events.BLOCK_CHANGE || e.type === Blockly.Events.BLOCK_DELETE) {{
-        processLiveDebugCompilations();
-      }}
-    }});
-    
-    setInterval(processLiveDebugCompilations, 700);
   </script>
 </body>
 </html>
 """
 # ==============================================================================
 
-# ==============================================================================
-# 🛠️ [CRITICAL PROTECTED CORE] STATIC PERSISTENT IFRAME KEYING
-# Explicitly passing `key="horizon_blockly_canvas"` seals the iframe DOM tree.
-# This ensures that even when Streamlit completely resets the page state, the
-# underlying Blockly canvas section does not drop or disappear.
-# ==============================================================================
-components.html(blockly_html_payload, height=900, scrolling=False, key="horizon_blockly_canvas")
-# ==============================================================================
+# Render the container without structural resets 
+components.html(blockly_html_payload, height=900, scrolling=False)
 
-# Lower Utility Controls Zone
+# Lower Controls & Run Execution Panel
 st.markdown("---")
-st.markdown("### 🖥️ Main Engine Pipeline Terminal")
+st.markdown("### 🖥️ Main Engine Pipeline Execution")
 
-# ==============================================================================
-# 🔐 [CRITICAL PROTECTED CORE] COMPILED PAYLOAD UI SYNC
-# Keeps the execution text fields synchronized with session memory states.
-# ==============================================================================
-with st.expander("📋 View Compiled Execution Code Output Stream", expanded=False):
-    st.session_state["synced_workspace_code"] = st.text_area(
-        "Live Track Payload Manifest", 
-        value=st.session_state["synced_workspace_code"], 
-        height=150
-    )
+# User copy-pastes code instructions directly or edits workflows here manually
+code_to_run = st.text_area(
+    "Paste Code Sequence Manifest or Edit Orchestration Script Below:",
+    value=st.session_state["synced_workspace_code"],
+    height=180
+)
 
 if st.button("⚡ Run Block Automation Flow", type="primary", use_container_width=True):
-    code_to_run = st.session_state["synced_workspace_code"].strip()
-    if not code_to_run or "Sequence Active" not in code_to_run:
-        st.error("❌ Pipeline Error: Drag and chain tools directly underneath the 'Sequence Start' trigger block first!")
+    st.session_state["synced_workspace_code"] = code_to_run
+    
+    if not code_to_run.strip() or "Sequence Active" not in code_to_run:
+        st.error("❌ Pipeline Error: Enter or construct a valid Python block script starting with '# Sequence Active' first.")
     else:
-        st.session_state["terminal_history_output"] = "🛰️ STREAMING PASSED ASSET DATA SECTIONS...\\n-----------------------------------------\\n"
+        st.session_state["terminal_history_output"] = "🛰️ STREAMING PASSED ASSET DATA SECTIONS...\n-----------------------------------------\n"
         try:
             exec_scope = {"run_scan": run_scan}
             exec(code_to_run, exec_scope)
-            st.success("🟢 Execution automation run complete! Check terminal view log contents.")
+            st.success("🟢 Execution automation run complete! Scroll up inside the floating canvas to see the terminal readout updates.")
             st.rerun()
         except Exception as runtime_err:
             st.error(f"💥 PIPELINE BREAK: {str(runtime_err)}")
-# ==============================================================================
