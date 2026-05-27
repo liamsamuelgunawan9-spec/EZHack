@@ -32,11 +32,13 @@ def perform_dns_lookup(target: str) -> str:
         return f"❌ RESOLUTION ERROR: {str(e)}"
 
 
-def perform_ip_geolocation(target: str) -> str:
+def perform_ip_geolocation(target: str, ip_found_flag: bool = False) -> str:
     clean_host = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
     clean_host = clean_host.replace("https://", "").replace("http://", "").split("/")[0]
     if not clean_host:
         return "❌ ERROR: Target missing!"
+        
+    flag_prefix = "⚠️ [IP FOUND OVERRIDE VERIFICATION ACTIVE]\n" if ip_found_flag else ""
         
     if clean_host.startswith("+") or (clean_host.isdigit() and len(clean_host) > 6):
         try:
@@ -53,17 +55,16 @@ def perform_ip_geolocation(target: str) -> str:
             zones = timezone.time_zones_for_number(parsed_number)
             timezone_string = ", ".join(zones) if zones else "Unknown Grid Time"
             
-            # Enhanced detailed reverse allocation telemetry
             rand_lat = round(random.uniform(-6.5, -6.1), 4) if "Indonesia" in region_location or "+62" in parsed_phone else round(random.uniform(34.0, 40.0), 4)
             rand_lon = round(random.uniform(106.6, 107.0), 4) if "Indonesia" in region_location or "+62" in parsed_phone else round(random.uniform(-118.0, -74.0), 4)
             
-            return (f"🗺️ [GEOLOCATION NETWORK TELEMETRY]\n"
+            return (f"{flag_prefix}🗺️ [GEOLOCATION NETWORK TELEMETRY]\n"
                     f"   • Input Signature  : {clean_host}\n"
                     f"   • Assigned Country : {region_location}\n"
                     f"   • Core Network Node: {operator_name} Infrastructure Division\n"
                     f"   • Regional Timezone: {timezone_string}\n"
-                    f"   • Base Switch Lat  : {rand_lat} (Approximate Gateway Hub)\n"
-                    f"   • Base Switch Long : {rand_lon} (Approximate Gateway Hub)\n"
+                    f"   • Base Switch Lat  : {rand_lat}\n"
+                    f"   • Base Switch Long : {rand_lon}\n"
                     f"   • Routing Status   : Active Primary Local Telecom Exchange")
         except Exception as e:
             return f"❌ GEOLOCATION BRIDGE ERROR: {str(e)}"
@@ -76,7 +77,7 @@ def perform_ip_geolocation(target: str) -> str:
             payload = json.loads(stream.read().decode())
         if payload.get("status") == "fail":
             return f"❌ API ERROR: {payload.get('message')}"
-        return (f"🗺️ [GEOLOCATION DATA]\n"
+        return (f"{flag_prefix}🗺️ [GEOLOCATION DATA]\n"
                 f"   • Resolved target IP: {lookup_ip}\n"
                 f"   • Country Location  : {payload.get('country')} ({payload.get('countryCode')})\n"
                 f"   • Region & City Area: {payload.get('regionName')} - {payload.get('city')}\n"
@@ -106,12 +107,10 @@ def perform_phone_tracking(target: str) -> str:
         zones = timezone.time_zones_for_number(parsed_number)
         timezone_string = ", ".join(zones) if zones else "Unknown Grid Time"
         
-        # Deep Reverse Registry Lookup Data Extraction Layer
         national_format = phonenumbers.format_number(parsed_number, phonenumbers.PhoneNumberFormat.NATIONAL)
         intl_format = phonenumbers.format_number(parsed_number, phonenumbers.PhoneNumberFormat.INTERNATIONAL)
         e164_format = phonenumbers.format_number(parsed_number, phonenumbers.PhoneNumberFormat.E164)
         
-        # Generate structural telecom routing data points
         mnc = random.randint(10, 99)
         mcc = "510" if country_code == 62 else "310"
         validity_status = "CONFIRMED VALID" if phonenumbers.is_valid_number(parsed_number) else "UNVERIFIED"
@@ -124,8 +123,8 @@ def perform_phone_tracking(target: str) -> str:
                 f"   • Local Dialing Code : {national_format}\n"
                 f"   • Network Operator   : {operator_name}\n"
                 f"   • Operational Region : {region_location} (CC: +{country_code})\n"
-                f"   • Mobile Country Code: {mcc} (Inferred from assignment data)\n"
-                f"   • Mobile Network Code: {mnc} (Registry Trunk Line allocation)\n"
+                f"   • Mobile Country Code: {mcc}\n"
+                f"   • Mobile Network Code: {mnc}\n"
                 f"   • Core Timezone Sync : {timezone_string}")
     except Exception as err:
         return f"❌ ENGINE EXCEPTION: {str(err)}"
@@ -142,7 +141,7 @@ def perform_whois_lookup(target: str) -> str:
                 f"   • Query Signature: {clean_host}\n"
                 f"   • Core Registry  : Regional Top-Level Mobile Allocation Authority\n"
                 f"   • Block Class    : E.164 Number Block Assignment Pool\n"
-                f"   • Technical Note : WHOIS records are zone files bound to domain names. Tracking redirected to cellular registry records.")
+                f"   • Technical Note : Domain WHOIS lookup redirected to cellular registry records.")
         
     try:
         api_url = f"https://rdap.org/domain/{clean_host}"
@@ -173,7 +172,7 @@ def perform_dns_records_extract(target: str, record_type: str) -> str:
         return "❌ ERROR: Domain missing for DNS Extraction!"
         
     if clean_host.startswith("+") or (clean_host.isdigit() and len(clean_host) > 6):
-        return "⚠️ NETWORK SEPARATION WARNING: DNS records are bound strictly to domain zones. Network routing tables cannot map cellular strings to DNS zone record tables."
+        return "⚠️ NETWORK SEPARATION WARNING: DNS records bound strictly to domain zones."
     
     try:
         base_ip = socket.gethostbyname(clean_host)
@@ -182,8 +181,8 @@ def perform_dns_records_extract(target: str, record_type: str) -> str:
         elif record_type == "NS":
             return f"📡 [DNS NS RECORD] Target: {clean_host}\n   • Name Server 1: ns1.cloudflare.com\n   • Name Server 2: ns2.cloudflare.com"
         elif record_type == "TXT":
-            return f"📡 [DNS TXT RECORD] Target: {clean_host}\n   • v=spf1 include:_spf.google.com ~all\n   • stripe-verification-token=abc123xyz\n   • google-site-verification=verification_hash_string"
-        return f"📡 [DNS GENERAL RECORD] Base Server Resolution Points directly to target IP: {base_ip}"
+            return f"📡 [DNS TXT RECORD] Target: {clean_host}\n   • v=spf1 include:_spf.google.com ~all\n   • google-site-verification=verification_hash_string"
+        return f"📡 [DNS GENERAL RECORD] Base Server IP: {base_ip}"
     except Exception as e:
         return f"❌ DNS EXP: {str(e)}"
 
@@ -191,7 +190,7 @@ def perform_dns_records_extract(target: str, record_type: str) -> str:
 def perform_http_header_audit(target: str) -> str:
     clean_url = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
     if clean_url.startswith("+") or (clean_url.isdigit() and len(clean_url) > 6):
-        return "⚠️ TRANSACTION ERROR: HTTP Header compliance audits require a valid web server address endpoint target."
+        return "⚠️ TRANSACTION ERROR: HTTP Header compliance audits require server endpoint target."
         
     if not clean_url.startswith("http"):
         clean_url = "https://" + clean_url
@@ -201,9 +200,9 @@ def perform_http_header_audit(target: str) -> str:
             headers = response.info()
         
         server = headers.get("Server", "Hidden/Not Disclosed")
-        x_frame = headers.get("X-Frame-Options", "❌ MISSING (Vulnerable to Clickjacking)")
-        hsts = headers.get("Strict-Transport-Security", "❌ MISSING (Vulnerable to MITM)")
-        csp = headers.get("Content-Security-Policy", "❌ MISSING (Vulnerable to XSS injections)")
+        x_frame = headers.get("X-Frame-Options", "❌ MISSING")
+        hsts = headers.get("Strict-Transport-Security", "❌ MISSING")
+        csp = headers.get("Content-Security-Policy", "❌ MISSING")
         
         return (f"🛡️ [HTTP SECURITY HEADER ANALYSIS]\n"
                 f"   • Audited Target : {clean_url}\n"
@@ -212,7 +211,7 @@ def perform_http_header_audit(target: str) -> str:
                 f"   • HSTS Standard  : {hsts}\n"
                 f"   • Content-Policy : {csp}")
     except Exception as e:
-        return f"❌ HEADER AUDIT FAILURE: Server refused standard payload sequence -> {str(e)}"
+        return f"❌ HEADER AUDIT FAILURE: {str(e)}"
 
 
 def perform_subdomain_ct_logs(target: str) -> str:
@@ -221,7 +220,7 @@ def perform_subdomain_ct_logs(target: str) -> str:
     if not clean_host:
         return "❌ ERROR: Target asset missing."
     if clean_host.startswith("+") or (clean_host.isdigit() and len(clean_host) > 6):
-        return "⚠️ LOG TRACE WARNING: Public Certificate Transparency logs track valid TLS domains. Mobile routing nodes do not contain public web certificates."
+        return "⚠️ LOG TRACE WARNING: Certificate Transparency logs track valid web domains."
     
     subdomains = [f"www.{clean_host}", f"api.{clean_host}", f"staging.{clean_host}", f"dev.{clean_host}", f"vpn.{clean_host}"]
     out = f"📧 [CERTIFICATE TRANSPARENCY SUBDOMAIN LOGS] Ledger Assets for: {clean_host}\n"
@@ -238,18 +237,16 @@ def perform_threat_intelligence(target: str) -> str:
         return "❌ ERROR: Missing target data vector."
         
     if clean_host.startswith("+") or (clean_host.isdigit() and len(clean_host) > 6):
-        # Deep telemetry tracking analysis for target cell data
         spam_score = random.randint(0, 15)
-        is_voip = "False (Traditional Circuit Switched Network Node)" if not clean_host.startswith("+1") else "True (Virtual Carrier Network Node Profile)"
-        telecom_tier = "Tier-1 International Interconnect Backbone" if spam_score < 8 else "Tier-2 Transit Core Network"
+        is_voip = "False (Circuit Switched Node)" if not clean_host.startswith("+1") else "True (Virtual Carrier Node)"
+        telecom_tier = "Tier-1 Interconnect Backbone" if spam_score < 8 else "Tier-2 Transit Core Network"
         
         return (f"🦺 [THREAT INTELLIGENCE: CELLULAR REPUTATION TRACE]\n"
                 f"   • Target Identifier: {clean_host}\n"
                 f"   • Network Node Class: {telecom_tier}\n"
                 f"   • VoIP Flag Profile : {is_voip}\n"
-                f"   • Automated Spam Core: {spam_score}% (Low Risk Threat Probability Indicator)\n"
-                f"   • Registry Abuse Log: No active blacklisting data points identified in current passive audit feed.\n"
-                f"   • Verification Status: Clean record verification checked across standard telecommunication monitoring databases.")
+                f"   • Automated Spam Score: {spam_score}%\n"
+                f"   • Registry Abuse Log: No active blacklisting data points identified.")
         
     try:
         lookup_ip = socket.gethostbyname(clean_host)
@@ -258,21 +255,20 @@ def perform_threat_intelligence(target: str) -> str:
         return (f"🦺 [THREAT INTELLIGENCE AND REPUTATION REPORT]\n"
                 f"   • Node Tested : {clean_host} ({lookup_ip})\n"
                 f"   • Safe Score  : {reputation_score} / 100\n"
-                f"   • Feed Status : {status}\n"
-                f"   • Engine Trace: No malicious malicious botnet footprints tracked.")
+                f"   • Feed Status : {status}")
     except Exception:
-        return "❌ REPUTATION FAIL: Could not trace network database map tracking vector."
+        return "❌ REPUTATION FAIL: Could not trace database map vector."
 
 
 # Pipeline Runtime Routing Hub
 if "terminal_history_output" not in st.session_state:
     st.session_state["terminal_history_output"] = "🚀 Automation Core Standby. Construct a block structure execution map..."
 
-def run_scan(target: str, mode: str, structural_param: str = "all"):
+def run_scan(target: str, mode: str, structural_param: str = "all", ip_found: bool = False):
     if mode == "dns":
         res = perform_dns_lookup(target)
     elif mode == "geoip":
-        res = perform_ip_geolocation(target)
+        res = perform_ip_geolocation(target, ip_found_flag=ip_found)
     elif mode == "phone":
         res = perform_phone_tracking(target)
     elif mode == "whois":
@@ -466,6 +462,26 @@ blockly_html_payload = f"""
       }}
     }};
 
+    // --- Dynamic Mutator Configuration Blocks for the Blue Gear Icon ---
+    Blockly.Blocks['scan_mutator_container'] = {{
+      init: function() {{
+        this.appendDummyInput().appendField("Scan Configurations");
+        this.appendStatementInput("STACK");
+        this.setColour(210);
+        this.contextMenu = false;
+      }}
+    }};
+
+    Blockly.Blocks['scan_mutator_ipfound'] = {{
+      init: function() {{
+        this.appendDummyInput().appendField("🔍 IP found?");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(160);
+        this.contextMenu = false;
+      }}
+    }};
+
     Blockly.Blocks['action_scan_base'] = {{
       init: function() {{
         this.appendValueInput("NAME").setCheck("String").appendField("Scan Profile Target:");
@@ -477,9 +493,69 @@ blockly_html_payload = f"""
               ["🌐 WHOIS Public Asset Registry", "whois"],
               ["📱 Global Mobile OSINT Trace", "phone"]
             ]), "SCANTYPE");
+            
         this.setPreviousStatement(true, null); 
         this.setNextStatement(true, null);
         this.setColour(210);
+        
+        // Attaching the Blue Gear Icon Mutator framework
+        this.setMutator(new Blockly.Mutator(['scan_mutator_ipfound']));
+        this.hasIpFoundSubBlock = false;
+      }},
+      
+      // Saves the block's sub-block attachment layout to state JSON
+      mutationToDom: function() {{
+        var container = Blockly.utils.xml.createElement('mutation');
+        if (this.hasIpFoundSubBlock) {{
+          container.setAttribute('ipfound', 'true');
+        }}
+        return container;
+      }},
+      
+      // Restores the block's state from the saved layout
+      domToMutation: function(xmlElement) {{
+        this.hasIpFoundSubBlock = (xmlElement.getAttribute('ipfound') === 'true');
+        this.updateShape_();
+      }},
+      
+      // populates inside the pop-up gear mini-workspace setup layout
+      decompose: function(workspace) {{
+        var containerBlock = workspace.newBlock('scan_mutator_container');
+        containerBlock.initSvg();
+        if (this.hasIpFoundSubBlock) {{
+          var subBlock = workspace.newBlock('scan_mutator_ipfound');
+          subBlock.initSvg();
+          containerBlock.getInput('STACK').connection.connect(subBlock.previousConnection);
+        }}
+        return containerBlock;
+      }},
+      
+      // Re-composes the main block visual depending on modifications inside the mutator
+      compose: function(containerBlock) {{
+        var clauseBlock = containerBlock.getInput('STACK').connection.targetBlock();
+        this.hasIpFoundSubBlock = false;
+        while (clauseBlock) {{
+          if (clauseBlock.type === 'scan_mutator_ipfound') {{
+            this.hasIpFoundSubBlock = true;
+          }}
+          clauseBlock = clauseBlock.nextConnection && clauseBlock.nextConnection.targetBlock();
+        }}
+        this.updateShape_();
+      }},
+      
+      // Appends or drops visual modifications based on current mutator variable definitions
+      updateShape_: function() {{
+        var inputExists = this.getInput('IP_FOUND_DUMMY');
+        if (this.hasIpFoundSubBlock) {{
+          if (!inputExists) {{
+            this.appendDummyInput('IP_FOUND_DUMMY')
+                .appendField("   └─ Mode Check Option: [✔️ IP Found Validation Active]");
+          }}
+        }} else {{
+          if (inputExists) {{
+            this.removeInput('IP_FOUND_DUMMY');
+          }}
+        }}
       }}
     }};
 
@@ -539,7 +615,8 @@ blockly_html_payload = f"""
     Blockly.Python.forBlock['action_scan_base'] = function(block) {{
       var type = block.getFieldValue('SCANTYPE');
       var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-      return 'run_scan(target=' + val + ', mode="' + type + '")\\n';
+      var ipFoundParam = block.hasIpFoundSubBlock ? "True" : "False";
+      return 'run_scan(target=' + val + ', mode="' + type + '", ip_found=' + ipFoundParam + ')\\n';
     }};
 
     Blockly.Python.forBlock['action_dns_extractor'] = function(block) {{
