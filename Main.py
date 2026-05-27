@@ -350,8 +350,7 @@ blockly_html_payload = f"""
         </div>
         <div class="termBody" id="localTerminalContentText">{st.session_state["terminal_history_output"]}</div>
       </div>
-      
-    </div>
+      </div>
   </div>
 
   <xml id="toolbox" style="display: none">
@@ -375,6 +374,8 @@ blockly_html_payload = f"""
   <script>
     var isTerminalMinimized = false;
     
+    // --- Locked code 1 start ---
+    // STRUCTURAL CONTAINER SECTIONS: CORE OPENING AND CLOSING MODES
     function toggleLocalTerminalState() {{
       var tBody = document.getElementById("localTerminalContentText");
       var btn = document.getElementById("stateToggleActionBtn");
@@ -396,6 +397,7 @@ blockly_html_payload = f"""
         isTerminalMinimized = false;
       }}
     }}
+    // --- locked code 1 end ---
 
     var workspaceDiv = document.getElementById('blocklyDiv');
     var termWindow = document.getElementById('integratedTerminalBlock');
@@ -570,6 +572,8 @@ blockly_html_payload = f"""
       trashcan: true
     }});
 
+    // --- Locked code 2 start ---
+    // LIVE COMPILER ENGINE & BLOCK SEQUENCE SCANNER LOGIC
     function processLiveDebugCompilations() {{
       var allBlocks = workspace.getAllBlocks(false);
       var generatedPythonCode = "";
@@ -602,6 +606,7 @@ blockly_html_payload = f"""
     }});
     
     setInterval(processLiveDebugCompilations, 700);
+    // --- locked code 2 end ---
   </script>
 </body>
 </html>
