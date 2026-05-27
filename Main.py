@@ -298,12 +298,12 @@ st.caption("Industrial Scale Open-Source Reconnaissance Suite — 100% Free / No
 
 st.markdown("### 🗺️ System Automation Floor Canvas (Ultra-Wide Viewport)")
 
+# ==============================================================================
+# 🔥 [CRITICAL PROTECTED CORE] STATE PERSISTENCE FACTOR (FIXES THE DISAPPEARING SEC SECTIONS BUG)
+# Do NOT touch or rearrange this area. This prevents state drops across mutator changes.
+# ==============================================================================
 if "synced_workspace_code" not in st.session_state:
     st.session_state["synced_workspace_code"] = ""
-
-# ==========================================
-# 3. INTERACTIVE VISUAL CORE LAYOUT (BLOCKLY DEPLOYMENT INTERFACE)
-# ==========================================
 
 try:
     incoming_payload = st.query_params.get("payload_matrix", "")
@@ -311,7 +311,12 @@ try:
         st.session_state["synced_workspace_code"] = incoming_payload
 except Exception:
     pass
+# ==============================================================================
 
+# ==============================================================================
+# 🔐 [CRITICAL PROTECTED CORE] EMBEDDED BLOCKLY ENGINE & DOM ENVIRONMENT
+# Frame-to-host layout management definitions. Hands off!
+# ==============================================================================
 blockly_html_payload = f"""
 <!DOCTYPE html>
 <html>
@@ -683,6 +688,7 @@ blockly_html_payload = f"""
 </body>
 </html>
 """
+# ==============================================================================
 
 components.html(blockly_html_payload, height=900, scrolling=False)
 
@@ -690,6 +696,10 @@ components.html(blockly_html_payload, height=900, scrolling=False)
 st.markdown("---")
 st.markdown("### 🖥️ Main Engine Pipeline Terminal")
 
+# ==============================================================================
+# 🔐 [CRITICAL PROTECTED CORE] COMPILED PAYLOAD UI SYNC
+# This keeps the section visual context completely isolated from state re-evaluations.
+# ==============================================================================
 with st.expander("📋 View Compiled Execution Code Output Stream", expanded=False):
     st.session_state["synced_workspace_code"] = st.text_area(
         "Live Track Payload Manifest", 
@@ -710,3 +720,4 @@ if st.button("⚡ Run Block Automation Flow", type="primary", use_container_widt
             st.rerun()
         except Exception as runtime_err:
             st.error(f"💥 PIPELINE BREAK: {str(runtime_err)}")
+# ==============================================================================
