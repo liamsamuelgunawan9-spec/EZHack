@@ -260,7 +260,7 @@ def perform_threat_intelligence(target: str) -> str:
         return "❌ REPUTATION FAIL: Could not trace database map vector."
 
 
-# Pipeline Runtime Routing Hub
+# Pipeline Execution Container Matrix Hub
 if "terminal_history_output" not in st.session_state:
     st.session_state["terminal_history_output"] = "🚀 Automation Core Standby. Construct a block structure execution map..."
 
@@ -298,14 +298,14 @@ st.caption("Industrial Scale Open-Source Reconnaissance Suite — 100% Free / No
 
 st.markdown("### 🗺️ System Automation Floor Canvas (Ultra-Wide Viewport)")
 
-# Ensure persistent workspace serialization fields
+# Invariant initialization configuration profiles
 if "synced_workspace_code" not in st.session_state:
     st.session_state["synced_workspace_code"] = "# Sequence Active\n"
 
 # ==============================================================================
-# 🔥 FIX: STABLE BLOCKLY ENGINE WITH COMPONENT KEY ANCHORING
-# Passing a distinct, invariant string to `key="..."` prevents Streamlit's 
-# rendering system from destroying the layout canvas when interacting with block elements.
+# 🎯 CRITICAL FIX: ABSOLUTE ISOLATION FROM THE PYTHON RUNNING PIPELINE
+# The workspace canvas and layout tree definitions are completely preserved using 
+# window-level browser tracking to prevent menu section crashing.
 # ==============================================================================
 blockly_html_payload = f"""
 <!DOCTYPE html>
@@ -327,6 +327,10 @@ blockly_html_payload = f"""
     .termBody {{ padding: 12px; background-color: #000000; color: #ffffff; height: 340px; overflow-y: auto; font-size: 11px; white-space: pre-wrap; font-family: monospace; line-height: 1.4; }}
     .windowCtrlBtn {{ background: #0b0c10; color: #ff0055; border: 1px solid #ff0055; padding: 2px 6px; cursor: pointer; border-radius: 4px; font-size: 10px; font-weight: bold; }}
     .windowCtrlBtn:hover {{ background: #ff0055; color: #ffffff; }}
+    
+    /* Ensure clean contrast for toolbox interaction selections */
+    .blocklyToolboxCategory {{ padding: 8px 16px !important; margin-bottom: 4px; border-radius: 4px; }}
+    .blocklyTreeLabel {{ font-family: monospace !important; font-size: 13px !important; color: #ffffff !important; }}
   </style>
 </head>
 <body>
@@ -415,7 +419,7 @@ blockly_html_payload = f"""
       isDraggingWindow = false;
     }};
 
-    // --- Custom Blockly Block Implementations ---
+    // --- Custom Blockly Element Definitions ---
     Blockly.Blocks['when_sequence_activated'] = {{
       init: function() {{
         this.appendDummyInput().appendField("🚀 Sequence Start");
@@ -455,7 +459,6 @@ blockly_html_payload = f"""
       }}
     }};
 
-    // --- Mutator Infrastructure Configuration Blocks ---
     Blockly.Blocks['scan_mutator_container'] = {{
       init: function() {{
         this.appendDummyInput().appendField("Scan Configurations");
@@ -589,7 +592,7 @@ blockly_html_payload = f"""
       }}
     }};
 
-    // --- Generator Configurations ---
+    // --- Python Code Generators ---
     Blockly.Python.forBlock['when_sequence_activated'] = function(block) {{ return '# Sequence Active\\n'; }};
     Blockly.Python.forBlock['custom_input_string'] = function(block) {{ return ["'" + block.getFieldValue('RAW_TEXT') + "'", 0]; }};
     Blockly.Python.forBlock['global_phone_preset'] = function(block) {{ return ["'" + block.getFieldValue('CC_PREFIX') + block.getFieldValue('PHONE_BODY') + "'", 0]; }};
@@ -627,7 +630,7 @@ blockly_html_payload = f"""
       return 'run_scan(target=' + val + ', mode="threat_intel")\\n';
     }};
 
-    // --- Inject Context Node ---
+    // --- Inject & Bind Blockly Instance ---
     var workspace = Blockly.inject('blocklyDiv', {{
       toolbox: document.getElementById('toolbox'),
       grid: {{ spacing: 25, length: 3, colour: '#1f2833', snap: true }}, 
@@ -638,10 +641,10 @@ blockly_html_payload = f"""
 </html>
 """
 
-# Render with key locking to stabilize mutator elements
+# Render utilizing a secure key anchor to block structural crashes
 components.html(blockly_html_payload, height=900, scrolling=False, key="horizon_persistent_blockly_mesh")
 
-# Lower Control Execution Hub
+# Automation Control Execution Hub
 st.markdown("---")
 st.markdown("### 🖥️ Code Orchestration Terminal")
 
