@@ -298,13 +298,14 @@ st.caption("Industrial Scale Open-Source Reconnaissance Suite — 100% Free / No
 
 st.markdown("### 🗺️ System Automation Floor Canvas (Ultra-Wide Viewport)")
 
-# Initialize session storage variables safely
+# Ensure persistent workspace serialization fields
 if "synced_workspace_code" not in st.session_state:
-    st.session_state["synced_workspace_code"] = "# Drag blocks inside canvas to generate orchestration code here"
+    st.session_state["synced_workspace_code"] = "# Sequence Active\n"
 
 # ==============================================================================
-# 🔐 EMBEDDED BLOCKLY ENGINE & DOM WRAPPER TEMPLATE
-# URL state-push modifications have been completely decoupled to prevent TypeErrors.
+# 🔥 FIX: STABLE BLOCKLY ENGINE WITH COMPONENT KEY ANCHORING
+# Passing a distinct, invariant string to `key="..."` prevents Streamlit's 
+# rendering system from destroying the layout canvas when interacting with block elements.
 # ==============================================================================
 blockly_html_payload = f"""
 <!DOCTYPE html>
@@ -414,7 +415,7 @@ blockly_html_payload = f"""
       isDraggingWindow = false;
     }};
 
-    // --- Custom Blockly Element Implementations ---
+    // --- Custom Blockly Block Implementations ---
     Blockly.Blocks['when_sequence_activated'] = {{
       init: function() {{
         this.appendDummyInput().appendField("🚀 Sequence Start");
@@ -454,7 +455,7 @@ blockly_html_payload = f"""
       }}
     }};
 
-    // --- Dynamic Mutator Configuration Blocks ---
+    // --- Mutator Infrastructure Configuration Blocks ---
     Blockly.Blocks['scan_mutator_container'] = {{
       init: function() {{
         this.appendDummyInput().appendField("Scan Configurations");
@@ -588,7 +589,7 @@ blockly_html_payload = f"""
       }}
     }};
 
-    // --- Python Generator Mappings ---
+    // --- Generator Configurations ---
     Blockly.Python.forBlock['when_sequence_activated'] = function(block) {{ return '# Sequence Active\\n'; }};
     Blockly.Python.forBlock['custom_input_string'] = function(block) {{ return ["'" + block.getFieldValue('RAW_TEXT') + "'", 0]; }};
     Blockly.Python.forBlock['global_phone_preset'] = function(block) {{ return ["'" + block.getFieldValue('CC_PREFIX') + block.getFieldValue('PHONE_BODY') + "'", 0]; }};
@@ -626,7 +627,7 @@ blockly_html_payload = f"""
       return 'run_scan(target=' + val + ', mode="threat_intel")\\n';
     }};
 
-    // --- Inject Workspace Engine ---
+    // --- Inject Context Node ---
     var workspace = Blockly.inject('blocklyDiv', {{
       toolbox: document.getElementById('toolbox'),
       grid: {{ spacing: 25, length: 3, colour: '#1f2833', snap: true }}, 
@@ -636,33 +637,31 @@ blockly_html_payload = f"""
 </body>
 </html>
 """
-# ==============================================================================
 
-# Render the container without structural resets 
-components.html(blockly_html_payload, height=900, scrolling=False)
+# Render with key locking to stabilize mutator elements
+components.html(blockly_html_payload, height=900, scrolling=False, key="horizon_persistent_blockly_mesh")
 
-# Lower Controls & Run Execution Panel
+# Lower Control Execution Hub
 st.markdown("---")
-st.markdown("### 🖥️ Main Engine Pipeline Execution")
+st.markdown("### 🖥️ Code Orchestration Terminal")
 
-# User copy-pastes code instructions directly or edits workflows here manually
 code_to_run = st.text_area(
-    "Paste Code Sequence Manifest or Edit Orchestration Script Below:",
+    "Constructed Automation Flow Configuration Profile Script:",
     value=st.session_state["synced_workspace_code"],
-    height=180
+    height=160
 )
 
 if st.button("⚡ Run Block Automation Flow", type="primary", use_container_width=True):
     st.session_state["synced_workspace_code"] = code_to_run
     
     if not code_to_run.strip() or "Sequence Active" not in code_to_run:
-        st.error("❌ Pipeline Error: Enter or construct a valid Python block script starting with '# Sequence Active' first.")
+        st.error("❌ Pipeline Error: Arrange valid orchestration elements within the start sequence block first.")
     else:
         st.session_state["terminal_history_output"] = "🛰️ STREAMING PASSED ASSET DATA SECTIONS...\n-----------------------------------------\n"
         try:
             exec_scope = {"run_scan": run_scan}
             exec(code_to_run, exec_scope)
-            st.success("🟢 Execution automation run complete! Scroll up inside the floating canvas to see the terminal readout updates.")
+            st.success("🟢 Execution automation run complete! Scroll up to inspect results inside the canvas terminal view log.")
             st.rerun()
         except Exception as runtime_err:
             st.error(f"💥 PIPELINE BREAK: {str(runtime_err)}")
