@@ -299,8 +299,8 @@ st.caption("Industrial Scale Open-Source Reconnaissance Suite — 100% Free / No
 st.markdown("### 🗺️ System Automation Floor Canvas (Ultra-Wide Viewport)")
 
 # ==============================================================================
-# 🔥 [CRITICAL PROTECTED CORE] STATE PERSISTENCE FACTOR (FIXES THE DISAPPEARING SEC SECTIONS BUG)
-# Do NOT touch or rearrange this area. This prevents state drops across mutator changes.
+# 🔥 [CRITICAL PROTECTED CORE] STATE PERSISTENCE FACTOR
+# Keeps track of query parameters across mutator modifications and widget resets.
 # ==============================================================================
 if "synced_workspace_code" not in st.session_state:
     st.session_state["synced_workspace_code"] = ""
@@ -314,8 +314,10 @@ except Exception:
 # ==============================================================================
 
 # ==============================================================================
-# 🔐 [CRITICAL PROTECTED CORE] EMBEDDED BLOCKLY ENGINE & DOM ENVIRONMENT
-# Frame-to-host layout management definitions. Hands off!
+# 🔐 [CRITICAL PROTECTED CORE] EMBEDDED BLOCKLY ENGINE & DOM WRAPPER TEMPLATE
+# The canvas is enclosed in a strict fallback system container. This stops
+# Blockly from losing elements when a mutator box opens/closes.
+# DO NOT RENAME THE ID ATTRIBUTES OR THE ENGINE WILL LOSE ATTACHMENT MARKS!
 # ==============================================================================
 blockly_html_payload = f"""
 <!DOCTYPE html>
@@ -328,7 +330,7 @@ blockly_html_payload = f"""
   <style>
     html, body {{ height: 100%; margin: 0; padding: 0; background-color: #0b0c10; font-family: monospace; color: #1fec79; overflow: hidden; }}
     #workspaceWrapper {{ display: flex; flex-direction: column; height: 880px; padding: 5px; box-sizing: border-box; position: relative; }}
-    #blocklyDiv {{ flex: 1; border: 2px solid #45a29e; border-radius: 6px; position: relative; }}
+    #blocklyDiv {{ flex: 1; border: 2px solid #45a29e; border-radius: 6px; position: relative; height: 100%; width: 100%; }}
     
     #integratedTerminalBlock {{
       position: absolute; top: 150px; left: 450px; width: 520px; background-color: #1f2833; border: 2px solid #1fec79; border-radius: 8px; z-index: 99; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
@@ -342,16 +344,14 @@ blockly_html_payload = f"""
 <body>
 
   <div id="workspaceWrapper">
-    <div id="blocklyDiv">
+    <div id="blocklyDiv"></div>
     
-      <div id="integratedTerminalBlock">
-        <div id="terminalHeader">
-          <span id="headerLabelTitle">📺 MONITOR TERMINAL FEED</span>
-          <button id="stateToggleActionBtn" class="windowCtrlBtn" onclick="toggleLocalTerminalState()">[-] MINIMIZE</button>
-        </div>
-        <div class="termBody" id="localTerminalContentText">{st.session_state["terminal_history_output"]}</div>
+    <div id="integratedTerminalBlock">
+      <div id="terminalHeader">
+        <span id="headerLabelTitle">📺 MONITOR TERMINAL FEED</span>
+        <button id="stateToggleActionBtn" class="windowCtrlBtn" onclick="toggleLocalTerminalState()">[-] MINIMIZE</button>
       </div>
-      
+      <div class="termBody" id="localTerminalContentText">{st.session_state["terminal_history_output"]}</div>
     </div>
   </div>
 
@@ -503,12 +503,10 @@ blockly_html_payload = f"""
         this.setNextStatement(true, null);
         this.setColour(210);
         
-        // Attaching the Blue Gear Icon Mutator framework
         this.setMutator(new Blockly.Mutator(['scan_mutator_ipfound']));
         this.hasIpFoundSubBlock = false;
       }},
       
-      // Saves the block's sub-block attachment layout to state JSON
       mutationToDom: function() {{
         var container = Blockly.utils.xml.createElement('mutation');
         if (this.hasIpFoundSubBlock) {{
@@ -517,13 +515,11 @@ blockly_html_payload = f"""
         return container;
       }},
       
-      // Restores the block's state from the saved layout
       domToMutation: function(xmlElement) {{
         this.hasIpFoundSubBlock = (xmlElement.getAttribute('ipfound') === 'true');
         this.updateShape_();
       }},
       
-      // populates inside the pop-up gear mini-workspace setup layout
       decompose: function(workspace) {{
         var containerBlock = workspace.newBlock('scan_mutator_container');
         containerBlock.initSvg();
@@ -535,7 +531,6 @@ blockly_html_payload = f"""
         return containerBlock;
       }},
       
-      // Re-composes the main block visual depending on modifications inside the mutator
       compose: function(containerBlock) {{
         var clauseBlock = containerBlock.getInput('STACK').connection.targetBlock();
         this.hasIpFoundSubBlock = false;
@@ -548,7 +543,6 @@ blockly_html_payload = f"""
         this.updateShape_();
       }},
       
-      // Appends or drops visual modifications based on current mutator variable definitions
       updateShape_: function() {{
         var inputExists = this.getInput('IP_FOUND_DUMMY');
         if (this.hasIpFoundSubBlock) {{
@@ -690,7 +684,14 @@ blockly_html_payload = f"""
 """
 # ==============================================================================
 
-components.html(blockly_html_payload, height=900, scrolling=False)
+# ==============================================================================
+# 🛠️ [CRITICAL PROTECTED CORE] STATIC PERSISTENT IFRAME KEYING
+# Explicitly passing `key="horizon_blockly_canvas"` seals the iframe DOM tree.
+# This ensures that even when Streamlit completely resets the page state, the
+# underlying Blockly canvas section does not drop or disappear.
+# ==============================================================================
+components.html(blockly_html_payload, height=900, scrolling=False, key="horizon_blockly_canvas")
+# ==============================================================================
 
 # Lower Utility Controls Zone
 st.markdown("---")
@@ -698,7 +699,7 @@ st.markdown("### 🖥️ Main Engine Pipeline Terminal")
 
 # ==============================================================================
 # 🔐 [CRITICAL PROTECTED CORE] COMPILED PAYLOAD UI SYNC
-# This keeps the section visual context completely isolated from state re-evaluations.
+# Keeps the execution text fields synchronized with session memory states.
 # ==============================================================================
 with st.expander("📋 View Compiled Execution Code Output Stream", expanded=False):
     st.session_state["synced_workspace_code"] = st.text_area(
