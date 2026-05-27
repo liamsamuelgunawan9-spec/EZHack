@@ -302,12 +302,9 @@ st.markdown("### 🗺️ System Automation Floor Canvas (Ultra-Wide Viewport)")
 if "synced_workspace_code" not in st.session_state:
     st.session_state["synced_workspace_code"] = "# Sequence Active\n"
 
-# ==============================================================================
-# 🎯 CRITICAL FIX: ABSOLUTE ISOLATION FROM THE PYTHON RUNNING PIPELINE
-# The workspace canvas and layout tree definitions are completely preserved using 
-# window-level browser tracking to prevent menu section crashing.
-# ==============================================================================
-blockly_html_payload = f"""
+
+# Removed 'f' macro formatting to prevent Python 3.14 compilation conflicts on nested brackets.
+blockly_html_payload = """
 <!DOCTYPE html>
 <html>
 <head>
@@ -316,21 +313,20 @@ blockly_html_payload = f"""
   <script src="https://unpkg.com/blockly/python_compressed.js"></script>
   <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
   <style>
-    html, body {{ height: 100%; margin: 0; padding: 0; background-color: #0b0c10; font-family: monospace; color: #1fec79; overflow: hidden; }}
-    #workspaceWrapper {{ display: flex; flex-direction: column; height: 880px; padding: 5px; box-sizing: border-box; position: relative; }}
-    #blocklyDiv {{ flex: 1; border: 2px solid #45a29e; border-radius: 6px; position: relative; height: 100%; width: 100%; }}
+    html, body { height: 100%; margin: 0; padding: 0; background-color: #0b0c10; font-family: monospace; color: #1fec79; overflow: hidden; }
+    #workspaceWrapper { display: flex; flex-direction: column; height: 880px; padding: 5px; box-sizing: border-box; position: relative; }
+    #blocklyDiv { flex: 1; border: 2px solid #45a29e; border-radius: 6px; position: relative; height: 100%; width: 100%; }
     
-    #integratedTerminalBlock {{
+    #integratedTerminalBlock {
       position: absolute; top: 150px; left: 450px; width: 520px; background-color: #1f2833; border: 2px solid #1fec79; border-radius: 8px; z-index: 99; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-    }}
-    #terminalHeader {{ padding: 8px 12px; cursor: move; background-color: #0b0c10; border-bottom: 2px solid #1fec79; font-weight: bold; color: #1fec79; display: flex; justify-content: space-between; font-size: 11px; align-items: center; }}
-    .termBody {{ padding: 12px; background-color: #000000; color: #ffffff; height: 340px; overflow-y: auto; font-size: 11px; white-space: pre-wrap; font-family: monospace; line-height: 1.4; }}
-    .windowCtrlBtn {{ background: #0b0c10; color: #ff0055; border: 1px solid #ff0055; padding: 2px 6px; cursor: pointer; border-radius: 4px; font-size: 10px; font-weight: bold; }}
-    .windowCtrlBtn:hover {{ background: #ff0055; color: #ffffff; }}
+    }
+    #terminalHeader { padding: 8px 12px; cursor: move; background-color: #0b0c10; border-bottom: 2px solid #1fec79; font-weight: bold; color: #1fec79; display: flex; justify-content: space-between; font-size: 11px; align-items: center; }
+    .termBody { padding: 12px; background-color: #000000; color: #ffffff; height: 340px; overflow-y: auto; font-size: 11px; white-space: pre-wrap; font-family: monospace; line-height: 1.4; }
+    .windowCtrlBtn { background: #0b0c10; color: #ff0055; border: 1px solid #ff0055; padding: 2px 6px; cursor: pointer; border-radius: 4px; font-size: 10px; font-weight: bold; }
+    .windowCtrlBtn:hover { background: #ff0055; color: #ffffff; }
     
-    /* Ensure clean contrast for toolbox interaction selections */
-    .blocklyToolboxCategory {{ padding: 8px 16px !important; margin-bottom: 4px; border-radius: 4px; }}
-    .blocklyTreeLabel {{ font-family: monospace !important; font-size: 13px !important; color: #ffffff !important; }}
+    .blocklyToolboxCategory { padding: 8px 16px !important; margin-bottom: 4px; border-radius: 4px; }
+    .blocklyTreeLabel { font-family: monospace !important; font-size: 13px !important; color: #ffffff !important; }
   </style>
 </head>
 <body>
@@ -343,7 +339,7 @@ blockly_html_payload = f"""
         <span id="headerLabelTitle">📺 MONITOR TERMINAL FEED</span>
         <button id="stateToggleActionBtn" class="windowCtrlBtn" onclick="toggleLocalTerminalState()">[-] MINIMIZE</button>
       </div>
-      <div class="termBody" id="localTerminalContentText">{st.session_state["terminal_history_output"]}</div>
+      <div class="termBody" id="localTerminalContentText">__TERMINAL_DATA_BUFFER__</div>
     </div>
   </div>
 
@@ -368,27 +364,27 @@ blockly_html_payload = f"""
   <script>
     var isTerminalMinimized = false;
     
-    function toggleLocalTerminalState() {{
+    function toggleLocalTerminalState() {
       var tBody = document.getElementById("localTerminalContentText");
       var btn = document.getElementById("stateToggleActionBtn");
       var title = document.getElementById("headerLabelTitle");
       
-      if(!isTerminalMinimized) {{
+      if(!isTerminalMinimized) {
         tBody.style.display = "none";
         btn.innerText = "[+] UNMINIMIZE";
         btn.style.color = "#1fec79";
         btn.style.borderColor = "#1fec79";
         title.innerText = "📺 TERM (MINIMIZED)";
         isTerminalMinimized = true;
-      }} else {{
+      } else {
         tBody.style.display = "block";
         btn.innerText = "[-] MINIMIZE";
         btn.style.color = "#ff0055";
         btn.style.borderColor = "#ff0055";
         title.innerText = "📺 MONITOR TERMINAL FEED";
         isTerminalMinimized = false;
-      }}
-    }}
+      }
+    }
 
     var workspaceDiv = document.getElementById('blocklyDiv');
     var termWindow = document.getElementById('integratedTerminalBlock');
@@ -399,56 +395,55 @@ blockly_html_payload = f"""
     var isDraggingWindow = false;
     var startX, startY;
 
-    document.getElementById("terminalHeader").onmousedown = function(e) {{
+    document.getElementById("terminalHeader").onmousedown = function(e) {
       if(e.target.className === "windowCtrlBtn") return;
       isDraggingWindow = true;
       startX = e.clientX - currentTermX;
       startY = e.clientY - currentTermY;
       e.preventDefault();
-    }};
+    };
 
-    document.onmousemove = function(e) {{
+    document.onmousemove = function(e) {
       if (!isDraggingWindow) return;
       currentTermX = e.clientX - startX;
       currentTermY = e.clientY - startY;
       termWindow.style.left = currentTermX + 'px';
       termWindow.style.top = currentTermY + 'px';
-    }};
+    };
 
-    document.onmouseup = function() {{
+    document.onmouseup = function() {
       isDraggingWindow = false;
-    }};
+    };
 
-    // --- Custom Blockly Element Definitions ---
-    Blockly.Blocks['when_sequence_activated'] = {{
-      init: function() {{
+    Blockly.Blocks['when_sequence_activated'] = {
+      init: function() {
         this.appendDummyInput().appendField("🚀 Sequence Start");
         this.setNextStatement(true, null);
         this.setColour(0);
-      }}
-    }};
+      }
+    };
 
-    Blockly.Blocks['custom_input_string'] = {{
-      init: function() {{
+    Blockly.Blocks['custom_input_string'] = {
+      init: function() {
         this.appendDummyInput().appendField("Target Domain:").appendField(new Blockly.FieldTextInput("google.com"), "RAW_TEXT");
         this.setOutput(true, "String");
         this.setColour(160);
-      }}
-    }};
+      }
+    };
 
-    Blockly.Blocks['global_phone_preset'] = {{
-      init: function() {{
+    Blockly.Blocks['global_phone_preset'] = {
+      init: function() {
         this.appendDummyInput()
             .appendField("📱 Preset Phone Target")
             .appendField(new Blockly.FieldDropdown([["🇮🇩 +62","+62"], ["🇺🇸 +1","+1"], ["🇬🇧 +44","+44"]]), "CC_PREFIX")
             .appendField(new Blockly.FieldTextInput("8123456789"), "PHONE_BODY");
         this.setOutput(true, "String");
         this.setColour(160);
-      }}
-    }};
+      }
+    };
 
-    Blockly.Blocks['custom_phone_signature'] = {{
-      init: function() {{
+    Blockly.Blocks['custom_phone_signature'] = {
+      init: function() {
         this.appendDummyInput()
             .appendField("🏳️ Custom Country Code Input")
             .appendField(new Blockly.FieldTextInput("+61"), "CUSTOM_PREFIX")
@@ -456,30 +451,30 @@ blockly_html_payload = f"""
             .appendField(new Blockly.FieldTextInput("412345678"), "PHONE_BODY");
         this.setOutput(true, "String");
         this.setColour(160);
-      }}
-    }};
+      }
+    };
 
-    Blockly.Blocks['scan_mutator_container'] = {{
-      init: function() {{
+    Blockly.Blocks['scan_mutator_container'] = {
+      init: function() {
         this.appendDummyInput().appendField("Scan Configurations");
         this.appendStatementInput("STACK");
         this.setColour(210);
         this.contextMenu = false;
-      }}
-    }};
+      }
+    };
 
-    Blockly.Blocks['scan_mutator_ipfound'] = {{
-      init: function() {{
+    Blockly.Blocks['scan_mutator_ipfound'] = {
+      init: function() {
         this.appendDummyInput().appendField("🔍 IP found?");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour(160);
         this.contextMenu = false;
-      }}
-    }};
+      }
+    };
 
-    Blockly.Blocks['action_scan_base'] = {{
-      init: function() {{
+    Blockly.Blocks['action_scan_base'] = {
+      init: function() {
         this.appendValueInput("NAME").setCheck("String").appendField("Scan Profile Target:");
         this.appendDummyInput()
             .appendField("Execution Stream:")
@@ -496,61 +491,61 @@ blockly_html_payload = f"""
         
         this.setMutator(new Blockly.Mutator(['scan_mutator_ipfound']));
         this.hasIpFoundSubBlock = false;
-      }},
+      },
       
-      mutationToDom: function() {{
+      mutationToDom: function() {
         var container = Blockly.utils.xml.createElement('mutation');
-        if (this.hasIpFoundSubBlock) {{
+        if (this.hasIpFoundSubBlock) {
           container.setAttribute('ipfound', 'true');
-        }}
+        }
         return container;
-      }},
+      },
       
-      domToMutation: function(xmlElement) {{
+      domToMutation: function(xmlElement) {
         this.hasIpFoundSubBlock = (xmlElement.getAttribute('ipfound') === 'true');
         this.updateShape_();
-      }},
+      },
       
-      decompose: function(workspace) {{
+      decompose: function(workspace) {
         var containerBlock = workspace.newBlock('scan_mutator_container');
         containerBlock.initSvg();
-        if (this.hasIpFoundSubBlock) {{
+        if (this.hasIpFoundSubBlock) {
           var subBlock = workspace.newBlock('scan_mutator_ipfound');
           subBlock.initSvg();
           containerBlock.getInput('STACK').connection.connect(subBlock.previousConnection);
-        }}
+        }
         return containerBlock;
-      }},
+      },
       
-      compose: function(containerBlock) {{
+      compose: function(containerBlock) {
         var clauseBlock = containerBlock.getInput('STACK').connection.targetBlock();
         this.hasIpFoundSubBlock = false;
-        while (clauseBlock) {{
-          if (clauseBlock.type === 'scan_mutator_ipfound') {{
+        while (clauseBlock) {
+          if (clauseBlock.type === 'scan_mutator_ipfound') {
             this.hasIpFoundSubBlock = true;
-          }}
+          }
           clauseBlock = clauseBlock.nextConnection && clauseBlock.nextConnection.targetBlock();
-        }}
+        }
         this.updateShape_();
-      }},
+      },
       
-      updateShape_: function() {{
+      updateShape_: function() {
         var inputExists = this.getInput('IP_FOUND_DUMMY');
-        if (this.hasIpFoundSubBlock) {{
-          if (!inputExists) {{
+        if (this.hasIpFoundSubBlock) {
+          if (!inputExists) {
             this.appendDummyInput('IP_FOUND_DUMMY')
                 .appendField("   └─ Mode Check Option: [✔️ IP Found Validation Active]");
-          }}
-        }} else {{
-          if (inputExists) {{
+          }
+        } else {
+          if (inputExists) {
             this.removeInput('IP_FOUND_DUMMY');
-          }}
-        }}
-      }}
-    }};
+          }
+        }
+      }
+    };
 
-    Blockly.Blocks['action_dns_extractor'] = {{
-      init: function() {{
+    Blockly.Blocks['action_dns_extractor'] = {
+      init: function() {
         this.appendValueInput("NAME").setCheck("String").appendField("📡 Parse Records for:");
         this.appendDummyInput()
             .appendField("Target Record Matrix Type:")
@@ -562,87 +557,88 @@ blockly_html_payload = f"""
         this.setPreviousStatement(true, null); 
         this.setNextStatement(true, null);
         this.setColour(210);
-      }}
-    }};
+      }
+    };
 
-    Blockly.Blocks['action_http_header_audit'] = {{
-      init: function() {{
+    Blockly.Blocks['action_http_header_audit'] = {
+      init: function() {
         this.appendValueInput("NAME").setCheck("String").appendField("🛡️ Audit Safety Headers for:");
         this.setPreviousStatement(true, null); 
         this.setNextStatement(true, null);
         this.setColour(210);
-      }}
-    }};
+      }
+    };
 
-    Blockly.Blocks['action_subdomain_ct_logs'] = {{
-      init: function() {{
+    Blockly.Blocks['action_subdomain_ct_logs'] = {
+      init: function() {
         this.appendValueInput("NAME").setCheck("String").appendField("📧 Collect CT Log Subdomains for:");
         this.setPreviousStatement(true, null); 
         this.setNextStatement(true, null);
         this.setColour(210);
-      }}
-    }};
+      }
+    };
 
-    Blockly.Blocks['action_threat_intel_reputation'] = {{
-      init: function() {{
+    Blockly.Blocks['action_threat_intel_reputation'] = {
+      init: function() {
         this.appendValueInput("NAME").setCheck("String").appendField("🦺 Reputation Threat Intel Check:");
         this.setPreviousStatement(true, null); 
         this.setNextStatement(true, null);
         this.setColour(210);
-      }}
-    }};
+      }
+    };
 
-    // --- Python Code Generators ---
-    Blockly.Python.forBlock['when_sequence_activated'] = function(block) {{ return '# Sequence Active\\n'; }};
-    Blockly.Python.forBlock['custom_input_string'] = function(block) {{ return ["'" + block.getFieldValue('RAW_TEXT') + "'", 0]; }};
-    Blockly.Python.forBlock['global_phone_preset'] = function(block) {{ return ["'" + block.getFieldValue('CC_PREFIX') + block.getFieldValue('PHONE_BODY') + "'", 0]; }};
-    Blockly.Python.forBlock['custom_phone_signature'] = function(block) {{
+    Blockly.Python.forBlock['when_sequence_activated'] = function(block) { return '# Sequence Active\\n'; };
+    Blockly.Python.forBlock['custom_input_string'] = function(block) { return ["'" + block.getFieldValue('RAW_TEXT') + "'", 0]; };
+    Blockly.Python.forBlock['global_phone_preset'] = function(block) { return ["'" + block.getFieldValue('CC_PREFIX') + block.getFieldValue('PHONE_BODY') + "'", 0]; };
+    Blockly.Python.forBlock['custom_phone_signature'] = function(block) {
       var prefix = block.getFieldValue('CUSTOM_PREFIX').trim();
-      if(!prefix.startsWith("+")) {{ prefix = "+" + prefix; }}
+      if(!prefix.startsWith("+")) { prefix = "+" + prefix; }
       return ["'" + prefix + block.getFieldValue('PHONE_BODY').trim() + "'", 0];
-    }};
+    };
 
-    Blockly.Python.forBlock['action_scan_base'] = function(block) {{
+    Blockly.Python.forBlock['action_scan_base'] = function(block) {
       var type = block.getFieldValue('SCANTYPE');
       var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
       var ipFoundParam = block.hasIpFoundSubBlock ? "True" : "False";
       return 'run_scan(target=' + val + ', mode="' + type + '", ip_found=' + ipFoundParam + ')\\n';
-    }};
+    };
 
-    Blockly.Python.forBlock['action_dns_extractor'] = function(block) {{
+    Blockly.Python.forBlock['action_dns_extractor'] = function(block) {
       var dnsType = block.getFieldValue('DNS_TYPE');
       var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
       return 'run_scan(target=' + val + ', mode="dns_extract", structural_param="' + dnsType + '")\\n';
-    }};
+    };
 
-    Blockly.Python.forBlock['action_http_header_audit'] = function(block) {{
+    Blockly.Python.forBlock['action_http_header_audit'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
       return 'run_scan(target=' + val + ', mode="header_audit")\\n';
-    }};
+    };
 
-    Blockly.Python.forBlock['action_subdomain_ct_logs'] = function(block) {{
+    Blockly.Python.forBlock['action_subdomain_ct_logs'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
       return 'run_scan(target=' + val + ', mode="subdomain_ct")\\n';
-    }};
+    };
 
-    Blockly.Python.forBlock['action_threat_intel_reputation'] = function(block) {{
+    Blockly.Python.forBlock['action_threat_intel_reputation'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
       return 'run_scan(target=' + val + ', mode="threat_intel")\\n';
-    }};
+    };
 
-    // --- Inject & Bind Blockly Instance ---
-    var workspace = Blockly.inject('blocklyDiv', {{
+    var workspace = Blockly.inject('blocklyDiv', {
       toolbox: document.getElementById('toolbox'),
-      grid: {{ spacing: 25, length: 3, colour: '#1f2833', snap: true }}, 
+      grid: { spacing: 25, length: 3, colour: '#1f2833', snap: true }, 
       trashcan: true
-    }});
+    });
   </script>
 </body>
 </html>
 """
 
-# Render utilizing a secure key anchor to block structural crashes
-components.html(blockly_html_payload, height=900, scrolling=False, key="horizon_persistent_blockly_mesh")
+# Clean token replacement instead of using string macro formatters
+final_html = blockly_html_payload.replace("__TERMINAL_DATA_BUFFER__", st.session_state["terminal_history_output"])
+
+# Render safely
+components.html(final_html, height=900, scrolling=False, key="horizon_persistent_blockly_mesh")
 
 # Automation Control Execution Hub
 st.markdown("---")
