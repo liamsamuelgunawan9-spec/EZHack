@@ -8,9 +8,22 @@ import re
 import streamlit as st
 import streamlit.components.v1 as components
 
+# Import python-dotenv to read .env file safely
+from dotenv import load_dotenv
+load_dotenv()
+
+# Import Groq SDK
+from groq import Groq
+
 # Import Google's phonenumbers library components
 import phonenumbers
 from phonenumbers import carrier, geocoder, timezone
+
+# Initialize Groq Client if API key is present
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+ai_client = None
+if GROQ_API_KEY:
+    ai_client = Groq(api_key=GROQ_API_KEY)
 
 # ==========================================
 # 1. CORE UTILITY FUNCTIONS (PASSIVE OSINT SUITE)
@@ -52,7 +65,6 @@ def perform_ip_geolocation(target: str) -> str:
             zones = timezone.time_zones_for_number(parsed_number)
             timezone_string = ", ".join(zones) if zones else "Unknown Grid Time"
             
-            # Enhanced detailed reverse allocation telemetry
             rand_lat = round(random.uniform(-6.5, -6.1), 4) if "Indonesia" in region_location or "+62" in parsed_phone else round(random.uniform(34.0, 40.0), 4)
             rand_lon = round(random.uniform(106.6, 107.0), 4) if "Indonesia" in region_location or "+62" in parsed_phone else round(random.uniform(-118.0, -74.0), 4)
             
@@ -104,12 +116,10 @@ def perform_phone_tracking(target: str) -> str:
         zones = timezone.time_zones_for_number(parsed_number)
         timezone_string = ", ".join(zones) if zones else "Unknown Grid Time"
         
-        # Deep Reverse Registry Lookup Data Extraction Layer
         national_format = phonenumbers.format_number(parsed_number, phonenumbers.PhoneNumberFormat.NATIONAL)
         intl_format = phonenumbers.format_number(parsed_number, phonenumbers.PhoneNumberFormat.INTERNATIONAL)
         e164_format = phonenumbers.format_number(parsed_number, phonenumbers.PhoneNumberFormat.E164)
         
-        # Generate structural telecom routing data points
         mnc = random.randint(10, 99)
         mcc = "510" if country_code == 62 else "310"
         validity_status = "CONFIRMED VALID" if phonenumbers.is_valid_number(parsed_number) else "UNVERIFIED"
@@ -251,7 +261,7 @@ def perform_threat_intelligence(target: str) -> str:
                 f"   • Node Tested : {clean_host} ({lookup_ip})\n"
                 f"   • Safe Score  : {reputation_score} / 100\n"
                 f"   • Feed Status : {status}\n"
-                f"   • Engine Trace: No malicious malicious botnet footprints tracked.")
+                f"   • Engine Trace: No malicious botnet footprints tracked.")
     except Exception:
         return "❌ REPUTATION FAIL: Could not trace network database map tracking vector."
 
@@ -287,365 +297,420 @@ def run_scan(target: str, mode: str, structural_param: str = "all"):
 
 st.set_page_config(page_title="Horizon OSINT Workspace", layout="wide")
 st.title("🛰️ Horizon Passive Intelligence Core") 
-st.caption("Industrial Scale Open-Source Reconnaissance Suite — 100% Free / Non-Intrusive") 
-st.markdown("### 🗺️ System Automation Floor Canvas (Ultra-Wide Viewport)") 
+st.caption("Industrial Scale Open-Source Reconnaissance Suite — Powered by Groq Inference") 
 
+# State Management Initialization
 if "synced_workspace_code" not in st.session_state:
     st.session_state["synced_workspace_code"] = ""
-    
 if "blockly_xml_state" not in st.session_state:
     st.session_state["blockly_xml_state"] = ""
+if "chat_messages" not in st.session_state:
+    st.session_state["chat_messages"] = [{"role": "assistant", "content": "Hello! I am your Groq-powered AI Copilot. I scan your live Blockly logic layout and compiled Python pipeline. Ask me anything!"}]
 
-# ==========================================
-# 3. INTERACTIVE VISUAL CORE LAYOUT (BLOCKLY DEPLOYMENT INTERFACE)
-# ==========================================
+# Split view into Workspace Core and AI Assistant
+layout_col_left, layout_col_right = st.columns([0.7, 0.3])
 
-try:
-    incoming_payload = st.query_params.get("payload_matrix", "")
-    if incoming_payload:
-        st.session_state["synced_workspace_code"] = urllib.parse.unquote(incoming_payload)
+with layout_col_left:
+    st.markdown("### 🗺️ System Automation Floor Canvas (Ultra-Wide Viewport)") 
+
+    # ==========================================
+    # 3. INTERACTIVE VISUAL CORE LAYOUT (BLOCKLY INTERFACE)
+    # ==========================================
+    try:
+        incoming_payload = st.query_params.get("payload_matrix", "")
+        if incoming_payload:
+            st.session_state["synced_workspace_code"] = urllib.parse.unquote(incoming_payload)
+            
+        incoming_xml = st.query_params.get("xml_matrix", "")
+        if incoming_xml:
+            st.session_state["blockly_xml_state"] = urllib.parse.unquote(incoming_xml)
+    except Exception:
+        pass
+
+    safe_xml_state = json.dumps(st.session_state.get("blockly_xml_state", ""))
+    safe_terminal_output = json.dumps(st.session_state.get("terminal_history_output", ""))
+
+    blockly_html_payload = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+      <script src="https://unpkg.com/blockly/python_compressed.js"></script>
+      <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
+      <style>
+        html, body {{ height: 100%; margin: 0; padding: 0; background-color: #0b0c10; font-family: monospace; color: #1fec79; overflow: hidden; }}
+        #workspaceWrapper {{ display: flex; flex-direction: column; height: 880px; padding: 5px; box-sizing: border-box; position: relative; }}
+        #blocklyDiv {{ flex: 1; border: 2px solid #45a29e; border-radius: 6px; position: relative; }}
         
-    incoming_xml = st.query_params.get("xml_matrix", "")
-    if incoming_xml:
-        st.session_state["blockly_xml_state"] = urllib.parse.unquote(incoming_xml)
-except Exception:
-    pass
+        #integratedTerminalBlock {{
+          position: absolute; top: 150px; left: 150px; width: 520px; background-color: #1f2833; border: 2px solid #1fec79; border-radius: 8px; z-index: 99; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }}
+        #terminalHeader {{ padding: 8px 12px; cursor: move; background-color: #0b0c10; border-bottom: 2px solid #1fec79; font-weight: bold; color: #1fec79; display: flex; justify-content: space-between; font-size: 11px; align-items: center; }}
+        .termBody {{ padding: 12px; background-color: #000000; color: #ffffff; height: 340px; overflow-y: auto; font-size: 11px; white-space: pre-wrap; font-family: monospace; line-height: 1.4; }}
+        .windowCtrlBtn {{ background: #0b0c10; color: #ff0055; border: 1px solid #ff0055; padding: 2px 6px; cursor: pointer; border-radius: 4px; font-size: 10px; font-weight: bold; }}
+        .windowCtrlBtn:hover {{ background: #ff0055; color: #ffffff; }}
+      </style>
+    </head>
+    <body>
 
-# Safely serialize Python state variables to valid, escaped JavaScript string literals
-safe_xml_state = json.dumps(st.session_state.get("blockly_xml_state", ""))
-safe_terminal_output = json.dumps(st.session_state.get("terminal_history_output", ""))
-
-blockly_html_payload = f"""
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <script src="https://unpkg.com/blockly/blockly.min.js"></script>
-  <script src="https://unpkg.com/blockly/python_compressed.js"></script>
-  <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
-  <style>
-    html, body {{ height: 100%; margin: 0; padding: 0; background-color: #0b0c10; font-family: monospace; color: #1fec79; overflow: hidden; }}
-    #workspaceWrapper {{ display: flex; flex-direction: column; height: 880px; padding: 5px; box-sizing: border-box; position: relative; }}
-    #blocklyDiv {{ flex: 1; border: 2px solid #45a29e; border-radius: 6px; position: relative; }}
-    
-    #integratedTerminalBlock {{
-      position: absolute; top: 150px; left: 450px; width: 520px; background-color: #1f2833; border: 2px solid #1fec79; border-radius: 8px; z-index: 99; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-    }}
-    #terminalHeader {{ padding: 8px 12px; cursor: move; background-color: #0b0c10; border-bottom: 2px solid #1fec79; font-weight: bold; color: #1fec79; display: flex; justify-content: space-between; font-size: 11px; align-items: center; }}
-    .termBody {{ padding: 12px; background-color: #000000; color: #ffffff; height: 340px; overflow-y: auto; font-size: 11px; white-space: pre-wrap; font-family: monospace; line-height: 1.4; }}
-    .windowCtrlBtn {{ background: #0b0c10; color: #ff0055; border: 1px solid #ff0055; padding: 2px 6px; cursor: pointer; border-radius: 4px; font-size: 10px; font-weight: bold; }}
-    .windowCtrlBtn:hover {{ background: #ff0055; color: #ffffff; }}
-  </style>
-</head>
-<body>
-
-  <div id="workspaceWrapper">
-    <div id="blocklyDiv"></div>
-    
-    <div id="integratedTerminalBlock">
-      <div id="terminalHeader">
-        <span id="headerLabelTitle">📺 MONITOR TERMINAL FEED</span>
-        <button id="stateToggleActionBtn" class="windowCtrlBtn" onclick="toggleLocalTerminalState()">[-] MINIMIZE</button>
+      <div id="workspaceWrapper">
+        <div id="blocklyDiv"></div>
+        
+        <div id="integratedTerminalBlock">
+          <div id="terminalHeader">
+            <span id="headerLabelTitle">📺 MONITOR TERMINAL FEED</span>
+            <button id="stateToggleActionBtn" class="windowCtrlBtn" onclick="toggleLocalTerminalState()">[-] MINIMIZE</button>
+          </div>
+          <div class="termBody" id="localTerminalContentText"></div>
+        </div>
+          
       </div>
-      <div class="termBody" id="localTerminalContentText"></div>
-    </div>
-      
-  </div>
 
-  <xml id="toolbox" style="display: none">
-    <category name="🏁 Sequence Triggers" colour="0">
-      <block type="when_sequence_activated"></block>
-    </category>
-    <category name="🌐 Core Inputs" colour="160">
-      <block type="custom_input_string"></block>
-      <block type="global_phone_preset"></block>
-      <block type="custom_phone_signature"></block>
-    </category>
-    <category name="📡 Network Channels" colour="210">
-      <block type="action_scan_base"></block>
-      <block type="action_dns_extractor"></block>
-      <block type="action_http_header_audit"></block>
-      <block type="action_subdomain_ct_logs"></block>
-      <block type="action_threat_intel_reputation"></block>
-    </category>
-  </xml>
+      <xml id="toolbox" style="display: none">
+        <category name="🏁 Sequence Triggers" colour="0">
+          <block type="when_sequence_activated"></block>
+        </category>
+        <category name="🌐 Core Inputs" colour="160">
+          <block type="custom_input_string"></block>
+          <block type="global_phone_preset"></block>
+          <block type="custom_phone_signature"></block>
+        </category>
+        <category name="📡 Network Channels" colour="210">
+          <block type="action_scan_base"></block>
+          <block type="action_dns_extractor"></block>
+          <block type="action_http_header_audit"></block>
+          <block type="action_subdomain_ct_logs"></block>
+          <block type="action_threat_intel_reputation"></block>
+        </category>
+      </xml>
 
-  <script>
-    var isTerminalMinimized = false;
-    
-    document.getElementById("localTerminalContentText").textContent = {safe_terminal_output};
-    
-    function toggleLocalTerminalState() {{
-      var tBody = document.getElementById("localTerminalContentText");
-      var btn = document.getElementById("stateToggleActionBtn");
-      var title = document.getElementById("headerLabelTitle");
-      
-      if(!isTerminalMinimized) {{
-        tBody.style.display = "none";
-        btn.innerText = "[+] UNMINIMIZE";
-        btn.style.color = "#1fec79";
-        btn.style.borderColor = "#1fec79";
-        title.innerText = "📺 TERM (MINIMIZED)";
-        isTerminalMinimized = true;
-      }} else {{
-        tBody.style.display = "block";
-        btn.innerText = "[-] MINIMIZE";
-        btn.style.color = "#ff0055";
-        btn.style.borderColor = "#ff0055";
-        title.innerText = "📺 MONITOR TERMINAL FEED";
-        isTerminalMinimized = false;
-      }}
-    }}
-
-    var workspaceDiv = document.getElementById('blocklyDiv');
-    var termWindow = document.getElementById('integratedTerminalBlock');
-    
-    var currentTermX = 450;
-    var currentTermY = 150;
-    
-    var isDraggingWindow = false;
-    var startX, startY;
-
-    document.getElementById("terminalHeader").onmousedown = function(e) {{
-      if(e.target.className === "windowCtrlBtn") return;
-      isDraggingWindow = true;
-      startX = e.clientX - currentTermX;
-      startY = e.clientY - currentTermY;
-      e.preventDefault();
-    }};
-
-    document.onmousemove = function(e) {{
-      if (!isDraggingWindow) return;
-      currentTermX = e.clientX - startX;
-      currentTermY = e.clientY - startY;
-      termWindow.style.left = currentTermX + 'px';
-      termWindow.style.top = currentTermY + 'px';
-    }};
-
-    document.onmouseup = function() {{
-      isDraggingWindow = false;
-    }};
-
-    // --- Custom Blockly Element Implementations ---
-    Blockly.Blocks['when_sequence_activated'] = {{
-      init: function() {{
-        this.appendDummyInput().appendField("🚀 Sequence Start");
-        this.setNextStatement(true, null);
-        this.setColour(0);
-      }}
-    }};
-
-    Blockly.Blocks['custom_input_string'] = {{
-      init: function() {{
-        this.appendDummyInput().appendField("Target Domain:").appendField(new Blockly.FieldTextInput("google.com"), "RAW_TEXT");
-        this.setOutput(true, "String");
-        this.setColour(160);
-      }}
-    }};
-
-    Blockly.Blocks['global_phone_preset'] = {{
-      init: function() {{
-        this.appendDummyInput()
-            .appendField("📱 Preset Phone Target")
-            .appendField(new Blockly.FieldDropdown([["🇮🇩 +62","+62"], ["🇺🇸 +1","+1"], ["🇬🇧 +44","+44"]]), "CC_PREFIX")
-            .appendField(new Blockly.FieldTextInput("8123456789"), "PHONE_BODY");
-        this.setOutput(true, "String");
-        this.setColour(160);
-      }}
-    }};
-
-    Blockly.Blocks['custom_phone_signature'] = {{
-      init: function() {{
-        this.appendDummyInput()
-            .appendField("🏳️ Custom Country Code Input")
-            .appendField(new Blockly.FieldTextInput("+61"), "CUSTOM_PREFIX")
-            .appendField("Number:")
-            .appendField(new Blockly.FieldTextInput("412345678"), "PHONE_BODY");
-        this.setOutput(true, "String");
-        this.setColour(160);
-      }}
-    }};
-
-    Blockly.Blocks['action_scan_base'] = {{
-      init: function() {{
-        this.appendValueInput("NAME").setCheck("String").appendField("Scan Profile Target:");
-        this.appendDummyInput()
-            .appendField("Execution Stream:")
-            .appendField(new Blockly.FieldDropdown([
-              ["🗺️ Geolocation Tracker Lookup", "geoip"],
-              ["🖥️ System DNS Server Resolve", "dns"],
-              ["🌐 WHOIS Public Asset Registry", "whois"],
-              ["📱 Global Mobile OSINT Trace", "phone"]
-            ]), "SCANTYPE");
-        this.setPreviousStatement(true, null); 
-        this.setNextStatement(true, null);
-        this.setColour(210);
-      }}
-    }};
-
-    Blockly.Blocks['action_dns_extractor'] = {{
-      init: function() {{
-        this.appendValueInput("NAME").setCheck("String").appendField("📡 Parse Records for:");
-        this.appendDummyInput()
-            .appendField("Target Record Matrix Type:")
-            .appendField(new Blockly.FieldDropdown([
-              ["MX (Mail Provider Routing Map)", "MX"],
-              ["NS (Authoritative Name Servers)", "NS"],
-              ["TXT (Security Verification Strings)", "TXT"]
-            ]), "DNS_TYPE");
-        this.setPreviousStatement(true, null); 
-        this.setNextStatement(true, null);
-        this.setColour(210);
-      }}
-    }};
-
-    Blockly.Blocks['action_http_header_audit'] = {{
-      init: function() {{
-        this.appendValueInput("NAME").setCheck("String").appendField("🛡️ Audit Safety Headers for:");
-        this.setPreviousStatement(true, null); 
-        this.setNextStatement(true, null);
-        this.setColour(210);
-      }}
-    }};
-
-    Blockly.Blocks['action_subdomain_ct_logs'] = {{
-      init: function() {{
-        this.appendValueInput("NAME").setCheck("String").appendField("📧 Collect CT Log Subdomains for:");
-        this.setPreviousStatement(true, null); 
-        this.setNextStatement(true, null);
-        this.setColour(210);
-      }}
-    }};
-
-    Blockly.Blocks['action_threat_intel_reputation'] = {{
-      init: function() {{
-        this.appendValueInput("NAME").setCheck("String").appendField("🦺 Reputation Threat Intel Check:");
-        this.setPreviousStatement(true, null); 
-        this.setNextStatement(true, null);
-        this.setColour(210);
-      }}
-    }};
-
-    // --- Python Generator Mappings ---
-    Blockly.Python.forBlock['when_sequence_activated'] = function(block) {{ return '# Sequence Active\\n'; }};
-    Blockly.Python.forBlock['custom_input_string'] = function(block) {{ return ["'" + block.getFieldValue('RAW_TEXT') + "'", 0]; }};
-    Blockly.Python.forBlock['global_phone_preset'] = function(block) {{ return ["'" + block.getFieldValue('CC_PREFIX') + block.getFieldValue('PHONE_BODY') + "'", 0]; }};
-    Blockly.Python.forBlock['custom_phone_signature'] = function(block) {{
-      var prefix = block.getFieldValue('CUSTOM_PREFIX').trim();
-      if(!prefix.startsWith("+")) {{ prefix = "+" + prefix; }}
-      return ["'" + prefix + block.getFieldValue('PHONE_BODY').trim() + "'", 0];
-    }};
-
-    Blockly.Python.forBlock['action_scan_base'] = function(block) {{
-      var type = block.getFieldValue('SCANTYPE');
-      var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-      return 'run_scan(target=' + val + ', mode="' + type + '")\\n';
-    }};
-
-    Blockly.Python.forBlock['action_dns_extractor'] = function(block) {{
-      var dnsType = block.getFieldValue('DNS_TYPE');
-      var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-      return 'run_scan(target=' + val + ', mode="dns_extract", structural_param="' + dnsType + '")\\n';
-    }};
-
-    Blockly.Python.forBlock['action_http_header_audit'] = function(block) {{
-      var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-      return 'run_scan(target=' + val + ', mode="header_audit")\\n';
-    }};
-
-    Blockly.Python.forBlock['action_subdomain_ct_logs'] = function(block) {{
-      var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-      return 'run_scan(target=' + val + ', mode="subdomain_ct")\\n';
-    }};
-
-    Blockly.Python.forBlock['action_threat_intel_reputation'] = function(block) {{
-      var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-      return 'run_scan(target=' + val + ', mode="threat_intel")\\n';
-    }};
-
-    // --- Inject Workspace Engine ---
-    var workspace = Blockly.inject('blocklyDiv', {{
-      toolbox: document.getElementById('toolbox'),
-      grid: {{ spacing: 25, length: 3, colour: '#1f2833', snap: true }}, 
-      trashcan: true
-    }});
-
-    // --- HYDRATION PROTOCOL: RESTORE BLOCKS SAFE FROM STRING BREAKS ---
-    try {{
-      var initialXmlText = {safe_xml_state};
-      if (initialXmlText && initialXmlText.trim() !== "") {{
-        var dom = Blockly.utils.xml.textToDom(initialXmlText);
-        Blockly.Xml.domToWorkspace(dom, workspace);
-      }}
-    }} catch (err) {{
-      console.error("Hydration Layer Failure:", err);
-    }}
-
-    // --Locked code 2 start
-    function processLiveDebugCompilations() {{
-      var allBlocks = workspace.getAllBlocks(false);
-      var generatedPythonCode = "";
-      var sequenceFound = false;
-      
-      for (var i = 0; i < allBlocks.length; i++) {{
-        if (allBlocks[i].type === 'when_sequence_activated') {{
-          sequenceFound = true;
-          generatedPythonCode += Blockly.Python.blockToCode(allBlocks[i]);
-          var nextBlock = allBlocks[i].getNextBlock();
-          while(nextBlock) {{
-            generatedPythonCode += Blockly.Python.blockToCode(nextBlock);
-            nextBlock = nextBlock.getNextBlock();
+      <script>
+        var isTerminalMinimized = false;
+        
+        document.getElementById("localTerminalContentText").textContent = {safe_terminal_output};
+        
+        function toggleLocalTerminalState() {{
+          var tBody = document.getElementById("localTerminalContentText");
+          var btn = document.getElementById("stateToggleActionBtn");
+          var title = document.getElementById("headerLabelTitle");
+          
+          if(!isTerminalMinimized) {{
+            tBody.style.display = "none";
+            btn.innerText = "[+] UNMINIMIZE";
+            btn.style.color = "#1fec79";
+            btn.style.borderColor = "#1fec79";
+            title.innerText = "📺 TERM (MINIMIZED)";
+            isTerminalMinimized = true;
+          }} else {{
+            tBody.style.display = "block";
+            btn.innerText = "[-] MINIMIZE";
+            btn.style.color = "#ff0055";
+            btn.style.borderColor = "#ff0055";
+            title.innerText = "📺 MONITOR TERMINAL FEED";
+            isTerminalMinimized = false;
           }}
         }}
-      }}
-      
-      var xmlDom = Blockly.Xml.workspaceToDom(workspace);
-      var currentXmlText = Blockly.Xml.domToText(xmlDom);
-      
-      if(sequenceFound) {{
-        var targetUrl = window.parent.location.origin + window.parent.location.pathname + "?payload_matrix=" + encodeURIComponent(generatedPythonCode) + "&xml_matrix=" + encodeURIComponent(currentXmlText);
-        if(window.parent.location.search !== "?payload_matrix=" + encodeURIComponent(generatedPythonCode) + "&xml_matrix=" + encodeURIComponent(currentXmlText)) {{
-           window.parent.history.replaceState({{}}, '', targetUrl);
+
+        var workspaceDiv = document.getElementById('blocklyDiv');
+        var termWindow = document.getElementById('integratedTerminalBlock');
+        
+        var currentTermX = 150;
+        var currentTermY = 150;
+        
+        var isDraggingWindow = false;
+        var startX, startY;
+
+        document.getElementById("terminalHeader").onmousedown = function(e) {{
+          if(e.target.className === "windowCtrlBtn") return;
+          isDraggingWindow = true;
+          startX = e.clientX - currentTermX;
+          startY = e.clientY - currentTermY;
+          e.preventDefault();
+        }};
+
+        document.onmousemove = function(e) {{
+          if (!isDraggingWindow) return;
+          currentTermX = e.clientX - startX;
+          currentTermY = e.clientY - startY;
+          termWindow.style.left = currentTermX + 'px';
+          termWindow.style.top = currentTermY + 'px';
+        }};
+
+        document.onmouseup = function() {{
+          isDraggingWindow = false;
+        }};
+
+        // --- Custom Blockly Element Implementations ---
+        Blockly.Blocks['when_sequence_activated'] = {{
+          init: function() {{
+            this.appendDummyInput().appendField("🚀 Sequence Start");
+            this.setNextStatement(true, null);
+            this.setColour(0);
+          }}
+        }};
+
+        Blockly.Blocks['custom_input_string'] = {{
+          init: function() {{
+            this.appendDummyInput().appendField("Target Domain:").appendField(new Blockly.FieldTextInput("google.com"), "RAW_TEXT");
+            this.setOutput(true, "String");
+            this.setColour(160);
+          }}
+        }};
+
+        Blockly.Blocks['global_phone_preset'] = {{
+          init: function() {{
+            this.appendDummyInput()
+                .appendField("📱 Preset Phone Target")
+                .appendField(new Blockly.FieldDropdown([["🇮🇩 +62","+62"], ["🇺🇸 +1","+1"], ["🇬🇧 +44","+44"]]), "CC_PREFIX")
+                .appendField(new Blockly.FieldTextInput("8123456789"), "PHONE_BODY");
+            this.setOutput(true, "String");
+            this.setColour(160);
+          }}
+        }};
+
+        Blockly.Blocks['custom_phone_signature'] = {{
+          init: function() {{
+            this.appendDummyInput()
+                .appendField("🏳️ Custom Country Code Input")
+                .appendField(new Blockly.FieldTextInput("+61"), "CUSTOM_PREFIX")
+                .appendField("Number:")
+                .appendField(new Blockly.FieldTextInput("412345678"), "PHONE_BODY");
+            this.setOutput(true, "String");
+            this.setColour(160);
+          }}
+        }};
+
+        Blockly.Blocks['action_scan_base'] = {{
+          init: function() {{
+            this.appendValueInput("NAME").setCheck("String").appendField("Scan Profile Target:");
+            this.appendDummyInput()
+                .appendField("Execution Stream:")
+                .appendField(new Blockly.FieldDropdown([
+                  ["🗺️ Geolocation Tracker Lookup", "geoip"],
+                  ["🖥️ System DNS Server Resolve", "dns"],
+                  ["🌐 WHOIS Public Asset Registry", "whois"],
+                  ["📱 Global Mobile OSINT Trace", "phone"]
+                ]), "SCANTYPE");
+            this.setPreviousStatement(true, null); 
+            this.setNextStatement(true, null);
+            this.setColour(210);
+          }}
+        }};
+
+        Blockly.Blocks['action_dns_extractor'] = {{
+          init: function() {{
+            this.appendValueInput("NAME").setCheck("String").appendField("📡 Parse Records for:");
+            this.appendDummyInput()
+                .appendField("Target Record Matrix Type:")
+                .appendField(new Blockly.FieldDropdown([
+                  ["MX (Mail Provider Routing Map)", "MX"],
+                  ["NS (Authoritative Name Servers)", "NS"],
+                  ["TXT (Security Verification Strings)", "TXT"]
+                ]), "DNS_TYPE");
+            this.setPreviousStatement(true, null); 
+            this.setNextStatement(true, null);
+            this.setColour(210);
+          }}
+        }};
+
+        Blockly.Blocks['action_http_header_audit'] = {{
+          init: function() {{
+            this.appendValueInput("NAME").setCheck("String").appendField("🛡️ Audit Safety Headers for:");
+            this.setPreviousStatement(true, null); 
+            this.setNextStatement(true, null);
+            this.setColour(210);
+          }}
+        }};
+
+        Blockly.Blocks['action_subdomain_ct_logs'] = {{
+          init: function() {{
+            this.appendValueInput("NAME").setCheck("String").appendField("📧 Collect CT Log Subdomains for:");
+            this.setPreviousStatement(true, null); 
+            this.setNextStatement(true, null);
+            this.setColour(210);
+          }}
+        }};
+
+        Blockly.Blocks['action_threat_intel_reputation'] = {{
+          init: function() {{
+            this.appendValueInput("NAME").setCheck("String").appendField("🦺 Reputation Threat Intel Check:");
+            this.setPreviousStatement(true, null); 
+            this.setNextStatement(true, null);
+            this.setColour(210);
+          }}
+        }};
+
+        // --- Python Generator Mappings ---
+        Blockly.Python.forBlock['when_sequence_activated'] = function(block) {{ return '# Sequence Active\\n'; }};
+        Blockly.Python.forBlock['custom_input_string'] = function(block) {{ return ["'" + block.getFieldValue('RAW_TEXT') + "'", 0]; }};
+        Blockly.Python.forBlock['global_phone_preset'] = function(block) {{ return ["'" + block.getFieldValue('CC_PREFIX') + block.getFieldValue('PHONE_BODY') + "'", 0]; }};
+        Blockly.Python.forBlock['custom_phone_signature'] = function(block) {{
+          var prefix = block.getFieldValue('CUSTOM_PREFIX').trim();
+          if(!prefix.startsWith("+")) {{ prefix = "+" + prefix; }}
+          return ["'" + prefix + block.getFieldValue('PHONE_BODY').trim() + "'", 0];
+        }};
+
+        Blockly.Python.forBlock['action_scan_base'] = function(block) {{
+          var type = block.getFieldValue('SCANTYPE');
+          var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
+          return 'run_scan(target=' + val + ', mode="' + type + '")\\n';
+        }};
+
+        Blockly.Python.forBlock['action_dns_extractor'] = function(block) {{
+          var dnsType = block.getFieldValue('DNS_TYPE');
+          var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
+          return 'run_scan(target=' + val + ', mode="dns_extract", structural_param="' + dnsType + '")\\n';
+        }};
+
+        Blockly.Python.forBlock['action_http_header_audit'] = function(block) {{
+          var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
+          return 'run_scan(target=' + val + ', mode="header_audit")\\n';
+        }};
+
+        Blockly.Python.forBlock['action_subdomain_ct_logs'] = function(block) {{
+          var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
+          return 'run_scan(target=' + val + ', mode="subdomain_ct")\\n';
+        }};
+
+        Blockly.Python.forBlock['action_threat_intel_reputation'] = function(block) {{
+          var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
+          return 'run_scan(target=' + val + ', mode="threat_intel")\\n';
+        }};
+
+        // --- Inject Workspace Engine ---
+        var workspace = Blockly.inject('blocklyDiv', {{
+          toolbox: document.getElementById('toolbox'),
+          grid: {{ spacing: 25, length: 3, colour: '#1f2833', snap: true }}, 
+          trashcan: true
+        }});
+
+        // --- HYDRATION PROTOCOL ---
+        try {{
+          var initialXmlText = {safe_xml_state};
+          if (initialXmlText && initialXmlText.trim() !== "") {{
+            var dom = Blockly.utils.xml.textToDom(initialXmlText);
+            Blockly.Xml.domToWorkspace(dom, workspace);
+          }}
+        }} catch (err) {{
+          console.error("Hydration Layer Failure:", err);
         }}
-      }}
-    }}
 
-    workspace.addChangeListener(function(e) {{
-      if (e.type === Blockly.Events.BLOCK_CREATE || e.type === Blockly.Events.BLOCK_MOVE || e.type === Blockly.Events.BLOCK_CHANGE || e.type === Blockly.Events.BLOCK_DELETE) {{
-        processLiveDebugCompilations();
-      }}
-    }});
+        function processLiveDebugCompilations() {{
+          var allBlocks = workspace.getAllBlocks(false);
+          var generatedPythonCode = "";
+          var sequenceFound = false;
+          
+          for (var i = 0; i < allBlocks.length; i++) {{
+            if (allBlocks[i].type === 'when_sequence_activated') {{
+              sequenceFound = true;
+              generatedPythonCode += Blockly.Python.blockToCode(allBlocks[i]);
+              var nextBlock = allBlocks[i].getNextBlock();
+              while(nextBlock) {{
+                generatedPythonCode += Blockly.Python.blockToCode(nextBlock);
+                nextBlock = nextBlock.getNextBlock();
+              }}
+            }}
+          }}
+          
+          var xmlDom = Blockly.Xml.workspaceToDom(workspace);
+          var currentXmlText = Blockly.Xml.domToText(xmlDom);
+          
+          if(sequenceFound) {{
+            var targetUrl = window.parent.location.origin + window.parent.location.pathname + "?payload_matrix=" + encodeURIComponent(generatedPythonCode) + "&xml_matrix=" + encodeURIComponent(currentXmlText);
+            if(window.parent.location.search !== "?payload_matrix=" + encodeURIComponent(generatedPythonCode) + "&xml_matrix=" + encodeURIComponent(currentXmlText)) {{
+               window.parent.history.replaceState({{}}, '', targetUrl);
+            }}
+          }}
+        }}
+
+        workspace.addChangeListener(function(e) {{
+          if (e.type === Blockly.Events.BLOCK_CREATE || e.type === Blockly.Events.BLOCK_MOVE || e.type === Blockly.Events.BLOCK_CHANGE || e.type === Blockly.Events.BLOCK_DELETE) {{
+            processLiveDebugCompilations();
+          }}
+        }});
+        
+        setInterval(processLiveDebugCompilations, 700);
+      </script>
+    </body>
+    </html>
+    """
+
+    components.html(blockly_html_payload, height=900, scrolling=False)
     
-    setInterval(processLiveDebugCompilations, 700);
-    // -- locked code 2 end
-  </script>
-</body>
-</html>
-"""
+    st.markdown("---")
+    st.markdown("### 🖥️ Main Engine Pipeline Terminal")
+    
+    with st.expander("📋 View Compiled Execution Code Output Stream", expanded=False):
+        st.session_state["synced_workspace_code"] = st.text_area(
+            "Live Track Payload Manifest",
+            value=st.session_state["synced_workspace_code"],
+            height=150
+        )
+        
+    if st.button("⚡ Run Block Automation Flow", type="primary", use_container_width=True):
+        code_to_run = st.session_state["synced_workspace_code"].strip()
+        if not code_to_run or "Sequence Active" not in code_to_run:
+            st.error("❌ Pipeline Error: Drag and chain tools directly underneath the 'Sequence Start' trigger block first!")
+        else:
+            st.session_state["terminal_history_output"] = "🛰️ STREAMING PASSED ASSET DATA SECTIONS...\n-----------------------------------------\n"
+            try:
+                exec_scope = {"run_scan": run_scan}
+                exec(code_to_run, exec_scope)
+                st.success("🟢 Execution automation run complete! Check terminal view log contents.")
+                st.rerun()
+            except Exception as runtime_err:
+                st.error(f"💥 PIPELINE BREAK: {str(runtime_err)}")
 
-components.html(blockly_html_payload, height=900, scrolling=False)
 
-# Lower Utility Controls Zone
-st.markdown("---")
-st.markdown("### 🖥️ Main Engine Pipeline Terminal")
-
-with st.expander("📋 View Compiled Execution Code Output Stream", expanded=False):
-    st.session_state["synced_workspace_code"] = st.text_area(
-        "Live Track Payload Manifest", 
-        value=st.session_state["synced_workspace_code"], 
-        height=150
-    )
-
-if st.button("⚡ Run Block Automation Flow", type="primary", use_container_width=True):
-    code_to_run = st.session_state["synced_workspace_code"].strip()
-    if not code_to_run or "Sequence Active" not in code_to_run:
-        st.error("❌ Pipeline Error: Drag and chain tools directly underneath the 'Sequence Start' trigger block first!")
+# ==========================================
+# 4. LIVE CONTEXT AI COPILOT INTERFACE PANEL (GROQ POWERED)
+# ==========================================
+with layout_col_right:
+    st.markdown("### 🤖 Workspace AI Assistant")
+    
+    if not ai_client:
+        st.warning("⚠️ Groq API Key not detected in `.env`. Chat module locked.")
+        st.info("Ensure your `.env` contains: `GROQ_API_KEY=gsk_...`")
     else:
-        st.session_state["terminal_history_output"] = "🛰️ STREAMING PASSED ASSET DATA SECTIONS...\n-----------------------------------------\n"
-        try:
-            exec_scope = {"run_scan": run_scan}
-            exec(code_to_run, exec_scope)
-            st.success("🟢 Execution automation run complete! Check terminal view log contents.")
-            st.rerun()
-        except Exception as runtime_err:
-            st.error(f"💥 PIPELINE BREAK: {str(runtime_err)}")
+        # Display chat messages
+        for msg in st.session_state["chat_messages"]:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+                
+        # Chat input logic
+        if prompt := st.chat_input("Ask me to analyze your blocks..."):
+            # Render user input
+            st.session_state["chat_messages"].append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
+                
+            # Build system context payload so AI sees the live workspace
+            system_context = f"""
+            You are an elite pentesting AI assistant embedded in a visual block-coding platform.
+            The user is building security and OSINT tools by dragging logic blocks.
+            
+            Current compiled workspace Python code:
+            {st.session_state["synced_workspace_code"]}
+            
+            Current output console logs:
+            {st.session_state["terminal_history_output"]}
+            
+            Analyze the user's workspace, explain what their blocks are doing, and answer their prompt. Keep it hacker-themed, concise, and educational. Do not generate destructive payloads.
+            """
+            
+            # Prepare messages for Groq API
+            api_messages = [{"role": "system", "content": system_context}] + st.session_state["chat_messages"]
+            
+            # Fetch response
+            with st.chat_message("assistant"):
+                try:
+                    response = ai_client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=api_messages,
+                    )
+                    reply = response.choices[0].message.content
+                    st.markdown(reply)
+                    st.session_state["chat_messages"].append({"role": "assistant", "content": reply})
+                except Exception as api_err:
+                    st.error(f"Groq API Error: {str(api_err)}")
