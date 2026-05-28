@@ -3,6 +3,8 @@ import json
 import urllib.parse
 import streamlit as st
 import streamlit.components.v1 as components
+import io
+from contextlib import redirect_stdout
 
 # Import non-core features and engine scripts securely
 import Function
@@ -235,12 +237,23 @@ if st.button("⚡ Run Block Automation Flow", type="primary", use_container_widt
     if not code_to_run or "Sequence Active" not in code_to_run:
         st.error("❌ Pipeline Error: Drag and chain tools directly underneath the 'Sequence Start' trigger block first!")
     else:
-        st.session_state["terminal_history_output"] = "🛰️ STREAMING PASSED ASSET DATA SECTIONS...\n-----------------------------------------\n"
+        # Buffer initialization for internal stream tracking
+        base_log_header = "🛰️ STREAMING PASSED ASSET DATA SECTIONS...\n-----------------------------------------\n"
+        stdout_buffer = io.StringIO()
+        
         try:
             # Execute dynamically within Function.py's namespace environment mapping
             exec_scope = {"run_scan": Function.run_scan}
-            exec(code_to_run, exec_scope)
+            
+            # Redirect internal print() output to standard string buffer securely
+            with redirect_stdout(stdout_buffer):
+                exec(code_to_run, exec_scope)
+            
+            # Assign captured terminal values to state layer to propagate inside Blockly component
+            st.session_state["terminal_history_output"] = base_log_header + stdout_buffer.getvalue()
             st.success("🟢 Execution automation run complete! Check terminal view log contents.")
             st.rerun()
+            
         except Exception as runtime_err:
+            st.session_state["terminal_history_output"] = base_log_header + stdout_buffer.getvalue() + f"\n💥 PIPELINE BREAK: {str(runtime_err)}"
             st.error(f"💥 PIPELINE BREAK: {str(runtime_err)}")
