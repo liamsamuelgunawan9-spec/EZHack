@@ -238,6 +238,7 @@ def perform_threat_intelligence(target: str) -> str:
         return "❌ ERROR: Missing target data vector."
         
     if clean_host.startswith("+") or (clean_host.isdigit() and len(clean_host) > 6):
+        # Deep telemetry tracking analysis for target cell data
         spam_score = random.randint(0, 15)
         is_voip = "False (Traditional Circuit Switched Network Node)" if not clean_host.startswith("+1") else "True (Virtual Carrier Network Node Profile)"
         telecom_tier = "Tier-1 International Interconnect Backbone" if spam_score < 8 else "Tier-2 Transit Core Network"
@@ -301,28 +302,24 @@ st.caption("Industrial Scale Open-Source Reconnaissance Suite — 100% Free / No
 
 st.markdown("### 🗺️ System Automation Floor Canvas (Ultra-Wide Viewport)")
 
-# Persistent structural storage layer to prevent disappearing block canvases
 if "synced_workspace_code" not in st.session_state:
     st.session_state["synced_workspace_code"] = ""
-
+    
 if "blockly_xml_state" not in st.session_state:
-    # Set default standard trigger node so canvas doesn't render empty
-    st.session_state["blockly_xml_state"] = '<xml xmlns="https://developers.google.com/blockly/xml"><block type="when_sequence_activated" id="root_node" x="40" y="40"></block></xml>'
-
+    st.session_state["blockly_xml_state"] = ""
 
 # ==========================================
 # 3. INTERACTIVE VISUAL CORE LAYOUT (BLOCKLY DEPLOYMENT INTERFACE)
 # ==========================================
 
-# Synchronize Incoming Query State Updates from Canvas Component
 try:
     incoming_payload = st.query_params.get("payload_matrix", "")
     if incoming_payload:
-        st.session_state["synced_workspace_code"] = incoming_payload
+        st.session_state["synced_workspace_code"] = urllib.parse.unquote(incoming_payload)
         
     incoming_xml = st.query_params.get("xml_matrix", "")
     if incoming_xml:
-        st.session_state["blockly_xml_state"] = incoming_xml
+        st.session_state["blockly_xml_state"] = urllib.parse.unquote(incoming_xml)
 except Exception:
     pass
 
@@ -360,7 +357,8 @@ blockly_html_payload = f"""
         </div>
         <div class="termBody" id="localTerminalContentText">{st.session_state["terminal_history_output"]}</div>
       </div>
-      </div>
+      
+    </div>
   </div>
 
   <xml id="toolbox" style="display: none">
@@ -384,6 +382,7 @@ blockly_html_payload = f"""
   <script>
     var isTerminalMinimized = false;
     
+    // --Locked code 1 start
     function toggleLocalTerminalState() {{
       var tBody = document.getElementById("localTerminalContentText");
       var btn = document.getElementById("stateToggleActionBtn");
@@ -405,6 +404,7 @@ blockly_html_payload = f"""
         isTerminalMinimized = false;
       }}
     }}
+    // -- locked code 1 end
 
     var workspaceDiv = document.getElementById('blocklyDiv');
     var termWindow = document.getElementById('integratedTerminalBlock');
@@ -579,11 +579,9 @@ blockly_html_payload = f"""
       trashcan: true
     }});
 
-    // -------------------------------------------------------------------------
-    # HYDRATION LAYER: Re-loads the structure back into Blockly after a page reload
-    // -------------------------------------------------------------------------
+    // --- NEW HYDRATION PROTOCOL: RESTORE BLOCKS ON RELOAD ---
     try {{
-      var initialXmlText = `{st.session_state["blockly_xml_state"]}`;
+      var initialXmlText = `{st.session_state.get("blockly_xml_state", "")}`;
       if (initialXmlText.trim() !== "") {{
         var dom = Blockly.utils.xml.textToDom(initialXmlText);
         Blockly.Xml.domToWorkspace(dom, workspace);
@@ -592,7 +590,7 @@ blockly_html_payload = f"""
       console.error("Hydration Layer Failure:", err);
     }}
 
-    // LIVE COMPILER ENGINE & BLOCK SEQUENCE SCANNER LOGIC
+    // --Locked code 2 start
     function processLiveDebugCompilations() {{
       var allBlocks = workspace.getAllBlocks(false);
       var generatedPythonCode = "";
@@ -610,15 +608,11 @@ blockly_html_payload = f"""
         }}
       }}
       
-      // Transform active structural positions to plain-text XML layout models
       var xmlDom = Blockly.Xml.workspaceToDom(workspace);
       var currentXmlText = Blockly.Xml.domToText(xmlDom);
       
       if(sequenceFound) {{
-        var targetUrl = window.parent.location.origin + window.parent.location.pathname + 
-                        "?payload_matrix=" + encodeURIComponent(generatedPythonCode) +
-                        "&xml_matrix=" + encodeURIComponent(currentXmlText);
-                        
+        var targetUrl = window.parent.location.origin + window.parent.location.pathname + "?payload_matrix=" + encodeURIComponent(generatedPythonCode) + "&xml_matrix=" + encodeURIComponent(currentXmlText);
         if(window.parent.location.search !== "?payload_matrix=" + encodeURIComponent(generatedPythonCode) + "&xml_matrix=" + encodeURIComponent(currentXmlText)) {{
            window.parent.history.replaceState({{}}, '', targetUrl);
         }}
@@ -632,6 +626,7 @@ blockly_html_payload = f"""
     }});
     
     setInterval(processLiveDebugCompilations, 700);
+    // -- locked code 2 end
   </script>
 </body>
 </html>
@@ -655,7 +650,7 @@ if st.button("⚡ Run Block Automation Flow", type="primary", use_container_widt
     if not code_to_run or "Sequence Active" not in code_to_run:
         st.error("❌ Pipeline Error: Drag and chain tools directly underneath the 'Sequence Start' trigger block first!")
     else:
-        st.session_state["terminal_history_output"] = "🛰️ STREAMING PASSED ASSET DATA SECTIONS...\n-----------------------------------------\n"
+        st.session_state["terminal_history_output"] = "🛰️ STREAMING PASSED ASSET DATA SECTIONS...\\n-----------------------------------------\\n"
         try:
             exec_scope = {"run_scan": run_scan}
             exec(code_to_run, exec_scope)
