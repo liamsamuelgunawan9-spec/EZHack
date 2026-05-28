@@ -323,6 +323,10 @@ try:
 except Exception:
     pass
 
+# Safely serialize Python state variables to valid, escaped JavaScript string literals
+safe_xml_state = json.dumps(st.session_state.get("blockly_xml_state", ""))
+safe_terminal_output = json.dumps(st.session_state.get("terminal_history_output", ""))
+
 blockly_html_payload = f"""
 <!DOCTYPE html>
 <html>
@@ -355,7 +359,7 @@ blockly_html_payload = f"""
           <span id="headerLabelTitle">📺 MONITOR TERMINAL FEED</span>
           <button id="stateToggleActionBtn" class="windowCtrlBtn" onclick="toggleLocalTerminalState()">[-] MINIMIZE</button>
         </div>
-        <div class="termBody" id="localTerminalContentText">{st.session_state["terminal_history_output"]}</div>
+        <div class="termBody" id="localTerminalContentText"></div>
       </div>
       
     </div>
@@ -381,6 +385,9 @@ blockly_html_payload = f"""
 
   <script>
     var isTerminalMinimized = false;
+    
+    // Set terminal content explicitly via textContent to prevent HTML breaking sequences
+    document.getElementById("localTerminalContentText").textContent = {safe_terminal_output};
     
     // --Locked code 1 start
     function toggleLocalTerminalState() {{
@@ -579,10 +586,10 @@ blockly_html_payload = f"""
       trashcan: true
     }});
 
-    // --- NEW HYDRATION PROTOCOL: RESTORE BLOCKS ON RELOAD ---
+    // --- HYDRATION PROTOCOL: RESTORE BLOCKS SAFE FROM STRING BREAKS ---
     try {{
-      var initialXmlText = `{st.session_state.get("blockly_xml_state", "")}`;
-      if (initialXmlText.trim() !== "") {{
+      var initialXmlText = {safe_xml_state};
+      if (initialXmlText && initialXmlText.trim() !== "") {{
         var dom = Blockly.utils.xml.textToDom(initialXmlText);
         Blockly.Xml.domToWorkspace(dom, workspace);
       }}
@@ -650,7 +657,7 @@ if st.button("⚡ Run Block Automation Flow", type="primary", use_container_widt
     if not code_to_run or "Sequence Active" not in code_to_run:
         st.error("❌ Pipeline Error: Drag and chain tools directly underneath the 'Sequence Start' trigger block first!")
     else:
-        st.session_state["terminal_history_output"] = "🛰️ STREAMING PASSED ASSET DATA SECTIONS...\\n-----------------------------------------\\n"
+        st.session_state["terminal_history_output"] = "🛰️ STREAMING PASSED ASSET DATA SECTIONS...\n-----------------------------------------\n"
         try:
             exec_scope = {"run_scan": run_scan}
             exec(code_to_run, exec_scope)
