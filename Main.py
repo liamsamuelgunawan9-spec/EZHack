@@ -306,9 +306,20 @@ if "blockly_xml_state" not in st.session_state:
     st.session_state["blockly_xml_state"] = ""
 if "chat_messages" not in st.session_state:
     st.session_state["chat_messages"] = [{"role": "assistant", "content": "Hello! I am your Groq-powered AI Copilot. I scan your live Blockly logic layout and compiled Python pipeline. Ask me anything!"}]
+if "show_ai_sidebar" not in st.session_state:
+    st.session_state["show_ai_sidebar"] = True
 
-# Split view into Workspace Core and AI Assistant
-layout_col_left, layout_col_right = st.columns([0.7, 0.3])
+# --- The AI Sidebar Toggle Button ---
+if st.button("🤖 Toggle AI Copilot Dashboard", type="secondary"):
+    st.session_state["show_ai_sidebar"] = not st.session_state["show_ai_sidebar"]
+    st.rerun()
+
+# Split view into Workspace Core and AI Assistant dynamically
+if st.session_state["show_ai_sidebar"]:
+    layout_col_left, layout_col_right = st.columns([0.7, 0.3])
+else:
+    layout_col_left, = st.columns([1])
+    layout_col_right = None
 
 with layout_col_left:
     st.markdown("### 🗺️ System Automation Floor Canvas (Ultra-Wide Viewport)") 
@@ -666,51 +677,52 @@ with layout_col_left:
 # ==========================================
 # 4. LIVE CONTEXT AI COPILOT INTERFACE PANEL (GROQ POWERED)
 # ==========================================
-with layout_col_right:
-    st.markdown("### 🤖 Workspace AI Assistant")
-    
-    if not ai_client:
-        st.warning("⚠️ Groq API Key not detected in `.env`. Chat module locked.")
-        st.info("Ensure your `.env` contains: `GROQ_API_KEY=gsk_...`")
-    else:
-        # Display chat messages
-        for msg in st.session_state["chat_messages"]:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
+if layout_col_right:
+    with layout_col_right:
+        st.markdown("### 🤖 Workspace AI Assistant")
+        
+        if not ai_client:
+            st.warning("⚠️ Groq API Key not detected in `.env`. Chat module locked.")
+            st.info("Ensure your `.env` contains: `GROQ_API_KEY=gsk_...`")
+        else:
+            # Display chat messages
+            for msg in st.session_state["chat_messages"]:
+                with st.chat_message(msg["role"]):
+                    st.markdown(msg["content"])
+                    
+            # Chat input logic
+            if prompt := st.chat_input("Ask me to analyze your blocks..."):
+                # Render user input
+                st.session_state["chat_messages"].append({"role": "user", "content": prompt})
+                with st.chat_message("user"):
+                    st.markdown(prompt)
+                    
+                # Build system context payload so AI sees the live workspace
+                system_context = f"""
+                You are an elite pentesting AI assistant embedded in a visual block-coding platform.
+                The user is building security and OSINT tools by dragging logic blocks.
                 
-        # Chat input logic
-        if prompt := st.chat_input("Ask me to analyze your blocks..."):
-            # Render user input
-            st.session_state["chat_messages"].append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.markdown(prompt)
+                Current compiled workspace Python code:
+                {st.session_state.get("synced_workspace_code", "")}
                 
-            # Build system context payload so AI sees the live workspace
-            system_context = f"""
-            You are an elite pentesting AI assistant embedded in a visual block-coding platform.
-            The user is building security and OSINT tools by dragging logic blocks.
-            
-            Current compiled workspace Python code:
-            {st.session_state["synced_workspace_code"]}
-            
-            Current output console logs:
-            {st.session_state["terminal_history_output"]}
-            
-            Analyze the user's workspace, explain what their blocks are doing, and answer their prompt. Keep it hacker-themed, concise, and educational. Do not generate destructive payloads.
-            """
-            
-            # Prepare messages for Groq API
-            api_messages = [{"role": "system", "content": system_context}] + st.session_state["chat_messages"]
-            
-            # Fetch response
-            with st.chat_message("assistant"):
-                try:
-                    response = ai_client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
-                        messages=api_messages,
-                    )
-                    reply = response.choices[0].message.content
-                    st.markdown(reply)
-                    st.session_state["chat_messages"].append({"role": "assistant", "content": reply})
-                except Exception as api_err:
-                    st.error(f"Groq API Error: {str(api_err)}")
+                Current output console logs:
+                {st.session_state.get("terminal_history_output", "")}
+                
+                Analyze the user's workspace, explain what their blocks are doing, and answer their prompt. Keep it hacker-themed, concise, and educational. Do not generate destructive payloads.
+                """
+                
+                # Prepare messages for Groq API
+                api_messages = [{"role": "system", "content": system_context}] + st.session_state["chat_messages"]
+                
+                # Fetch response
+                with st.chat_message("assistant"):
+                    try:
+                        response = ai_client.chat.completions.create(
+                            model="llama-3.3-70b-versatile",
+                            messages=api_messages,
+                        )
+                        reply = response.choices[0].message.content
+                        st.markdown(reply)
+                        st.session_state["chat_messages"].append({"role": "assistant", "content": reply})
+                    except Exception as api_err:
+                        st.error(f"Groq API Error: {str(api_err)}")
