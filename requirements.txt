@@ -2,3 +2,4 @@ phonenumbers
 requests
 streamlit
 python-dotenv
+groq
