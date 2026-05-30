@@ -5,6 +5,7 @@ import urllib.request
 import urllib.parse
 import random
 import re
+import time
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -51,7 +52,6 @@ def generate_completion_with_fallback(messages, response_format=None):
                 "model": model_name,
                 "messages": messages
             }
-            # Handle structured JSON outputs if you add block building safety guards later
             if response_format:
                 kwargs["response_format"] = response_format
                 
@@ -59,12 +59,10 @@ def generate_completion_with_fallback(messages, response_format=None):
             return response.choices[0].message.content
             
         except RateLimitError as rate_err:
-            # Token exhaustion or Request Per Minute threshold crossed
             st.toast(f"⚠️ Limit reached on {model_name}. Transitioning down roster...", icon="🔄")
             continue
             
         except Exception as general_err:
-            # Handle other explicit API faults safely without freezing the interface
             return f"❌ AI Engine exception encountered: {str(general_err)}"
             
     return "🚨 ALL RESERVIST INFERENCE SYSTEMS EXHAUSTED: Free tier allocation is completely restricted. Wait 60 seconds."
@@ -425,6 +423,31 @@ with layout_col_left:
       </div>
 
       <xml id="toolbox" style="display: none">
+        <category name="🧠 Core Logic" colour="210">
+          <block type="controls_if"></block>
+          <block type="logic_compare"></block>
+          <block type="logic_operation"></block>
+          <block type="logic_negate"></block>
+          <block type="logic_boolean"></block>
+        </category>
+        <category name="🔁 Loops & Wait" colour="120">
+          <block type="controls_repeat_ext">
+            <value name="TIMES">
+              <shadow type="math_number">
+                <field name="NUM">5</field>
+              </shadow>
+            </value>
+          </block>
+          <block type="controls_whileUntil"></block>
+          <block type="action_wait_task"></block>
+        </category>
+        <category name="🔢 Math & Data" colour="230">
+          <block type="math_number"></block>
+          <block type="math_arithmetic"></block>
+          <block type="text"></block>
+          <block type="text_print"></block>
+        </category>
+        <sep></sep>
         <category name="🏁 Sequence Triggers" colour="0">
           <block type="when_sequence_activated"></block>
         </category>
@@ -494,6 +517,7 @@ with layout_col_left:
         document.onmouseup = function() {{
           isDraggingWindow = false;
         }};
+        
         // --- Custom Blockly Element Implementations ---
         Blockly.Blocks['when_sequence_activated'] = {{
           init: function() {{
@@ -502,6 +526,19 @@ with layout_col_left:
             this.setColour(0);
           }}
         }};
+        
+        Blockly.Blocks['action_wait_task'] = {{
+          init: function() {{
+            this.appendDummyInput()
+                .appendField("⏳ Wait for")
+                .appendField(new Blockly.FieldNumber(1, 0, 60), "SECONDS")
+                .appendField("seconds");
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(120);
+          }}
+        }};
+
         Blockly.Blocks['custom_input_string'] = {{
           init: function() {{
             this.appendDummyInput().appendField("Target Domain:").appendField(new Blockly.FieldTextInput("google.com"), "RAW_TEXT");
@@ -588,6 +625,12 @@ with layout_col_left:
         
         // --- Python Generator Mappings ---
         Blockly.Python.forBlock['when_sequence_activated'] = function(block) {{ return '# Sequence Active\\n'; }};
+        
+        Blockly.Python.forBlock['action_wait_task'] = function(block) {{ 
+          var seconds = block.getFieldValue('SECONDS');
+          return 'time.sleep(' + seconds + ')\\n'; 
+        }};
+
         Blockly.Python.forBlock['custom_input_string'] = function(block) {{ return ["'" + block.getFieldValue('RAW_TEXT') + "'", 0]; }};
         Blockly.Python.forBlock['global_phone_preset'] = function(block) {{ return ["'" + block.getFieldValue('CC_PREFIX') + block.getFieldValue('PHONE_BODY') + "'", 0]; }};
         Blockly.Python.forBlock['custom_phone_signature'] = function(block) {{
@@ -668,13 +711,15 @@ with layout_col_left:
           }}
         }}
 
+        // --- DEBOUNCE FIX TO PREVENT INITIALIZATION/URL SPAM ---
+        var compileTimeout = null;
         workspace.addChangeListener(function(e) {{
           if (e.type === Blockly.Events.BLOCK_CREATE || e.type === Blockly.Events.BLOCK_MOVE || e.type === Blockly.Events.BLOCK_CHANGE || e.type === Blockly.Events.BLOCK_DELETE) {{
-            processLiveDebugCompilations();
+            clearTimeout(compileTimeout);
+            compileTimeout = setTimeout(processLiveDebugCompilations, 500);
           }}
         }});
         
-        setInterval(processLiveDebugCompilations, 700);
       </script>
     </body>
     </html>
@@ -699,7 +744,8 @@ with layout_col_left:
         else:
             st.session_state["terminal_history_output"] = "🛰️ STREAMING PASSED ASSET DATA SECTIONS...\n-----------------------------------------\n"
             try:
-                exec_scope = {"run_scan": run_scan}
+                # INJECT TIME MODULE INTO EXEC SCOPE FOR THE NEW WAIT BLOCK
+                exec_scope = {"run_scan": run_scan, "time": time}
                 exec(code_to_run, exec_scope)
                 st.success("🟢 Execution automation run complete! Check terminal view log contents.")
                 st.rerun()
