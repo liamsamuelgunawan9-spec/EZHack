@@ -762,41 +762,51 @@ if layout_col_right:
             st.warning("⚠️ Groq API Key not detected in `.env`. Chat module locked.")
             st.info("Ensure your `.env` contains: `GROQ_API_KEY=gsk_...`")
         else:
-            # Display chat messages
-            for msg in st.session_state["chat_messages"]:
-                with st.chat_message(msg["role"]):
-                    st.markdown(msg["content"])
+            
+            # --- NEW: SCROLLABLE CHAT CONTAINER (THE SLIDER THING) ---
+            # Using height=730 to match the 880px workspace height perfectly
+            chat_box = st.container(height=730, border=True)
+            
+            # Display chat messages INSIDE the box
+            with chat_box:
+                for msg in st.session_state["chat_messages"]:
+                    with st.chat_message(msg["role"]):
+                        st.markdown(msg["content"])
                     
-            # Chat input logic
+            # Chat input logic OUTSIDE the box (so it stays pinned to the bottom of the sidebar)
             if prompt := st.chat_input("Ask me to analyze your blocks..."):
+                
                 # Render user input
                 st.session_state["chat_messages"].append({"role": "user", "content": prompt})
-                with st.chat_message("user"):
-                    st.markdown(prompt)
+                
+                # We use 'with chat_box:' again so the new messages stream INSIDE the scrollable box
+                with chat_box:
+                    with st.chat_message("user"):
+                        st.markdown(prompt)
+                        
+                    # Build system context payload so AI sees the live workspace
+                    system_context = f"""
+                    You are an elite pentesting AI assistant embedded in a visual block-coding platform.
+                    The user is building security and OSINT tools by dragging logic blocks.
                     
-                # Build system context payload so AI sees the live workspace
-                system_context = f"""
-                You are an elite pentesting AI assistant embedded in a visual block-coding platform.
-                The user is building security and OSINT tools by dragging logic blocks.
-                
-                Current compiled workspace Python code:
-                {st.session_state.get("synced_workspace_code", "")}
-                
-                Current output console logs:
-                {st.session_state.get("terminal_history_output", "")}
-                
-                Analyze the user's workspace, explain what their blocks are doing, and answer their prompt.
-                Keep it hacker-themed, concise, and educational. Do not generate destructive payloads.
-                """
-                
-                # Prepare messages for Groq API
-                api_messages = [{"role": "system", "content": system_context}] + st.session_state["chat_messages"]
-                
-                # Fetch response using the multi-model fallback chain
-                with st.chat_message("assistant"):
-                    try:
-                        reply = generate_completion_with_fallback(api_messages)
-                        st.markdown(reply)
-                        st.session_state["chat_messages"].append({"role": "assistant", "content": reply})
-                    except Exception as api_err:
-                        st.error(f"System Canvas Processing Error: {str(api_err)}")
+                    Current compiled workspace Python code:
+                    {st.session_state.get("synced_workspace_code", "")}
+                    
+                    Current output console logs:
+                    {st.session_state.get("terminal_history_output", "")}
+                    
+                    Analyze the user's workspace, explain what their blocks are doing, and answer their prompt.
+                    Keep it hacker-themed, concise, and educational. Do not generate destructive payloads.
+                    """
+                    
+                    # Prepare messages for Groq API
+                    api_messages = [{"role": "system", "content": system_context}] + st.session_state["chat_messages"]
+                    
+                    # Fetch response using the multi-model fallback chain
+                    with st.chat_message("assistant"):
+                        try:
+                            reply = generate_completion_with_fallback(api_messages)
+                            st.markdown(reply)
+                            st.session_state["chat_messages"].append({"role": "assistant", "content": reply})
+                        except Exception as api_err:
+                            st.error(f"System Canvas Processing Error: {str(api_err)}")
