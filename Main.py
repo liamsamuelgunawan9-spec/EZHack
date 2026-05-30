@@ -340,8 +340,34 @@ def run_scan(target: str, mode: str, structural_param: str = "all"):
 # ==========================================
 
 st.set_page_config(page_title="Horizon OSINT Workspace", layout="wide")
-st.title("🛰️ Horizon Passive Intelligence Core") 
-st.caption("Industrial Scale Open-Source Reconnaissance Suite — Powered by Groq Inference") 
+
+# 1. Inject Global Clean-Layout Styling for Full Screen Arena
+st.markdown("""
+    <style>
+        /* Force full screen viewport layout and eliminate core padding */
+        .main .block-container {
+            padding-top: 0rem !important;
+            padding-bottom: 2rem !important;
+            max-width: 100% !important;
+        }
+        
+        /* Remove default Streamlit top toolbar header and branding */
+        header, footer {
+            visibility: hidden !important;
+            height: 0px !important;
+        }
+        
+        /* Bottom Section Wrapper for Live Code Viewer */
+        .live-code-container {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #0f172a;
+            border-top: 2px solid #334155;
+            border-radius: 8px;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 
 # State Management Initialization
 if "synced_workspace_code" not in st.session_state:
@@ -351,7 +377,7 @@ if "blockly_xml_state" not in st.session_state:
 if "chat_messages" not in st.session_state:
     st.session_state["chat_messages"] = [{"role": "assistant", "content": "Hello! I am your Groq-powered AI Copilot. Drag and zoom the workspace canvas to see me float like a block!"}]
 
-# Process incoming sync values and AI chat messages from the embedded tab interface 
+# Process incoming sync values and AI chat messages from the embedded tab interface
 try:
     incoming_payload = st.query_params.get("payload_matrix", "")
     if incoming_payload:
@@ -388,14 +414,31 @@ try:
             api_messages = [{"role": "system", "content": system_context}] + st.session_state["chat_messages"]
             reply = generate_completion_with_fallback(api_messages)
             st.session_state["chat_messages"].append({"role": "assistant", "content": reply})
+
+    # Sequence execution requested via right-click custom context menu
+    run_seq = st.query_params.get("run_sequence", "")
+    if run_seq:
+        sequence_id_name = urllib.parse.unquote(run_seq)
+        st.query_params["run_sequence"] = ""
+        
+        st.session_state["terminal_history_output"] = f"🤖 Booting sequence pipeline [{sequence_id_name}]...\nRunning target compiled script layers...\n"
+        
+        # Immediately execute the targeted isolation pipeline
+        code_to_run = st.session_state["synced_workspace_code"].strip()
+        if code_to_run:
+            try:
+                exec_scope = {"run_scan": run_scan, "time": time}
+                exec(code_to_run, exec_scope)
+                st.session_state["terminal_history_output"] += "\n🟢 Execution automation run complete!"
+            except Exception as runtime_err:
+                st.session_state["terminal_history_output"] += f"\n💥 PIPELINE BREAK: {str(runtime_err)}"
+
 except Exception:
     pass
 
 safe_xml_state = json.dumps(st.session_state.get("blockly_xml_state", ""))
 safe_terminal_output = json.dumps(st.session_state.get("terminal_history_output", ""))
 safe_chat_history = json.dumps(st.session_state.get("chat_messages", []))
-
-st.markdown("### 🗺️ System Automation Floor Canvas (AI Tab Embedded inside Blockly Arena)")
 
 blockly_html_payload = f"""
 <!DOCTYPE html>
@@ -407,16 +450,67 @@ blockly_html_payload = f"""
   <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
   <style>
     html, body {{ height: 100%; margin: 0; padding: 0; background-color: #0b0c10; font-family: monospace; color: #1fec79; overflow: hidden; }}
-    #workspaceWrapper {{ display: flex; flex-direction: column; height: 880px; padding: 5px; box-sizing: border-box; position: relative; }}
-    #blocklyDiv {{ flex: 1; border: 2px solid #45a29e; border-radius: 6px; position: relative; }}
+    #workspaceWrapper {{ display: flex; flex-direction: column; height: 95vh; padding: 0; box-sizing: border-box; position: relative; }}
+    #blocklyDiv {{ flex: 1; border: 1px solid #1e293b; position: relative; }}
     
-    #integratedTerminalBlock {{
-      position: absolute; top: 150px; left: 150px; width: 520px; background-color: #1f2833; border: 2px solid #1fec79; border-radius: 8px; z-index: 99; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    /* Styling for the floating terminal overlay */
+    .floating-container {{
+        position: absolute;
+        z-index: 999;
+        background: #090d16;
+        border: 1px solid #00ff66;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+        border-radius: 6px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        font-family: 'Courier New', Courier, monospace;
     }}
-    #terminalHeader {{ padding: 8px 12px; cursor: move; background-color: #0b0c10; border-bottom: 2px solid #1fec79; font-weight: bold; color: #1fec79; display: flex; justify-content: space-between; font-size: 11px; align-items: center; }}
-    .termBody {{ padding: 12px; background-color: #000000; color: #ffffff; height: 340px; overflow-y: auto; font-size: 11px; white-space: pre-wrap; font-family: monospace; line-height: 1.4; }}
-    .windowCtrlBtn {{ background: #0b0c10; color: #ff0055; border: 1px solid #ff0055; padding: 2px 6px; cursor: pointer; border-radius: 4px; font-size: 10px; font-weight: bold; }}
-    .windowCtrlBtn:hover {{ background: #ff0055; color: #ffffff; }}
+    .window-navbar-header {{
+        padding: 6px 12px;
+        background: #111827;
+        border-bottom: 1px solid #1f2937;
+        cursor: move;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        user-select: none;
+    }}
+    .terminal-title {{
+        color: #00ff66;
+        font-size: 11px;
+        font-weight: bold;
+        letter-spacing: 1px;
+    }}
+    .window-workspace-body {{
+        flex: 1;
+        padding: 10px;
+        overflow: auto;
+        background: #05070f;
+    }}
+    .ansi-terminal-logs {{
+        margin: 0;
+        color: #d1d5db;
+        font-size: 12px;
+        line-height: 1.4;
+        white-space: pre-wrap;
+    }}
+    .window-corner-resizer {{
+        width: 12px;
+        height: 12px;
+        background: transparent;
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        cursor: se-resize;
+    }}
+    .win-control-btn {{
+        background: transparent;
+        border: none;
+        color: #ef4444;
+        cursor: pointer;
+        font-weight: bold;
+    }}
 
     /* Embedded UI Tab Window Themes */
     #aiTabWindow {{
@@ -506,12 +600,15 @@ blockly_html_payload = f"""
   <div id="workspaceWrapper">
     <div id="blocklyDiv"></div>
     
-    <div id="integratedTerminalBlock">
-      <div id="terminalHeader">
-        <span id="headerLabelTitle">📺 MONITOR TERMINAL FEED</span>
-        <button id="stateToggleActionBtn" class="windowCtrlBtn" onclick="toggleLocalTerminalState()">[-] MINIMIZE</button>
-      </div>
-      <div class="termBody" id="localTerminalContentText"></div>
+    <div id="terminalWindow" class="floating-container desktop-window" style="left: 20px; bottom: 20px; width: 450px; height: 280px;">
+        <div id="terminalHeader" class="window-navbar-header">
+            <span class="terminal-title">💻 SYSTEM TERMINAL OUTPUT</span>
+            <button class="win-control-btn" onclick="document.getElementById('terminalWindow').style.display='none'">X</button>
+        </div>
+        <div id="terminalBody" class="window-workspace-body">
+            <pre id="terminalLogOutput" class="ansi-terminal-logs"></pre>
+        </div>
+        <div class="window-corner-resizer" id="terminalResizeAnchor"></div>
     </div>
       
   </div>
@@ -560,53 +657,89 @@ blockly_html_payload = f"""
   </xml>
 
   <script>
-    var isTerminalMinimized = false;
-    document.getElementById("localTerminalContentText").textContent = {safe_terminal_output};
-    
-    function toggleLocalTerminalState() {{
-      var tBody = document.getElementById("localTerminalContentText");
-      var btn = document.getElementById("stateToggleActionBtn");
-      var title = document.getElementById("headerLabelTitle");
-      
-      if(!isTerminalMinimized) {{
-        tBody.style.display = "none";
-        btn.innerText = "[+] UNMINIMIZE";
-        btn.style.color = "#1fec79";
-        btn.style.borderColor = "#1fec79";
-        title.innerText = "📺 TERM (MINIMIZED)";
-        isTerminalMinimized = true;
-      }} else {{
-        tBody.style.display = "block";
-        btn.innerText = "[-] MINIMIZE";
-        btn.style.color = "#ff0055";
-        btn.style.borderColor = "#ff0055";
-        title.innerText = "📺 MONITOR TERMINAL FEED";
-        isTerminalMinimized = false;
-      }}
+    document.getElementById("terminalLogOutput").textContent = {safe_terminal_output};
+
+    // Register overlay movement mechanics for the terminal component
+    setupFloatingWindow(document.getElementById("terminalWindow"), document.getElementById("terminalHeader"), document.getElementById("terminalResizeAnchor"));
+
+    function setupFloatingWindow(el, header, resizer) {{
+        let x1 = 0, y1 = 0, x2 = 0, y2 = 0;
+        header.onmousedown = dragMouseDown;
+
+        function dragMouseDown(e) {{
+            e = e || window.event;
+            e.preventDefault();
+            x2 = e.clientX;
+            y2 = e.clientY;
+            document.onmouseup = closeDragElement;
+            document.onmousemove = elementDrag;
+        }}
+
+        function elementDrag(e) {{
+            e = e || window.event;
+            e.preventDefault();
+            x1 = x2 - e.clientX;
+            y1 = y2 - e.clientY;
+            x2 = e.clientX;
+            y2 = e.clientY;
+            el.style.top = (el.offsetTop - y1) + "px";
+            el.style.left = (el.offsetLeft - x1) + "px";
+        }}
+
+        function closeDragElement() {{
+            document.onmouseup = null;
+            document.onmousemove = null;
+        }}
+
+        resizer.addEventListener('mousedown', initResize, false);
+        function initResize(e) {{
+            e.preventDefault();
+            window.addEventListener('mousemove', StartResize, false);
+            window.addEventListener('mouseup', StopResize, false);
+        }}
+        function StartResize(e) {{
+            el.style.width = (e.clientX - el.offsetLeft) + 'px';
+            el.style.height = (e.clientY - el.offsetTop) + 'px';
+        }}
+        function StopResize() {{
+            window.removeEventListener('mousemove', StartResize, false);
+            window.removeEventListener('mouseup', StopResize, false);
+        }}
     }}
 
-    var workspaceDiv = document.getElementById('blocklyDiv');
-    var termWindow = document.getElementById('integratedTerminalBlock');
-    
-    var currentTermX = 150;
-    var currentTermY = 150;
-    
-    var isDraggingWindow = false;
-    var startX, startY;
-    document.getElementById("terminalHeader").onmousedown = function(e) {{
-      if(e.target.className === "windowCtrlBtn") return;
-      isDraggingWindow = true;
-      startX = e.clientX - currentTermX;
-      startY = e.clientY - currentTermY;
-      e.preventDefault();
-    }};
-    
     // --- Custom Blockly Element Implementations ---
     Blockly.Blocks['when_sequence_activated'] = {{
       init: function() {{
-        this.appendDummyInput().appendField("🚀 Sequence Start");
+        this.appendDummyInput()
+            .appendField("🚀 SEQUENCE GENERATOR")
+            .appendField(new Blockly.FieldTextInput("passive_recon_agent"), "SEQUENCE_ID");
         this.setNextStatement(true, null);
         this.setColour(0);
+        this.setTooltip("Right-click workspace element to activate this modular route sequence block.");
+      }},
+      
+      // Inject custom option into default right-click list arrays
+      customContextMenu: function(options) {{
+          var currentBlockInstance = this;
+          
+          var activateOption = {{
+              enabled: true,
+              text: "⚡ Activate This Sequence",
+              callback: function() {{
+                  // 1. Compile code starting exclusively from this entry block point
+                  var targetedSequencePayload = Blockly.Python.blockToCode(currentBlockInstance);
+                  
+                  // 2. Extract block structural data tracking fields
+                  var sequenceIdentifier = currentBlockInstance.getFieldValue("SEQUENCE_ID");
+                  
+                  // 3. Post data payload back into the core Streamlit state manager via URL parameters
+                  var baseUrl = window.parent.location.origin + window.parent.location.pathname;
+                  var targetUrl = baseUrl + "?payload_matrix=" + encodeURIComponent(targetedSequencePayload) + 
+                                  "&run_sequence=" + encodeURIComponent(sequenceIdentifier);
+                  window.parent.location.href = targetUrl;
+              }}
+          }};
+          options.push(activateOption);
       }}
     }};
     
@@ -707,7 +840,7 @@ blockly_html_payload = f"""
     }};
     
     // --- Python Generator Mappings ---
-    Blockly.Python.forBlock['when_sequence_activated'] = function(block) {{ return '# Sequence Active\\n'; }};
+    Blockly.Python.forBlock['when_sequence_activated'] = function(block) {{ return '# Sequence Active: ' + block.getFieldValue('SEQUENCE_ID') + '\\n'; }};
     
     Blockly.Python.forBlock['action_wait_task'] = function(block) {{ 
       var seconds = block.getFieldValue('SECONDS');
@@ -795,7 +928,7 @@ blockly_html_payload = f"""
     aiForeignObject.appendChild(aiTabDiv);
     canvas.appendChild(aiForeignObject);
     
-    // Completely isolate events so dragging/typing inside the AI Tab window does not bleed into the Blockly workspace 
+    // Completely isolate events so dragging/typing inside the AI Tab window does not bleed into the Blockly workspace
     aiTabDiv.addEventListener("mousedown", function(e) {{ e.stopPropagation(); }});
     aiTabDiv.addEventListener("pointerdown", function(e) {{ e.stopPropagation(); }});
     aiTabDiv.addEventListener("keydown", function(e) {{ e.stopPropagation(); }});
@@ -896,12 +1029,6 @@ blockly_html_payload = f"""
 
     document.addEventListener("mousemove", function(e) {{
       var scale = workspace.scale || 1;
-      if (isDraggingWindow) {{
-        currentTermX = e.clientX - startX;
-        currentTermY = e.clientY - startY;
-        termWindow.style.left = currentTermX + 'px';
-        termWindow.style.top = currentTermY + 'px';
-      }}
       if (isDraggingTab) {{
         var newX = e.clientX / scale - tabStartX;
         var newY = e.clientY / scale - tabStartY;
@@ -919,7 +1046,6 @@ blockly_html_payload = f"""
     }});
     
     document.addEventListener("mouseup", function() {{
-      isDraggingWindow = false;
       isDraggingTab = false;
       isResizingTab = false;
     }});
@@ -960,28 +1086,11 @@ blockly_html_payload = f"""
 </html>
 """
 
-components.html(blockly_html_payload, height=900, scrolling=False)
+# Render the 95% layout blockly component window
+components.html(blockly_html_payload, height=850, scrolling=False)
 
-st.markdown("---")
-st.markdown("### 🖥️ Main Engine Pipeline Terminal")
-
-with st.expander("📋 View Compiled Execution Code Output Stream", expanded=False):
-    st.session_state["synced_workspace_code"] = st.text_area(
-        "Live Track Payload Manifest",
-        value=st.session_state["synced_workspace_code"],
-        height=150
-    )
-    
-if st.button("⚡ Run Block Automation Flow", type="primary", use_container_width=True):
-    code_to_run = st.session_state["synced_workspace_code"].strip()
-    if not code_to_run or "Sequence Active" not in code_to_run:
-        st.error("❌ Pipeline Error: Drag and chain tools directly underneath the 'Sequence Start' trigger block first!")
-    else:
-        st.session_state["terminal_history_output"] = "🛰️ STREAMING PASSED ASSET DATA SECTIONS...\n-----------------------------------------\n"
-        try:
-            exec_scope = {"run_scan": run_scan, "time": time}
-            exec(code_to_run, exec_scope)
-            st.success("🟢 Execution automation run complete! Check terminal view log contents.")
-            st.rerun()
-        except Exception as runtime_err:
-            st.error(f"💥 PIPELINE BREAK: {str(runtime_err)}")
+# Live compiled script footprint strictly at the bottom
+st.markdown('<div class="live-code-container">', unsafe_allow_html=True)
+st.subheader("📁 Live Compiled Automation Script")
+st.code(st.session_state.get("synced_workspace_code", "# No code blocks assembled yet."), language="python")
+st.markdown('</div>', unsafe_allow_html=True)
