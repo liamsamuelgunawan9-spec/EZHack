@@ -12,8 +12,9 @@ import streamlit.components.v1 as components
 from dotenv import load_dotenv
 load_dotenv()
 
-# Import Groq SDK
+# Import Groq SDK & Catch Rate Limits
 from groq import Groq
+from groq import RateLimitError
 
 # Import Google's phonenumbers library components
 import phonenumbers
@@ -24,6 +25,50 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 ai_client = None
 if GROQ_API_KEY:
     ai_client = Groq(api_key=GROQ_API_KEY)
+
+# =========================================================================
+# BUDGET ENHANCEMENT: CHATBOT COMPLETION FAILOVER MATRIX (FREE TIER SAVER)
+# =========================================================================
+MODEL_ROSTER = [
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b"
+]
+
+def generate_completion_with_fallback(messages, response_format=None):
+    """
+    Attempts completion utilizing the structured model pool in exact priority order.
+    If a model hits rate constraints or exhausting token allowances (HTTP 429), 
+    it immediately steps down to the secondary model instance dynamically.
+    """
+    if not ai_client:
+        return "❌ ERROR: AI Engine client connection failed. Verify your GROQ_API_KEY."
+
+    for model_name in MODEL_ROSTER:
+        try:
+            kwargs = {
+                "model": model_name,
+                "messages": messages
+            }
+            # Handle structured JSON outputs if you add block building safety guards later
+            if response_format:
+                kwargs["response_format"] = response_format
+                
+            response = ai_client.chat.completions.create(**kwargs)
+            return response.choices[0].message.content
+            
+        except RateLimitError as rate_err:
+            # Token exhaustion or Request Per Minute threshold crossed
+            st.toast(f"⚠️ Limit reached on {model_name}. Transitioning down roster...", icon="🔄")
+            continue
+            
+        except Exception as general_err:
+            # Handle other explicit API faults safely without freezing the interface
+            return f"❌ AI Engine exception encountered: {str(general_err)}"
+            
+    return "🚨 ALL RESERVIST INFERENCE SYSTEMS EXHAUSTED: Free tier allocation is completely restricted. Wait 60 seconds."
+
 
 # ==========================================
 # 1. CORE UTILITY FUNCTIONS (PASSIVE OSINT SUITE)
@@ -49,7 +94,7 @@ def perform_ip_geolocation(target: str) -> str:
     clean_host = clean_host.replace("https://", "").replace("http://", "").split("/")[0]
     if not clean_host:
         return "❌ ERROR: Target missing!"
-        
+    
     if clean_host.startswith("+") or (clean_host.isdigit() and len(clean_host) > 6):
         try:
             if clean_host.startswith("08") and not clean_host.startswith("+"):
@@ -143,7 +188,7 @@ def perform_whois_lookup(target: str) -> str:
     clean_host = clean_host.replace("https://", "").replace("http://", "").split("/")[0]
     if not clean_host:
         return "❌ ERROR: Target domain missing!"
-    
+        
     if clean_host.startswith("+") or (clean_host.isdigit() and len(clean_host) > 6):
         return (f"🌐 [REGISTRY LOOKUP: TELECOM BLOCK INQUIRY]\n"
                 f"   • Query Signature: {clean_host}\n"
@@ -237,6 +282,7 @@ def perform_subdomain_ct_logs(target: str) -> str:
 def perform_threat_intelligence(target: str) -> str:
     clean_host = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
     clean_host = clean_host.replace("https://", "").replace("http://", "").split("/")[0]
+    
     if not clean_host:
         return "❌ ERROR: Missing target data vector."
         
@@ -398,7 +444,6 @@ with layout_col_left:
 
       <script>
         var isTerminalMinimized = false;
-        
         document.getElementById("localTerminalContentText").textContent = {safe_terminal_output};
         
         function toggleLocalTerminalState() {{
@@ -431,7 +476,6 @@ with layout_col_left:
         
         var isDraggingWindow = false;
         var startX, startY;
-
         document.getElementById("terminalHeader").onmousedown = function(e) {{
           if(e.target.className === "windowCtrlBtn") return;
           isDraggingWindow = true;
@@ -439,7 +483,6 @@ with layout_col_left:
           startY = e.clientY - currentTermY;
           e.preventDefault();
         }};
-
         document.onmousemove = function(e) {{
           if (!isDraggingWindow) return;
           currentTermX = e.clientX - startX;
@@ -451,7 +494,6 @@ with layout_col_left:
         document.onmouseup = function() {{
           isDraggingWindow = false;
         }};
-
         // --- Custom Blockly Element Implementations ---
         Blockly.Blocks['when_sequence_activated'] = {{
           init: function() {{
@@ -460,7 +502,6 @@ with layout_col_left:
             this.setColour(0);
           }}
         }};
-
         Blockly.Blocks['custom_input_string'] = {{
           init: function() {{
             this.appendDummyInput().appendField("Target Domain:").appendField(new Blockly.FieldTextInput("google.com"), "RAW_TEXT");
@@ -468,7 +509,6 @@ with layout_col_left:
             this.setColour(160);
           }}
         }};
-
         Blockly.Blocks['global_phone_preset'] = {{
           init: function() {{
             this.appendDummyInput()
@@ -479,7 +519,6 @@ with layout_col_left:
             this.setColour(160);
           }}
         }};
-
         Blockly.Blocks['custom_phone_signature'] = {{
           init: function() {{
             this.appendDummyInput()
@@ -491,7 +530,6 @@ with layout_col_left:
             this.setColour(160);
           }}
         }};
-
         Blockly.Blocks['action_scan_base'] = {{
           init: function() {{
             this.appendValueInput("NAME").setCheck("String").appendField("Scan Profile Target:");
@@ -508,7 +546,6 @@ with layout_col_left:
             this.setColour(210);
           }}
         }};
-
         Blockly.Blocks['action_dns_extractor'] = {{
           init: function() {{
             this.appendValueInput("NAME").setCheck("String").appendField("📡 Parse Records for:");
@@ -524,7 +561,6 @@ with layout_col_left:
             this.setColour(210);
           }}
         }};
-
         Blockly.Blocks['action_http_header_audit'] = {{
           init: function() {{
             this.appendValueInput("NAME").setCheck("String").appendField("🛡️ Audit Safety Headers for:");
@@ -533,7 +569,6 @@ with layout_col_left:
             this.setColour(210);
           }}
         }};
-
         Blockly.Blocks['action_subdomain_ct_logs'] = {{
           init: function() {{
             this.appendValueInput("NAME").setCheck("String").appendField("📧 Collect CT Log Subdomains for:");
@@ -542,7 +577,6 @@ with layout_col_left:
             this.setColour(210);
           }}
         }};
-
         Blockly.Blocks['action_threat_intel_reputation'] = {{
           init: function() {{
             this.appendValueInput("NAME").setCheck("String").appendField("🦺 Reputation Threat Intel Check:");
@@ -551,7 +585,7 @@ with layout_col_left:
             this.setColour(210);
           }}
         }};
-
+        
         // --- Python Generator Mappings ---
         Blockly.Python.forBlock['when_sequence_activated'] = function(block) {{ return '# Sequence Active\\n'; }};
         Blockly.Python.forBlock['custom_input_string'] = function(block) {{ return ["'" + block.getFieldValue('RAW_TEXT') + "'", 0]; }};
@@ -567,7 +601,6 @@ with layout_col_left:
           var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
           return 'run_scan(target=' + val + ', mode="' + type + '")\\n';
         }};
-
         Blockly.Python.forBlock['action_dns_extractor'] = function(block) {{
           var dnsType = block.getFieldValue('DNS_TYPE');
           var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
@@ -595,7 +628,7 @@ with layout_col_left:
           grid: {{ spacing: 25, length: 3, colour: '#1f2833', snap: true }}, 
           trashcan: true
         }});
-
+        
         // --- HYDRATION PROTOCOL ---
         try {{
           var initialXmlText = {safe_xml_state};
@@ -708,21 +741,18 @@ if layout_col_right:
                 Current output console logs:
                 {st.session_state.get("terminal_history_output", "")}
                 
-                Analyze the user's workspace, explain what their blocks are doing, and answer their prompt. Keep it hacker-themed, concise, and educational. Do not generate destructive payloads.
+                Analyze the user's workspace, explain what their blocks are doing, and answer their prompt.
+                Keep it hacker-themed, concise, and educational. Do not generate destructive payloads.
                 """
                 
                 # Prepare messages for Groq API
                 api_messages = [{"role": "system", "content": system_context}] + st.session_state["chat_messages"]
                 
-                # Fetch response
+                # Fetch response using the multi-model fallback chain
                 with st.chat_message("assistant"):
                     try:
-                        response = ai_client.chat.completions.create(
-                            model="llama-3.3-70b-versatile",
-                            messages=api_messages,
-                        )
-                        reply = response.choices[0].message.content
+                        reply = generate_completion_with_fallback(api_messages)
                         st.markdown(reply)
                         st.session_state["chat_messages"].append({"role": "assistant", "content": reply})
                     except Exception as api_err:
-                        st.error(f"Groq API Error: {str(api_err)}")
+                        st.error(f"System Canvas Processing Error: {str(api_err)}")
