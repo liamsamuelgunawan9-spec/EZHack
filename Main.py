@@ -684,19 +684,17 @@ with layout_col_left:
         }}
 
         function processLiveDebugCompilations() {{
-          var allBlocks = workspace.getAllBlocks(false);
+          // FIX: Only grab TOP blocks to prevent duplicate downward translations!
+          var topBlocks = workspace.getTopBlocks(false);
           var generatedPythonCode = "";
           var sequenceFound = false;
           
-          for (var i = 0; i < allBlocks.length; i++) {{
-            if (allBlocks[i].type === 'when_sequence_activated') {{
+          for (var i = 0; i < topBlocks.length; i++) {{
+            if (topBlocks[i].type === 'when_sequence_activated') {{
               sequenceFound = true;
-              generatedPythonCode += Blockly.Python.blockToCode(allBlocks[i]);
-              var nextBlock = allBlocks[i].getNextBlock();
-              while(nextBlock) {{
-                generatedPythonCode += Blockly.Python.blockToCode(nextBlock);
-                nextBlock = nextBlock.getNextBlock();
-              }}
+              // Blockly's generator natively traverses all connected blocks automatically.
+              // We do not need the manual while(nextBlock) loop here.
+              generatedPythonCode += Blockly.Python.blockToCode(topBlocks[i]);
             }}
           }}
           
