@@ -83,9 +83,9 @@ def perform_dns_lookup(target: str) -> str:
         
     try:
         ip_addr = socket.gethostbyname(clean_host)
-        return f"🔍 [SERVER LOOK-UP] Website: {clean_host} -> Resolved IP Address: {ip_addr}"
+        return f"📡 DNS Resolution successful for [{clean_host}]\n📍 Resolved IP Address: {ip_addr}"
     except Exception as e:
-        return f"❌ RESOLUTION ERROR: {str(e)}"
+        return f"❌ DNS Lookup Failed for target '{clean_host}': {str(e)}"
 
 def perform_ip_geolocation(target: str) -> str:
     clean_host = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
@@ -311,7 +311,7 @@ def perform_threat_intelligence(target: str) -> str:
 
 # Pipeline Runtime Routing Hub
 if "terminal_history_output" not in st.session_state:
-    st.session_state["terminal_history_output"] = "🚀 Automation Core Standby. Construct a block structure execution map..."
+    st.session_state["terminal_history_output"] = "🚀 Automation Core Standby. Construct a block structure execution map...\n"
 
 def run_scan(target: str, mode: str, structural_param: str = "all"):
     if mode == "dns":
@@ -334,6 +334,7 @@ def run_scan(target: str, mode: str, structural_param: str = "all"):
         res = "⚠️ Error: Block matching parameter structure error."
         
     st.session_state["terminal_history_output"] += f"\n[ENGINE TRACE] Activating Module -> {mode.upper()}\n{res}\n"
+
 
 # ==========================================
 # 2. STREAMLIT FRAMEWORK MATRIX LAYER
@@ -375,9 +376,9 @@ if "synced_workspace_code" not in st.session_state:
 if "blockly_xml_state" not in st.session_state:
     st.session_state["blockly_xml_state"] = ""
 if "chat_messages" not in st.session_state:
-    st.session_state["chat_messages"] = [{"role": "assistant", "content": "Hello! I am your Groq-powered AI Copilot. Drag and zoom the workspace canvas to see me float like a block!"}]
+    st.session_state["chat_messages"] = [{"role": "assistant", "content": "Hello! I am your Groq-powered AI Copilot. Drag and zoom the workspace canvas to see both the Terminal and AI Interface float like blocks!"}]
 
-# Process incoming sync values and AI chat messages from the embedded tab interface
+# Process incoming sync values and AI chat messages from the embedded tab interfaces
 try:
     incoming_payload = st.query_params.get("payload_matrix", "")
     if incoming_payload:
@@ -396,7 +397,7 @@ try:
         # Log user text
         st.session_state["chat_messages"].append({"role": "user", "content": user_text})
         
-        # Build live framework inference payload
+        # Standard Chat Fallback Routine (REVERTED FROM GPT OS TO PURE CHAT)
         if ai_client:
             system_context = f"""
             You are an elite pentesting AI assistant embedded in a visual block-coding platform.
@@ -421,7 +422,7 @@ try:
         sequence_id_name = urllib.parse.unquote(run_seq)
         st.query_params["run_sequence"] = ""
         
-        st.session_state["terminal_history_output"] = f"🤖 Booting sequence pipeline [{sequence_id_name}]...\nRunning target compiled script layers...\n"
+        st.session_state["terminal_history_output"] += f"\n🤖 Booting sequence pipeline [{sequence_id_name}]...\nRunning target compiled script layers...\n"
         
         # Immediately execute the targeted isolation pipeline
         code_to_run = st.session_state["synced_workspace_code"].strip()
@@ -440,6 +441,7 @@ safe_xml_state = json.dumps(st.session_state.get("blockly_xml_state", ""))
 safe_terminal_output = json.dumps(st.session_state.get("terminal_history_output", ""))
 safe_chat_history = json.dumps(st.session_state.get("chat_messages", []))
 
+
 blockly_html_payload = f"""
 <!DOCTYPE html>
 <html>
@@ -453,164 +455,75 @@ blockly_html_payload = f"""
     #workspaceWrapper {{ display: flex; flex-direction: column; height: 95vh; padding: 0; box-sizing: border-box; position: relative; }}
     #blocklyDiv {{ flex: 1; border: 1px solid #1e293b; position: relative; }}
     
-    /* Styling for the floating terminal overlay */
-    .floating-container {{
-        position: absolute;
-        z-index: 999;
-        background: #090d16;
-        border: 1px solid #00ff66;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
-        border-radius: 6px;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        font-family: 'Courier New', Courier, monospace;
-    }}
-    .window-navbar-header {{
-        padding: 6px 12px;
-        background: #111827;
-        border-bottom: 1px solid #1f2937;
-        cursor: move;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        user-select: none;
-    }}
-    .terminal-title {{
-        color: #00ff66;
-        font-size: 11px;
-        font-weight: bold;
-        letter-spacing: 1px;
-    }}
-    .window-workspace-body {{
-        flex: 1;
-        padding: 10px;
-        overflow: auto;
-        background: #05070f;
-    }}
-    .ansi-terminal-logs {{
-        margin: 0;
-        color: #d1d5db;
-        font-size: 12px;
-        line-height: 1.4;
-        white-space: pre-wrap;
-    }}
-    .window-corner-resizer {{
-        width: 12px;
-        height: 12px;
-        background: transparent;
-        position: absolute;
-        right: 0;
-        bottom: 0;
-        cursor: se-resize;
-    }}
-    .win-control-btn {{
-        background: transparent;
-        border: none;
-        color: #ef4444;
-        cursor: pointer;
-        font-weight: bold;
-    }}
-
-    /* Embedded UI Tab Window Themes */
-    #aiTabWindow {{
+    /* Global classes for inner HTML of SVG foreignObjects */
+    .hud-window {{
       display: flex;
       flex-direction: column;
       height: 100%;
-      background-color: #1a1a24;
-      border: 2px solid #00ffcc;
+      background-color: #090d16;
+      border: 1px solid #00ff66;
       border-radius: 8px;
       box-shadow: 0 10px 40px rgba(0,0,0,0.8);
       overflow: hidden;
       position: relative;
     }}
-    #aiTabHeader {{
+    .hud-header {{
       padding: 8px 12px;
       cursor: move;
-      background-color: #0b0c10;
-      border-bottom: 2px solid #00ffcc;
+      background-color: #111827;
+      border-bottom: 1px solid #1f2937;
       font-weight: bold;
-      color: #00ffcc;
+      color: #00ff66;
       font-size: 11px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       user-select: none;
     }}
-    .aiChatBody {{
+    .hud-body {{
       flex: 1;
       padding: 10px;
-      background-color: #050508;
+      background-color: #05070f;
       overflow-y: auto;
       font-size: 11px;
       font-family: monospace;
       line-height: 1.4;
     }}
-    #aiTabInputArea {{
-      padding: 6px;
-      background-color: #0b0c10;
-      border-top: 1px solid #1f2833;
-      display: flex;
-      gap: 6px;
-    }}
-    #aiTabInputField {{
-      flex: 1;
-      background-color: #000000;
-      border: 1px solid #1fec79;
-      color: #1fec79;
-      padding: 6px;
-      border-radius: 4px;
-      font-family: monospace;
-      font-size: 11px;
-    }}
-    #aiTabInputField:focus {{
-      outline: none;
-      border-color: #00ffcc;
-    }}
-    #aiTabSendBtn {{
-      background: #0b0c10;
-      color: #00ffcc;
-      border: 1px solid #00ffcc;
-      padding: 4px 10px;
-      cursor: pointer;
-      border-radius: 4px;
-      font-family: monospace;
-      font-size: 11px;
-      font-weight: bold;
-    }}
-    #aiTabSendBtn:hover {{
-      background: #00ffcc;
-      color: #0b0c10;
-    }}
-    .aiResizeHandle {{
+    .resize-handle {{
       position: absolute;
       bottom: 0;
       right: 0;
       width: 14px;
       height: 14px;
       cursor: se-resize;
-      background: linear-gradient(135deg, transparent 50%, #00ffcc 50%);
+      background: linear-gradient(135deg, transparent 50%, #00ff66 50%);
       border-bottom-right-radius: 6px;
       z-index: 100;
     }}
+
+    /* AI Specific Colors */
+    .ai-theme {{ border-color: #00ffcc; background-color: #1a1a24; }}
+    .ai-theme .hud-header {{ background-color: #0b0c10; border-color: #00ffcc; color: #00ffcc; }}
+    .ai-theme .hud-body {{ background-color: #050508; }}
+    .ai-theme .resize-handle {{ background: linear-gradient(135deg, transparent 50%, #00ffcc 50%); }}
+    
+    #aiTabInputArea {{
+      padding: 6px; background-color: #0b0c10; border-top: 1px solid #1f2833; display: flex; gap: 6px;
+    }}
+    #aiTabInputField {{
+      flex: 1; background-color: #000000; border: 1px solid #1fec79; color: #1fec79; padding: 6px; border-radius: 4px; font-family: monospace; font-size: 11px;
+    }}
+    #aiTabInputField:focus {{ outline: none; border-color: #00ffcc; }}
+    #aiTabSendBtn {{
+      background: #0b0c10; color: #00ffcc; border: 1px solid #00ffcc; padding: 4px 10px; cursor: pointer; border-radius: 4px; font-family: monospace; font-size: 11px; font-weight: bold;
+    }}
+    #aiTabSendBtn:hover {{ background: #00ffcc; color: #0b0c10; }}
   </style>
 </head>
 <body>
 
   <div id="workspaceWrapper">
     <div id="blocklyDiv"></div>
-    
-    <div id="terminalWindow" class="floating-container desktop-window" style="left: 20px; bottom: 20px; width: 450px; height: 280px;">
-        <div id="terminalHeader" class="window-navbar-header">
-            <span class="terminal-title">💻 SYSTEM TERMINAL OUTPUT</span>
-            <button class="win-control-btn" onclick="document.getElementById('terminalWindow').style.display='none'">X</button>
-        </div>
-        <div id="terminalBody" class="window-workspace-body">
-            <pre id="terminalLogOutput" class="ansi-terminal-logs"></pre>
-        </div>
-        <div class="window-corner-resizer" id="terminalResizeAnchor"></div>
-    </div>
-      
   </div>
 
   <xml id="toolbox" style="display: none">
@@ -657,56 +570,6 @@ blockly_html_payload = f"""
   </xml>
 
   <script>
-    document.getElementById("terminalLogOutput").textContent = {safe_terminal_output};
-
-    // Register overlay movement mechanics for the terminal component
-    setupFloatingWindow(document.getElementById("terminalWindow"), document.getElementById("terminalHeader"), document.getElementById("terminalResizeAnchor"));
-
-    function setupFloatingWindow(el, header, resizer) {{
-        let x1 = 0, y1 = 0, x2 = 0, y2 = 0;
-        header.onmousedown = dragMouseDown;
-
-        function dragMouseDown(e) {{
-            e = e || window.event;
-            e.preventDefault();
-            x2 = e.clientX;
-            y2 = e.clientY;
-            document.onmouseup = closeDragElement;
-            document.onmousemove = elementDrag;
-        }}
-
-        function elementDrag(e) {{
-            e = e || window.event;
-            e.preventDefault();
-            x1 = x2 - e.clientX;
-            y1 = y2 - e.clientY;
-            x2 = e.clientX;
-            y2 = e.clientY;
-            el.style.top = (el.offsetTop - y1) + "px";
-            el.style.left = (el.offsetLeft - x1) + "px";
-        }}
-
-        function closeDragElement() {{
-            document.onmouseup = null;
-            document.onmousemove = null;
-        }}
-
-        resizer.addEventListener('mousedown', initResize, false);
-        function initResize(e) {{
-            e.preventDefault();
-            window.addEventListener('mousemove', StartResize, false);
-            window.addEventListener('mouseup', StopResize, false);
-        }}
-        function StartResize(e) {{
-            el.style.width = (e.clientX - el.offsetLeft) + 'px';
-            el.style.height = (e.clientY - el.offsetTop) + 'px';
-        }}
-        function StopResize() {{
-            window.removeEventListener('mousemove', StartResize, false);
-            window.removeEventListener('mouseup', StopResize, false);
-        }}
-    }}
-
     // --- Custom Blockly Element Implementations ---
     Blockly.Blocks['when_sequence_activated'] = {{
       init: function() {{
@@ -717,25 +580,16 @@ blockly_html_payload = f"""
         this.setColour(0);
         this.setTooltip("Right-click workspace element to activate this modular route sequence block.");
       }},
-      
-      // Inject custom option into default right-click list arrays
       customContextMenu: function(options) {{
           var currentBlockInstance = this;
-          
           var activateOption = {{
               enabled: true,
               text: "⚡ Activate This Sequence",
               callback: function() {{
-                  // 1. Compile code starting exclusively from this entry block point
                   var targetedSequencePayload = Blockly.Python.blockToCode(currentBlockInstance);
-                  
-                  // 2. Extract block structural data tracking fields
                   var sequenceIdentifier = currentBlockInstance.getFieldValue("SEQUENCE_ID");
-                  
-                  // 3. Post data payload back into the core Streamlit state manager via URL parameters
                   var baseUrl = window.parent.location.origin + window.parent.location.pathname;
-                  var targetUrl = baseUrl + "?payload_matrix=" + encodeURIComponent(targetedSequencePayload) + 
-                                  "&run_sequence=" + encodeURIComponent(sequenceIdentifier);
+                  var targetUrl = baseUrl + "?payload_matrix=" + encodeURIComponent(targetedSequencePayload) + "&run_sequence=" + encodeURIComponent(sequenceIdentifier);
                   window.parent.location.href = targetUrl;
               }}
           }};
@@ -899,11 +753,52 @@ blockly_html_payload = f"""
       console.error("Hydration Layer Failure:", err);
     }}
 
-    // --- Embed Resizable, Block-Like AI Tab Window inside the SVG Blockly Canvas Layer ---
     var canvas = workspace.getCanvas();
+
+    // ==========================================
+    // EMBED TERMINAL SVG FOREIGN OBJECT
+    // ==========================================
+    var termForeignObject = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
+    termForeignObject.setAttribute("x", "40");
+    termForeignObject.setAttribute("y", "40");
+    termForeignObject.setAttribute("width", "420");
+    termForeignObject.setAttribute("height", "280");
+    
+    var termTabDiv = document.createElement("div");
+    termTabDiv.style.width = "100%";
+    termTabDiv.style.height = "100%";
+    termTabDiv.innerHTML = `
+      <div id="terminalWindow" class="hud-window">
+        <div id="terminalHeader" class="hud-header">
+          <span>💻 SYSTEM TERMINAL OUTPUT</span>
+          <span style="font-size:9px; color:#888;">[DRAGGABLE WORKSPACE TAB]</span>
+        </div>
+        <div class="hud-body">
+            <pre id="terminalLogOutput" style="margin: 0; color: #d1d5db; font-size: 12px; line-height: 1.4; white-space: pre-wrap; font-family: monospace;"></pre>
+        </div>
+        <div class="resize-handle" id="terminalResizeAnchor"></div>
+      </div>
+    `;
+    termForeignObject.appendChild(termTabDiv);
+    canvas.appendChild(termForeignObject);
+
+    // Isolate Events for Terminal
+    termTabDiv.addEventListener("mousedown", function(e) {{ e.stopPropagation(); }});
+    termTabDiv.addEventListener("pointerdown", function(e) {{ e.stopPropagation(); }});
+    termTabDiv.addEventListener("keydown", function(e) {{ e.stopPropagation(); }});
+
+    // Populate terminal history
+    var termLogOutput = document.getElementById("terminalLogOutput");
+    termLogOutput.textContent = {safe_terminal_output};
+    termLogOutput.parentElement.scrollTop = termLogOutput.parentElement.scrollHeight;
+
+
+    // ==========================================
+    // EMBED AI SVG FOREIGN OBJECT
+    // ==========================================
     var aiForeignObject = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-    aiForeignObject.setAttribute("x", "780");
-    aiForeignObject.setAttribute("y", "60");
+    aiForeignObject.setAttribute("x", "480");
+    aiForeignObject.setAttribute("y", "40");
     aiForeignObject.setAttribute("width", "390");
     aiForeignObject.setAttribute("height", "520");
     
@@ -911,29 +806,28 @@ blockly_html_payload = f"""
     aiTabDiv.style.width = "100%";
     aiTabDiv.style.height = "100%";
     aiTabDiv.innerHTML = `
-      <div id="aiTabWindow">
-        <div id="aiTabHeader">
-          <span>🤖 AI CO-PILOT TERMINAL MATRIX</span>
+      <div id="aiTabWindow" class="hud-window ai-theme">
+        <div id="aiTabHeader" class="hud-header">
+          <span>🤖 AI CO-PILOT MATRIX</span>
           <span style="font-size:9px; color:#888;">[DRAGGABLE WORKSPACE TAB]</span>
         </div>
-        <div class="aiChatBody" id="aiTabChatContent"></div>
+        <div class="hud-body" id="aiTabChatContent"></div>
         <div id="aiTabInputArea">
           <input type="text" id="aiTabInputField" placeholder="Ask AI Copilot or type logic prompt..." autocomplete="off">
           <button id="aiTabSendBtn">SEND</button>
         </div>
-        <div class="aiResizeHandle" id="aiTabResizeHandle"></div>
+        <div class="resize-handle" id="aiTabResizeHandle"></div>
       </div>
     `;
-    
     aiForeignObject.appendChild(aiTabDiv);
     canvas.appendChild(aiForeignObject);
     
-    // Completely isolate events so dragging/typing inside the AI Tab window does not bleed into the Blockly workspace
+    // Isolate Events for AI
     aiTabDiv.addEventListener("mousedown", function(e) {{ e.stopPropagation(); }});
     aiTabDiv.addEventListener("pointerdown", function(e) {{ e.stopPropagation(); }});
     aiTabDiv.addEventListener("keydown", function(e) {{ e.stopPropagation(); }});
     
-    // Hydrate and render chat log inside the tab window
+    // Hydrate AI Chat Log
     var chatHistory = {safe_chat_history};
     function renderChatHistory() {{
       var container = document.getElementById("aiTabChatContent");
@@ -954,28 +848,21 @@ blockly_html_payload = f"""
           msgDiv.style.color = "#ffffff";
           msgDiv.style.borderLeft = "2px solid #00ffcc";
           msgDiv.innerHTML = "<div style='font-weight:bold;font-size:9px;color:#00ffcc;margin-bottom:2px;'>GROQ CORERUN:</div>" + escapeHtml(msg.content);
-        }} else {{
-          msgDiv.style.backgroundColor = "#333";
-          msgDiv.style.color = "#aaa";
-          msgDiv.innerHTML = escapeHtml(msg.content);
         }}
         container.appendChild(msgDiv);
       }});
-      // The auto-scroll rule: scroll to the lowest part when content loads/exceeds box
       container.scrollTop = container.scrollHeight;
     }}
     
     function escapeHtml(str) {{
       return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;").replace(/\\n/g, "<br>");
     }}
-    
     renderChatHistory();
     
     function handleTabSend() {{
       var inputField = document.getElementById("aiTabInputField");
       var text = inputField.value.trim();
       if(!text) return;
-      
       inputField.value = "";
       
       var topBlocks = workspace.getTopBlocks(false);
@@ -997,58 +884,93 @@ blockly_html_payload = f"""
     
     document.getElementById("aiTabSendBtn").onclick = handleTabSend;
     document.getElementById("aiTabInputField").onkeydown = function(e) {{
-      if(e.key === "Enter") {{
-        handleTabSend();
-      }}
+      if(e.key === "Enter") {{ handleTabSend(); }}
     }};
 
-    // Unified Coordinate listeners for moving and resizing inside zoom/pan layer
-    var isDraggingTab = false;
-    var tabStartX, tabStartY;
-    document.getElementById("aiTabHeader").onmousedown = function(e) {{
-      isDraggingTab = true;
+    // ==========================================
+    // UNIFIED DRAG & RESIZE LOGIC (BOUND TO CANVAS)
+    // ==========================================
+    
+    // Terminal Drag/Resize State
+    var isDraggingTerm = false, termStartX, termStartY;
+    var isResizingTerm = false, termStartW, termStartH, termResStartX, termResStartY;
+    
+    document.getElementById("terminalHeader").onmousedown = function(e) {{
+      isDraggingTerm = true;
       var scale = workspace.scale || 1;
-      tabStartX = e.clientX / scale - parseFloat(aiForeignObject.getAttribute("x"));
-      tabStartY = e.clientY / scale - parseFloat(aiForeignObject.getAttribute("y"));
-      e.stopPropagation();
-      e.preventDefault();
+      termStartX = e.clientX / scale - parseFloat(termForeignObject.getAttribute("x"));
+      termStartY = e.clientY / scale - parseFloat(termForeignObject.getAttribute("y"));
+      e.stopPropagation(); e.preventDefault();
     }};
     
-    var isResizingTab = false;
-    var startWidth, startHeight, resizeStartX, resizeStartY;
-    document.getElementById("aiTabResizeHandle").onmousedown = function(e) {{
-      isResizingTab = true;
+    document.getElementById("terminalResizeAnchor").onmousedown = function(e) {{
+      isResizingTerm = true;
       var scale = workspace.scale || 1;
-      startWidth = parseFloat(aiForeignObject.getAttribute("width"));
-      startHeight = parseFloat(aiForeignObject.getAttribute("height"));
-      resizeStartX = e.clientX / scale;
-      resizeStartY = e.clientY / scale;
-      e.stopPropagation();
-      e.preventDefault();
+      termStartW = parseFloat(termForeignObject.getAttribute("width"));
+      termStartH = parseFloat(termForeignObject.getAttribute("height"));
+      termResStartX = e.clientX / scale;
+      termResStartY = e.clientY / scale;
+      e.stopPropagation(); e.preventDefault();
     }};
 
+    // AI Tab Drag/Resize State
+    var isDraggingAI = false, aiStartX, aiStartY;
+    var isResizingAI = false, aiStartW, aiStartH, aiResStartX, aiResStartY;
+
+    document.getElementById("aiTabHeader").onmousedown = function(e) {{
+      isDraggingAI = true;
+      var scale = workspace.scale || 1;
+      aiStartX = e.clientX / scale - parseFloat(aiForeignObject.getAttribute("x"));
+      aiStartY = e.clientY / scale - parseFloat(aiForeignObject.getAttribute("y"));
+      e.stopPropagation(); e.preventDefault();
+    }};
+    
+    document.getElementById("aiTabResizeHandle").onmousedown = function(e) {{
+      isResizingAI = true;
+      var scale = workspace.scale || 1;
+      aiStartW = parseFloat(aiForeignObject.getAttribute("width"));
+      aiStartH = parseFloat(aiForeignObject.getAttribute("height"));
+      aiResStartX = e.clientX / scale;
+      aiResStartY = e.clientY / scale;
+      e.stopPropagation(); e.preventDefault();
+    }};
+
+    // Global Mousemove Tracker for ALL internal ForeignObjects
     document.addEventListener("mousemove", function(e) {{
       var scale = workspace.scale || 1;
-      if (isDraggingTab) {{
-        var newX = e.clientX / scale - tabStartX;
-        var newY = e.clientY / scale - tabStartY;
-        aiForeignObject.setAttribute("x", newX);
-        aiForeignObject.setAttribute("y", newY);
+      
+      // Terminal Handlers
+      if (isDraggingTerm) {{
+        termForeignObject.setAttribute("x", e.clientX / scale - termStartX);
+        termForeignObject.setAttribute("y", e.clientY / scale - termStartY);
       }}
-      if (isResizingTab) {{
-        var currentX = e.clientX / scale;
-        var currentY = e.clientY / scale;
-        var newWidth = startWidth + (currentX - resizeStartX);
-        var newHeight = startHeight + (currentY - resizeStartY);
-        if (newWidth > 200) aiForeignObject.setAttribute("width", newWidth);
-        if (newHeight > 200) aiForeignObject.setAttribute("height", newHeight);
+      if (isResizingTerm) {{
+        var newWT = termStartW + (e.clientX / scale - termResStartX);
+        var newHT = termStartH + (e.clientY / scale - termResStartY);
+        if (newWT > 200) termForeignObject.setAttribute("width", newWT);
+        if (newHT > 150) termForeignObject.setAttribute("height", newHT);
+      }}
+
+      // AI Handlers
+      if (isDraggingAI) {{
+        aiForeignObject.setAttribute("x", e.clientX / scale - aiStartX);
+        aiForeignObject.setAttribute("y", e.clientY / scale - aiStartY);
+      }}
+      if (isResizingAI) {{
+        var newWA = aiStartW + (e.clientX / scale - aiResStartX);
+        var newHA = aiStartH + (e.clientY / scale - aiResStartY);
+        if (newWA > 200) aiForeignObject.setAttribute("width", newWA);
+        if (newHA > 200) aiForeignObject.setAttribute("height", newHA);
       }}
     }});
     
     document.addEventListener("mouseup", function() {{
-      isDraggingTab = false;
-      isResizingTab = false;
+      isDraggingTerm = false;
+      isResizingTerm = false;
+      isDraggingAI = false;
+      isResizingAI = false;
     }});
+
 
     function processLiveDebugCompilations() {{
       var topBlocks = workspace.getTopBlocks(false);
