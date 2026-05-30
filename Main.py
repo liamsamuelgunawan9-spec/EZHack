@@ -349,464 +349,639 @@ if "synced_workspace_code" not in st.session_state:
 if "blockly_xml_state" not in st.session_state:
     st.session_state["blockly_xml_state"] = ""
 if "chat_messages" not in st.session_state:
-    st.session_state["chat_messages"] = [{"role": "assistant", "content": "Hello! I am your Groq-powered AI Copilot. I scan your live Blockly logic layout and compiled Python pipeline. Ask me anything!"}]
-if "show_ai_sidebar" not in st.session_state:
-    st.session_state["show_ai_sidebar"] = True
+    st.session_state["chat_messages"] = [{"role": "assistant", "content": "Hello! I am your Groq-powered AI Copilot. Drag and zoom the workspace canvas to see me float like a block!"}]
 
-# --- The AI Sidebar Toggle Button ---
-if st.button("🤖 Toggle AI Copilot Dashboard", type="secondary"):
-    st.session_state["show_ai_sidebar"] = not st.session_state["show_ai_sidebar"]
-    st.rerun()
-
-# Split view into Workspace Core and AI Assistant dynamically
-if st.session_state["show_ai_sidebar"]:
-    layout_col_left, layout_col_right = st.columns([0.7, 0.3])
-else:
-    layout_col_left, = st.columns([1])
-    layout_col_right = None
-
-with layout_col_left:
-    st.markdown("### 🗺️ System Automation Floor Canvas (Ultra-Wide Viewport)") 
-
-    # ==========================================
-    # 3. INTERACTIVE VISUAL CORE LAYOUT (BLOCKLY INTERFACE)
-    # ==========================================
-    try:
-        incoming_payload = st.query_params.get("payload_matrix", "")
-        if incoming_payload:
-            st.session_state["synced_workspace_code"] = urllib.parse.unquote(incoming_payload)
+# Process incoming sync values and AI chat messages from the embedded tab interface 
+try:
+    incoming_payload = st.query_params.get("payload_matrix", "")
+    if incoming_payload:
+        st.session_state["synced_workspace_code"] = urllib.parse.unquote(incoming_payload)
+        
+    incoming_xml = st.query_params.get("xml_matrix", "")
+    if incoming_xml:
+        st.session_state["blockly_xml_state"] = urllib.parse.unquote(incoming_xml)
+        
+    incoming_msg = st.query_params.get("ai_msg", "")
+    if incoming_msg:
+        user_text = urllib.parse.unquote(incoming_msg)
+        # Clear or reset query param to avoid repeat ingestion on subsequent interactions
+        st.query_params["ai_msg"] = ""
+        
+        # Log user text
+        st.session_state["chat_messages"].append({"role": "user", "content": user_text})
+        
+        # Build live framework inference payload
+        if ai_client:
+            system_context = f"""
+            You are an elite pentesting AI assistant embedded in a visual block-coding platform.
+            The user is building security and OSINT tools by dragging logic blocks.
             
-        incoming_xml = st.query_params.get("xml_matrix", "")
-        if incoming_xml:
-            st.session_state["blockly_xml_state"] = urllib.parse.unquote(incoming_xml)
-    except Exception:
-        pass
+            Current compiled workspace Python code:
+            {st.session_state.get("synced_workspace_code", "")}
+            
+            Current output console logs:
+            {st.session_state.get("terminal_history_output", "")}
+            
+            Analyze the user's workspace, explain what their blocks are doing, and answer their prompt.
+            Keep it hacker-themed, concise, and educational. Do not generate destructive payloads.
+            """
+            api_messages = [{"role": "system", "content": system_context}] + st.session_state["chat_messages"]
+            reply = generate_completion_with_fallback(api_messages)
+            st.session_state["chat_messages"].append({"role": "assistant", "content": reply})
+except Exception:
+    pass
 
-    safe_xml_state = json.dumps(st.session_state.get("blockly_xml_state", ""))
-    safe_terminal_output = json.dumps(st.session_state.get("terminal_history_output", ""))
+safe_xml_state = json.dumps(st.session_state.get("blockly_xml_state", ""))
+safe_terminal_output = json.dumps(st.session_state.get("terminal_history_output", ""))
+safe_chat_history = json.dumps(st.session_state.get("chat_messages", []))
 
-    blockly_html_payload = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <script src="https://unpkg.com/blockly/blockly.min.js"></script>
-      <script src="https://unpkg.com/blockly/python_compressed.js"></script>
-      <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
-      <style>
-        html, body {{ height: 100%; margin: 0; padding: 0; background-color: #0b0c10; font-family: monospace; color: #1fec79; overflow: hidden; }}
-        #workspaceWrapper {{ display: flex; flex-direction: column; height: 880px; padding: 5px; box-sizing: border-box; position: relative; }}
-        #blocklyDiv {{ flex: 1; border: 2px solid #45a29e; border-radius: 6px; position: relative; }}
-        
-        #integratedTerminalBlock {{
-          position: absolute; top: 150px; left: 150px; width: 520px; background-color: #1f2833; border: 2px solid #1fec79; border-radius: 8px; z-index: 99; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-        }}
-        #terminalHeader {{ padding: 8px 12px; cursor: move; background-color: #0b0c10; border-bottom: 2px solid #1fec79; font-weight: bold; color: #1fec79; display: flex; justify-content: space-between; font-size: 11px; align-items: center; }}
-        .termBody {{ padding: 12px; background-color: #000000; color: #ffffff; height: 340px; overflow-y: auto; font-size: 11px; white-space: pre-wrap; font-family: monospace; line-height: 1.4; }}
-        .windowCtrlBtn {{ background: #0b0c10; color: #ff0055; border: 1px solid #ff0055; padding: 2px 6px; cursor: pointer; border-radius: 4px; font-size: 10px; font-weight: bold; }}
-        .windowCtrlBtn:hover {{ background: #ff0055; color: #ffffff; }}
-      </style>
-    </head>
-    <body>
+st.markdown("### 🗺️ System Automation Floor Canvas (AI Tab Embedded inside Blockly Arena)")
 
-      <div id="workspaceWrapper">
-        <div id="blocklyDiv"></div>
-        
-        <div id="integratedTerminalBlock">
-          <div id="terminalHeader">
-            <span id="headerLabelTitle">📺 MONITOR TERMINAL FEED</span>
-            <button id="stateToggleActionBtn" class="windowCtrlBtn" onclick="toggleLocalTerminalState()">[-] MINIMIZE</button>
-          </div>
-          <div class="termBody" id="localTerminalContentText"></div>
-        </div>
-          
+blockly_html_payload = f"""
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+  <script src="https://unpkg.com/blockly/python_compressed.js"></script>
+  <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
+  <style>
+    html, body {{ height: 100%; margin: 0; padding: 0; background-color: #0b0c10; font-family: monospace; color: #1fec79; overflow: hidden; }}
+    #workspaceWrapper {{ display: flex; flex-direction: column; height: 880px; padding: 5px; box-sizing: border-box; position: relative; }}
+    #blocklyDiv {{ flex: 1; border: 2px solid #45a29e; border-radius: 6px; position: relative; }}
+    
+    #integratedTerminalBlock {{
+      position: absolute; top: 150px; left: 150px; width: 520px; background-color: #1f2833; border: 2px solid #1fec79; border-radius: 8px; z-index: 99; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    }}
+    #terminalHeader {{ padding: 8px 12px; cursor: move; background-color: #0b0c10; border-bottom: 2px solid #1fec79; font-weight: bold; color: #1fec79; display: flex; justify-content: space-between; font-size: 11px; align-items: center; }}
+    .termBody {{ padding: 12px; background-color: #000000; color: #ffffff; height: 340px; overflow-y: auto; font-size: 11px; white-space: pre-wrap; font-family: monospace; line-height: 1.4; }}
+    .windowCtrlBtn {{ background: #0b0c10; color: #ff0055; border: 1px solid #ff0055; padding: 2px 6px; cursor: pointer; border-radius: 4px; font-size: 10px; font-weight: bold; }}
+    .windowCtrlBtn:hover {{ background: #ff0055; color: #ffffff; }}
+
+    /* Embedded UI Tab Window Themes */
+    #aiTabWindow {{
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background-color: #1a1a24;
+      border: 2px solid #00ffcc;
+      border-radius: 8px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+      overflow: hidden;
+      position: relative;
+    }}
+    #aiTabHeader {{
+      padding: 8px 12px;
+      cursor: move;
+      background-color: #0b0c10;
+      border-bottom: 2px solid #00ffcc;
+      font-weight: bold;
+      color: #00ffcc;
+      font-size: 11px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+    }}
+    .aiChatBody {{
+      flex: 1;
+      padding: 10px;
+      background-color: #050508;
+      overflow-y: auto;
+      font-size: 11px;
+      font-family: monospace;
+      line-height: 1.4;
+    }}
+    #aiTabInputArea {{
+      padding: 6px;
+      background-color: #0b0c10;
+      border-top: 1px solid #1f2833;
+      display: flex;
+      gap: 6px;
+    }}
+    #aiTabInputField {{
+      flex: 1;
+      background-color: #000000;
+      border: 1px solid #1fec79;
+      color: #1fec79;
+      padding: 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 11px;
+    }}
+    #aiTabInputField:focus {{
+      outline: none;
+      border-color: #00ffcc;
+    }}
+    #aiTabSendBtn {{
+      background: #0b0c10;
+      color: #00ffcc;
+      border: 1px solid #00ffcc;
+      padding: 4px 10px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 11px;
+      font-weight: bold;
+    }}
+    #aiTabSendBtn:hover {{
+      background: #00ffcc;
+      color: #0b0c10;
+    }}
+    .aiResizeHandle {{
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 14px;
+      height: 14px;
+      cursor: se-resize;
+      background: linear-gradient(135deg, transparent 50%, #00ffcc 50%);
+      border-bottom-right-radius: 6px;
+      z-index: 100;
+    }}
+  </style>
+</head>
+<body>
+
+  <div id="workspaceWrapper">
+    <div id="blocklyDiv"></div>
+    
+    <div id="integratedTerminalBlock">
+      <div id="terminalHeader">
+        <span id="headerLabelTitle">📺 MONITOR TERMINAL FEED</span>
+        <button id="stateToggleActionBtn" class="windowCtrlBtn" onclick="toggleLocalTerminalState()">[-] MINIMIZE</button>
       </div>
+      <div class="termBody" id="localTerminalContentText"></div>
+    </div>
+      
+  </div>
 
-      <xml id="toolbox" style="display: none">
-        <category name="🧠 Core Logic" colour="210">
-          <block type="controls_if"></block>
-          <block type="logic_compare"></block>
-          <block type="logic_operation"></block>
-          <block type="logic_negate"></block>
-          <block type="logic_boolean"></block>
-        </category>
-        <category name="🔁 Loops & Wait" colour="120">
-          <block type="controls_repeat_ext">
-            <value name="TIMES">
-              <shadow type="math_number">
-                <field name="NUM">5</field>
-              </shadow>
-            </value>
-          </block>
-          <block type="controls_whileUntil"></block>
-          <block type="action_wait_task"></block>
-        </category>
-        <category name="🔢 Math & Data" colour="230">
-          <block type="math_number"></block>
-          <block type="math_arithmetic"></block>
-          <block type="text"></block>
-          <block type="text_print"></block>
-        </category>
-        <sep></sep>
-        <category name="🏁 Sequence Triggers" colour="0">
-          <block type="when_sequence_activated"></block>
-        </category>
-        <category name="🌐 Core Inputs" colour="160">
-          <block type="custom_input_string"></block>
-          <block type="global_phone_preset"></block>
-          <block type="custom_phone_signature"></block>
-        </category>
-        <category name="📡 Network Channels" colour="210">
-          <block type="action_scan_base"></block>
-          <block type="action_dns_extractor"></block>
-          <block type="action_http_header_audit"></block>
-          <block type="action_subdomain_ct_logs"></block>
-          <block type="action_threat_intel_reputation"></block>
-        </category>
-      </xml>
+  <xml id="toolbox" style="display: none">
+    <category name="🧠 Core Logic" colour="210">
+      <block type="controls_if"></block>
+      <block type="logic_compare"></block>
+      <block type="logic_operation"></block>
+      <block type="logic_negate"></block>
+      <block type="logic_boolean"></block>
+    </category>
+    <category name="🔁 Loops & Wait" colour="120">
+      <block type="controls_repeat_ext">
+        <value name="TIMES">
+          <shadow type="math_number">
+            <field name="NUM">5</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="controls_whileUntil"></block>
+      <block type="action_wait_task"></block>
+    </category>
+    <category name="🔢 Math & Data" colour="230">
+      <block type="math_number"></block>
+      <block type="math_arithmetic"></block>
+      <block type="text"></block>
+      <block type="text_print"></block>
+    </category>
+    <sep></sep>
+    <category name="🏁 Sequence Triggers" colour="0">
+      <block type="when_sequence_activated"></block>
+    </category>
+    <category name="🌐 Core Inputs" colour="160">
+      <block type="custom_input_string"></block>
+      <block type="global_phone_preset"></block>
+      <block type="custom_phone_signature"></block>
+    </category>
+    <category name="📡 Network Channels" colour="210">
+      <block type="action_scan_base"></block>
+      <block type="action_dns_extractor"></block>
+      <block type="action_http_header_audit"></block>
+      <block type="action_subdomain_ct_logs"></block>
+      <block type="action_threat_intel_reputation"></block>
+    </category>
+  </xml>
 
-      <script>
-        var isTerminalMinimized = false;
-        document.getElementById("localTerminalContentText").textContent = {safe_terminal_output};
-        
-        function toggleLocalTerminalState() {{
-          var tBody = document.getElementById("localTerminalContentText");
-          var btn = document.getElementById("stateToggleActionBtn");
-          var title = document.getElementById("headerLabelTitle");
-          
-          if(!isTerminalMinimized) {{
-            tBody.style.display = "none";
-            btn.innerText = "[+] UNMINIMIZE";
-            btn.style.color = "#1fec79";
-            btn.style.borderColor = "#1fec79";
-            title.innerText = "📺 TERM (MINIMIZED)";
-            isTerminalMinimized = true;
-          }} else {{
-            tBody.style.display = "block";
-            btn.innerText = "[-] MINIMIZE";
-            btn.style.color = "#ff0055";
-            btn.style.borderColor = "#ff0055";
-            title.innerText = "📺 MONITOR TERMINAL FEED";
-            isTerminalMinimized = false;
-          }}
-        }}
-
-        var workspaceDiv = document.getElementById('blocklyDiv');
-        var termWindow = document.getElementById('integratedTerminalBlock');
-        
-        var currentTermX = 150;
-        var currentTermY = 150;
-        
-        var isDraggingWindow = false;
-        var startX, startY;
-        document.getElementById("terminalHeader").onmousedown = function(e) {{
-          if(e.target.className === "windowCtrlBtn") return;
-          isDraggingWindow = true;
-          startX = e.clientX - currentTermX;
-          startY = e.clientY - currentTermY;
-          e.preventDefault();
-        }};
-        document.onmousemove = function(e) {{
-          if (!isDraggingWindow) return;
-          currentTermX = e.clientX - startX;
-          currentTermY = e.clientY - startY;
-          termWindow.style.left = currentTermX + 'px';
-          termWindow.style.top = currentTermY + 'px';
-        }};
-
-        document.onmouseup = function() {{
-          isDraggingWindow = false;
-        }};
-        
-        // --- Custom Blockly Element Implementations ---
-        Blockly.Blocks['when_sequence_activated'] = {{
-          init: function() {{
-            this.appendDummyInput().appendField("🚀 Sequence Start");
-            this.setNextStatement(true, null);
-            this.setColour(0);
-          }}
-        }};
-        
-        Blockly.Blocks['action_wait_task'] = {{
-          init: function() {{
-            this.appendDummyInput()
-                .appendField("⏳ Wait for")
-                .appendField(new Blockly.FieldNumber(1, 0, 60), "SECONDS")
-                .appendField("seconds");
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
-            this.setColour(120);
-          }}
-        }};
-
-        Blockly.Blocks['custom_input_string'] = {{
-          init: function() {{
-            this.appendDummyInput().appendField("Target Domain:").appendField(new Blockly.FieldTextInput("google.com"), "RAW_TEXT");
-            this.setOutput(true, "String");
-            this.setColour(160);
-          }}
-        }};
-        Blockly.Blocks['global_phone_preset'] = {{
-          init: function() {{
-            this.appendDummyInput()
-                .appendField("📱 Preset Phone Target")
-                .appendField(new Blockly.FieldDropdown([["🇮🇩 +62","+62"], ["🇺🇸 +1","+1"], ["🇬🇧 +44","+44"]]), "CC_PREFIX")
-                .appendField(new Blockly.FieldTextInput("8123456789"), "PHONE_BODY");
-            this.setOutput(true, "String");
-            this.setColour(160);
-          }}
-        }};
-        Blockly.Blocks['custom_phone_signature'] = {{
-          init: function() {{
-            this.appendDummyInput()
-                .appendField("🏳️ Custom Country Code Input")
-                .appendField(new Blockly.FieldTextInput("+61"), "CUSTOM_PREFIX")
-                .appendField("Number:")
-                .appendField(new Blockly.FieldTextInput("412345678"), "PHONE_BODY");
-            this.setOutput(true, "String");
-            this.setColour(160);
-          }}
-        }};
-        Blockly.Blocks['action_scan_base'] = {{
-          init: function() {{
-            this.appendValueInput("NAME").setCheck("String").appendField("Scan Profile Target:");
-            this.appendDummyInput()
-                .appendField("Execution Stream:")
-                .appendField(new Blockly.FieldDropdown([
-                  ["🗺️ Geolocation Tracker Lookup", "geoip"],
-                  ["🖥️ System DNS Server Resolve", "dns"],
-                  ["🌐 WHOIS Public Asset Registry", "whois"],
-                  ["📱 Global Mobile OSINT Trace", "phone"]
-                ]), "SCANTYPE");
-            this.setPreviousStatement(true, null); 
-            this.setNextStatement(true, null);
-            this.setColour(210);
-          }}
-        }};
-        Blockly.Blocks['action_dns_extractor'] = {{
-          init: function() {{
-            this.appendValueInput("NAME").setCheck("String").appendField("📡 Parse Records for:");
-            this.appendDummyInput()
-                .appendField("Target Record Matrix Type:")
-                .appendField(new Blockly.FieldDropdown([
-                  ["MX (Mail Provider Routing Map)", "MX"],
-                  ["NS (Authoritative Name Servers)", "NS"],
-                  ["TXT (Security Verification Strings)", "TXT"]
-                ]), "DNS_TYPE");
-            this.setPreviousStatement(true, null); 
-            this.setNextStatement(true, null);
-            this.setColour(210);
-          }}
-        }};
-        Blockly.Blocks['action_http_header_audit'] = {{
-          init: function() {{
-            this.appendValueInput("NAME").setCheck("String").appendField("🛡️ Audit Safety Headers for:");
-            this.setPreviousStatement(true, null); 
-            this.setNextStatement(true, null);
-            this.setColour(210);
-          }}
-        }};
-        Blockly.Blocks['action_subdomain_ct_logs'] = {{
-          init: function() {{
-            this.appendValueInput("NAME").setCheck("String").appendField("📧 Collect CT Log Subdomains for:");
-            this.setPreviousStatement(true, null); 
-            this.setNextStatement(true, null);
-            this.setColour(210);
-          }}
-        }};
-        Blockly.Blocks['action_threat_intel_reputation'] = {{
-          init: function() {{
-            this.appendValueInput("NAME").setCheck("String").appendField("🦺 Reputation Threat Intel Check:");
-            this.setPreviousStatement(true, null); 
-            this.setNextStatement(true, null);
-            this.setColour(210);
-          }}
-        }};
-        
-        // --- Python Generator Mappings ---
-        Blockly.Python.forBlock['when_sequence_activated'] = function(block) {{ return '# Sequence Active\\n'; }};
-        
-        Blockly.Python.forBlock['action_wait_task'] = function(block) {{ 
-          var seconds = block.getFieldValue('SECONDS');
-          return 'time.sleep(' + seconds + ')\\n'; 
-        }};
-
-        Blockly.Python.forBlock['custom_input_string'] = function(block) {{ return ["'" + block.getFieldValue('RAW_TEXT') + "'", 0]; }};
-        Blockly.Python.forBlock['global_phone_preset'] = function(block) {{ return ["'" + block.getFieldValue('CC_PREFIX') + block.getFieldValue('PHONE_BODY') + "'", 0]; }};
-        Blockly.Python.forBlock['custom_phone_signature'] = function(block) {{
-          var prefix = block.getFieldValue('CUSTOM_PREFIX').trim();
-          if(!prefix.startsWith("+")) {{ prefix = "+" + prefix; }}
-          return ["'" + prefix + block.getFieldValue('PHONE_BODY').trim() + "'", 0];
-        }};
-
-        Blockly.Python.forBlock['action_scan_base'] = function(block) {{
-          var type = block.getFieldValue('SCANTYPE');
-          var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-          return 'run_scan(target=' + val + ', mode="' + type + '")\\n';
-        }};
-        Blockly.Python.forBlock['action_dns_extractor'] = function(block) {{
-          var dnsType = block.getFieldValue('DNS_TYPE');
-          var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-          return 'run_scan(target=' + val + ', mode="dns_extract", structural_param="' + dnsType + '")\\n';
-        }};
-
-        Blockly.Python.forBlock['action_http_header_audit'] = function(block) {{
-          var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-          return 'run_scan(target=' + val + ', mode="header_audit")\\n';
-        }};
-
-        Blockly.Python.forBlock['action_subdomain_ct_logs'] = function(block) {{
-          var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-          return 'run_scan(target=' + val + ', mode="subdomain_ct")\\n';
-        }};
-
-        Blockly.Python.forBlock['action_threat_intel_reputation'] = function(block) {{
-          var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-          return 'run_scan(target=' + val + ', mode="threat_intel")\\n';
-        }};
-
-        // --- Inject Workspace Engine ---
-        var workspace = Blockly.inject('blocklyDiv', {{
-          toolbox: document.getElementById('toolbox'),
-          grid: {{ spacing: 25, length: 3, colour: '#1f2833', snap: true }}, 
-          trashcan: true
-        }});
-        
-        // --- HYDRATION PROTOCOL ---
-        try {{
-          var initialXmlText = {safe_xml_state};
-          if (initialXmlText && initialXmlText.trim() !== "") {{
-            var dom = Blockly.utils.xml.textToDom(initialXmlText);
-            Blockly.Xml.domToWorkspace(dom, workspace);
-          }}
-        }} catch (err) {{
-          console.error("Hydration Layer Failure:", err);
-        }}
-
-        function processLiveDebugCompilations() {{
-          // FIX: Only grab TOP blocks to prevent duplicate downward translations!
-          var topBlocks = workspace.getTopBlocks(false);
-          var generatedPythonCode = "";
-          var sequenceFound = false;
-          
-          for (var i = 0; i < topBlocks.length; i++) {{
-            if (topBlocks[i].type === 'when_sequence_activated') {{
-              sequenceFound = true;
-              // Blockly's generator natively traverses all connected blocks automatically.
-              // We do not need the manual while(nextBlock) loop here.
-              generatedPythonCode += Blockly.Python.blockToCode(topBlocks[i]);
-            }}
-          }}
-          
-          var xmlDom = Blockly.Xml.workspaceToDom(workspace);
-          var currentXmlText = Blockly.Xml.domToText(xmlDom);
-          
-          if(sequenceFound) {{
-            var targetUrl = window.parent.location.origin + window.parent.location.pathname + "?payload_matrix=" + encodeURIComponent(generatedPythonCode) + "&xml_matrix=" + encodeURIComponent(currentXmlText);
-            if(window.parent.location.search !== "?payload_matrix=" + encodeURIComponent(generatedPythonCode) + "&xml_matrix=" + encodeURIComponent(currentXmlText)) {{
-               window.parent.history.replaceState({{}}, '', targetUrl);
-            }}
-          }}
-        }}
-
-        // --- DEBOUNCE FIX TO PREVENT INITIALIZATION/URL SPAM ---
-        var compileTimeout = null;
-        workspace.addChangeListener(function(e) {{
-          if (e.type === Blockly.Events.BLOCK_CREATE || e.type === Blockly.Events.BLOCK_MOVE || e.type === Blockly.Events.BLOCK_CHANGE || e.type === Blockly.Events.BLOCK_DELETE) {{
-            clearTimeout(compileTimeout);
-            compileTimeout = setTimeout(processLiveDebugCompilations, 500);
-          }}
-        }});
-        
-      </script>
-    </body>
-    </html>
-    """
-
-    components.html(blockly_html_payload, height=900, scrolling=False)
+  <script>
+    var isTerminalMinimized = false;
+    document.getElementById("localTerminalContentText").textContent = {safe_terminal_output};
     
-    st.markdown("---")
-    st.markdown("### 🖥️ Main Engine Pipeline Terminal")
+    function toggleLocalTerminalState() {{
+      var tBody = document.getElementById("localTerminalContentText");
+      var btn = document.getElementById("stateToggleActionBtn");
+      var title = document.getElementById("headerLabelTitle");
+      
+      if(!isTerminalMinimized) {{
+        tBody.style.display = "none";
+        btn.innerText = "[+] UNMINIMIZE";
+        btn.style.color = "#1fec79";
+        btn.style.borderColor = "#1fec79";
+        title.innerText = "📺 TERM (MINIMIZED)";
+        isTerminalMinimized = true;
+      }} else {{
+        tBody.style.display = "block";
+        btn.innerText = "[-] MINIMIZE";
+        btn.style.color = "#ff0055";
+        btn.style.borderColor = "#ff0055";
+        title.innerText = "📺 MONITOR TERMINAL FEED";
+        isTerminalMinimized = false;
+      }}
+    }}
+
+    var workspaceDiv = document.getElementById('blocklyDiv');
+    var termWindow = document.getElementById('integratedTerminalBlock');
     
-    with st.expander("📋 View Compiled Execution Code Output Stream", expanded=False):
-        st.session_state["synced_workspace_code"] = st.text_area(
-            "Live Track Payload Manifest",
-            value=st.session_state["synced_workspace_code"],
-            height=150
-        )
-        
-    if st.button("⚡ Run Block Automation Flow", type="primary", use_container_width=True):
-        code_to_run = st.session_state["synced_workspace_code"].strip()
-        if not code_to_run or "Sequence Active" not in code_to_run:
-            st.error("❌ Pipeline Error: Drag and chain tools directly underneath the 'Sequence Start' trigger block first!")
-        else:
-            st.session_state["terminal_history_output"] = "🛰️ STREAMING PASSED ASSET DATA SECTIONS...\n-----------------------------------------\n"
-            try:
-                # INJECT TIME MODULE INTO EXEC SCOPE FOR THE NEW WAIT BLOCK
-                exec_scope = {"run_scan": run_scan, "time": time}
-                exec(code_to_run, exec_scope)
-                st.success("🟢 Execution automation run complete! Check terminal view log contents.")
-                st.rerun()
-            except Exception as runtime_err:
-                st.error(f"💥 PIPELINE BREAK: {str(runtime_err)}")
+    var currentTermX = 150;
+    var currentTermY = 150;
+    
+    var isDraggingWindow = false;
+    var startX, startY;
+    document.getElementById("terminalHeader").onmousedown = function(e) {{
+      if(e.target.className === "windowCtrlBtn") return;
+      isDraggingWindow = true;
+      startX = e.clientX - currentTermX;
+      startY = e.clientY - currentTermY;
+      e.preventDefault();
+    }};
+    
+    // --- Custom Blockly Element Implementations ---
+    Blockly.Blocks['when_sequence_activated'] = {{
+      init: function() {{
+        this.appendDummyInput().appendField("🚀 Sequence Start");
+        this.setNextStatement(true, null);
+        this.setColour(0);
+      }}
+    }};
+    
+    Blockly.Blocks['action_wait_task'] = {{
+      init: function() {{
+        this.appendDummyInput()
+            .appendField("⏳ Wait for")
+            .appendField(new Blockly.FieldNumber(1, 0, 60), "SECONDS")
+            .appendField("seconds");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(120);
+      }}
+    }};
 
+    Blockly.Blocks['custom_input_string'] = {{
+      init: function() {{
+        this.appendDummyInput().appendField("Target Domain:").appendField(new Blockly.FieldTextInput("google.com"), "RAW_TEXT");
+        this.setOutput(true, "String");
+        this.setColour(160);
+      }}
+    }};
+    Blockly.Blocks['global_phone_preset'] = {{
+      init: function() {{
+        this.appendDummyInput()
+            .appendField("📱 Preset Phone Target")
+            .appendField(new Blockly.FieldDropdown([["🇮🇩 +62","+62"], ["🇺🇸 +1","+1"], ["🇬🇧 +44","+44"]]), "CC_PREFIX")
+            .appendField(new Blockly.FieldTextInput("8123456789"), "PHONE_BODY");
+        this.setOutput(true, "String");
+        this.setColour(160);
+      }}
+    }};
+    Blockly.Blocks['custom_phone_signature'] = {{
+      init: function() {{
+        this.appendDummyInput()
+            .appendField("🏳️ Custom Country Code Input")
+            .appendField(new Blockly.FieldTextInput("+61"), "CUSTOM_PREFIX")
+            .appendField("Number:")
+            .appendField(new Blockly.FieldTextInput("412345678"), "PHONE_BODY");
+        this.setOutput(true, "String");
+        this.setColour(160);
+      }}
+    }};
+    Blockly.Blocks['action_scan_base'] = {{
+      init: function() {{
+        this.appendValueInput("NAME").setCheck("String").appendField("Scan Profile Target:");
+        this.appendDummyInput()
+            .appendField("Execution Stream:")
+            .appendField(new Blockly.FieldDropdown([
+              ["🗺️ Geolocation Tracker Lookup", "geoip"],
+              ["🖥️ System DNS Server Resolve", "dns"],
+              ["🌐 WHOIS Public Asset Registry", "whois"],
+              ["📱 Global Mobile OSINT Trace", "phone"]
+            ]), "SCANTYPE");
+        this.setPreviousStatement(true, null); 
+        this.setNextStatement(true, null);
+        this.setColour(210);
+      }}
+    }};
+    Blockly.Blocks['action_dns_extractor'] = {{
+      init: function() {{
+        this.appendValueInput("NAME").setCheck("String").appendField("📡 Parse Records for:");
+        this.appendDummyInput()
+            .appendField("Target Record Matrix Type:")
+            .appendField(new Blockly.FieldDropdown([
+              ["MX (Mail Provider Routing Map)", "MX"],
+              ["NS (Authoritative Name Servers)", "NS"],
+              ["TXT (Security Verification Strings)", "TXT"]
+            ]), "DNS_TYPE");
+        this.setPreviousStatement(true, null); 
+        this.setNextStatement(true, null);
+        this.setColour(210);
+      }}
+    }};
+    Blockly.Blocks['action_http_header_audit'] = {{
+      init: function() {{
+        this.appendValueInput("NAME").setCheck("String").appendField("🛡️ Audit Safety Headers for:");
+        this.setPreviousStatement(true, null); 
+        this.setNextStatement(true, null);
+        this.setColour(210);
+      }}
+    }};
+    Blockly.Blocks['action_subdomain_ct_logs'] = {{
+      init: function() {{
+        this.appendValueInput("NAME").setCheck("String").appendField("📧 Collect CT Log Subdomains for:");
+        this.setPreviousStatement(true, null); 
+        this.setNextStatement(true, null);
+        this.setColour(210);
+      }}
+    }};
+    Blockly.Blocks['action_threat_intel_reputation'] = {{
+      init: function() {{
+        this.appendValueInput("NAME").setCheck("String").appendField("🦺 Reputation Threat Intel Check:");
+        this.setPreviousStatement(true, null); 
+        this.setNextStatement(true, null);
+        this.setColour(210);
+      }}
+    }};
+    
+    // --- Python Generator Mappings ---
+    Blockly.Python.forBlock['when_sequence_activated'] = function(block) {{ return '# Sequence Active\\n'; }};
+    
+    Blockly.Python.forBlock['action_wait_task'] = function(block) {{ 
+      var seconds = block.getFieldValue('SECONDS');
+      return 'time.sleep(' + seconds + ')\\n'; 
+    }};
 
-# ==========================================
-# 4. LIVE CONTEXT AI COPILOT INTERFACE PANEL (GROQ POWERED)
-# ==========================================
-if layout_col_right:
-    with layout_col_right:
-        st.markdown("### 🤖 Workspace AI Assistant")
-        
-        if not ai_client:
-            st.warning("⚠️ Groq API Key not detected in `.env`. Chat module locked.")
-            st.info("Ensure your `.env` contains: `GROQ_API_KEY=gsk_...`")
-        else:
-            
-            # --- NEW: SCROLLABLE CHAT CONTAINER (THE SLIDER THING) ---
-            # Using height=730 to match the 880px workspace height perfectly
-            chat_box = st.container(height=730, border=True)
-            
-            # Display chat messages INSIDE the box
-            with chat_box:
-                for msg in st.session_state["chat_messages"]:
-                    with st.chat_message(msg["role"]):
-                        st.markdown(msg["content"])
-                    
-            # Chat input logic OUTSIDE the box (so it stays pinned to the bottom of the sidebar)
-            if prompt := st.chat_input("Ask me to analyze your blocks..."):
-                
-                # Render user input
-                st.session_state["chat_messages"].append({"role": "user", "content": prompt})
-                
-                # We use 'with chat_box:' again so the new messages stream INSIDE the scrollable box
-                with chat_box:
-                    with st.chat_message("user"):
-                        st.markdown(prompt)
-                        
-                    # Build system context payload so AI sees the live workspace
-                    system_context = f"""
-                    You are an elite pentesting AI assistant embedded in a visual block-coding platform.
-                    The user is building security and OSINT tools by dragging logic blocks.
-                    
-                    Current compiled workspace Python code:
-                    {st.session_state.get("synced_workspace_code", "")}
-                    
-                    Current output console logs:
-                    {st.session_state.get("terminal_history_output", "")}
-                    
-                    Analyze the user's workspace, explain what their blocks are doing, and answer their prompt.
-                    Keep it hacker-themed, concise, and educational. Do not generate destructive payloads.
-                    """
-                    
-                    # Prepare messages for Groq API
-                    api_messages = [{"role": "system", "content": system_context}] + st.session_state["chat_messages"]
-                    
-                    # Fetch response using the multi-model fallback chain
-                    with st.chat_message("assistant"):
-                        try:
-                            reply = generate_completion_with_fallback(api_messages)
-                            st.markdown(reply)
-                            st.session_state["chat_messages"].append({"role": "assistant", "content": reply})
-                        except Exception as api_err:
-                            st.error(f"System Canvas Processing Error: {str(api_err)}")
+    Blockly.Python.forBlock['custom_input_string'] = function(block) {{ return ["'" + block.getFieldValue('RAW_TEXT') + "'", 0]; }};
+    Blockly.Python.forBlock['global_phone_preset'] = function(block) {{ return ["'" + block.getFieldValue('CC_PREFIX') + block.getFieldValue('PHONE_BODY') + "'", 0]; }};
+    Blockly.Python.forBlock['custom_phone_signature'] = function(block) {{
+      var prefix = block.getFieldValue('CUSTOM_PREFIX').trim();
+      if(!prefix.startsWith("+")) {{ prefix = "+" + prefix; }}
+      return ["'" + prefix + block.getFieldValue('PHONE_BODY').trim() + "'", 0];
+    }};
+
+    Blockly.Python.forBlock['action_scan_base'] = function(block) {{
+      var type = block.getFieldValue('SCANTYPE');
+      var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
+      return 'run_scan(target=' + val + ', mode="' + type + '")\\n';
+    }};
+    Blockly.Python.forBlock['action_dns_extractor'] = function(block) {{
+      var dnsType = block.getFieldValue('DNS_TYPE');
+      var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
+      return 'run_scan(target=' + val + ', mode="dns_extract", structural_param="' + dnsType + '")\\n';
+    }};
+
+    Blockly.Python.forBlock['action_http_header_audit'] = function(block) {{
+      var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
+      return 'run_scan(target=' + val + ', mode="header_audit")\\n';
+    }};
+
+    Blockly.Python.forBlock['action_subdomain_ct_logs'] = function(block) {{
+      var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
+      return 'run_scan(target=' + val + ', mode="subdomain_ct")\\n';
+    }};
+
+    Blockly.Python.forBlock['action_threat_intel_reputation'] = function(block) {{
+      var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
+      return 'run_scan(target=' + val + ', mode="threat_intel")\\n';
+    }};
+
+    // --- Inject Workspace Engine ---
+    var workspace = Blockly.inject('blocklyDiv', {{
+      toolbox: document.getElementById('toolbox'),
+      grid: {{ spacing: 25, length: 3, colour: '#1f2833', snap: true }}, 
+      trashcan: true
+    }});
+    
+    // --- HYDRATION PROTOCOL ---
+    try {{
+      var initialXmlText = {safe_xml_state};
+      if (initialXmlText && initialXmlText.trim() !== "") {{
+        var dom = Blockly.utils.xml.textToDom(initialXmlText);
+        Blockly.Xml.domToWorkspace(dom, workspace);
+      }}
+    }} catch (err) {{
+      console.error("Hydration Layer Failure:", err);
+    }}
+
+    // --- Embed Resizable, Block-Like AI Tab Window inside the SVG Blockly Canvas Layer ---
+    var canvas = workspace.getCanvas();
+    var aiForeignObject = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
+    aiForeignObject.setAttribute("x", "780");
+    aiForeignObject.setAttribute("y", "60");
+    aiForeignObject.setAttribute("width", "390");
+    aiForeignObject.setAttribute("height", "520");
+    
+    var aiTabDiv = document.createElement("div");
+    aiTabDiv.style.width = "100%";
+    aiTabDiv.style.height = "100%";
+    aiTabDiv.innerHTML = `
+      <div id="aiTabWindow">
+        <div id="aiTabHeader">
+          <span>🤖 AI CO-PILOT TERMINAL MATRIX</span>
+          <span style="font-size:9px; color:#888;">[DRAGGABLE WORKSPACE TAB]</span>
+        </div>
+        <div class="aiChatBody" id="aiTabChatContent"></div>
+        <div id="aiTabInputArea">
+          <input type="text" id="aiTabInputField" placeholder="Ask AI Copilot or type logic prompt..." autocomplete="off">
+          <button id="aiTabSendBtn">SEND</button>
+        </div>
+        <div class="aiResizeHandle" id="aiTabResizeHandle"></div>
+      </div>
+    `;
+    
+    aiForeignObject.appendChild(aiTabDiv);
+    canvas.appendChild(aiForeignObject);
+    
+    // Completely isolate events so dragging/typing inside the AI Tab window does not bleed into the Blockly workspace 
+    aiTabDiv.addEventListener("mousedown", function(e) {{ e.stopPropagation(); }});
+    aiTabDiv.addEventListener("pointerdown", function(e) {{ e.stopPropagation(); }});
+    aiTabDiv.addEventListener("keydown", function(e) {{ e.stopPropagation(); }});
+    
+    // Hydrate and render chat log inside the tab window
+    var chatHistory = {safe_chat_history};
+    function renderChatHistory() {{
+      var container = document.getElementById("aiTabChatContent");
+      container.innerHTML = "";
+      chatHistory.forEach(function(msg) {{
+        var msgDiv = document.createElement("div");
+        msgDiv.style.marginBottom = "10px";
+        msgDiv.style.padding = "6px 10px";
+        msgDiv.style.borderRadius = "4px";
+        msgDiv.style.wordBreak = "break-word";
+        if (msg.role === "user") {{
+          msgDiv.style.backgroundColor = "#1f2833";
+          msgDiv.style.color = "#1fec79";
+          msgDiv.style.borderRight = "2px solid #1fec79";
+          msgDiv.innerHTML = "<div style='font-weight:bold;font-size:9px;color:#888;margin-bottom:2px;'>OPERATOR:</div>" + escapeHtml(msg.content);
+        }} else if (msg.role === "assistant") {{
+          msgDiv.style.backgroundColor = "#0b0c10";
+          msgDiv.style.color = "#ffffff";
+          msgDiv.style.borderLeft = "2px solid #00ffcc";
+          msgDiv.innerHTML = "<div style='font-weight:bold;font-size:9px;color:#00ffcc;margin-bottom:2px;'>GROQ CORERUN:</div>" + escapeHtml(msg.content);
+        }} else {{
+          msgDiv.style.backgroundColor = "#333";
+          msgDiv.style.color = "#aaa";
+          msgDiv.innerHTML = escapeHtml(msg.content);
+        }}
+        container.appendChild(msgDiv);
+      }});
+      // The auto-scroll rule: scroll to the lowest part when content loads/exceeds box
+      container.scrollTop = container.scrollHeight;
+    }}
+    
+    function escapeHtml(str) {{
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;").replace(/\\n/g, "<br>");
+    }}
+    
+    renderChatHistory();
+    
+    function handleTabSend() {{
+      var inputField = document.getElementById("aiTabInputField");
+      var text = inputField.value.trim();
+      if(!text) return;
+      
+      inputField.value = "";
+      
+      var topBlocks = workspace.getTopBlocks(false);
+      var generatedPythonCode = "";
+      for (var i = 0; i < topBlocks.length; i++) {{
+        if (topBlocks[i].type === 'when_sequence_activated') {{
+          generatedPythonCode += Blockly.Python.blockToCode(topBlocks[i]);
+        }}
+      }}
+      var xmlDom = Blockly.Xml.workspaceToDom(workspace);
+      var currentXmlText = Blockly.Xml.domToText(xmlDom);
+      
+      var baseUrl = window.parent.location.origin + window.parent.location.pathname;
+      var targetUrl = baseUrl + "?payload_matrix=" + encodeURIComponent(generatedPythonCode) + 
+                      "&xml_matrix=" + encodeURIComponent(currentXmlText) + 
+                      "&ai_msg=" + encodeURIComponent(text);
+      window.parent.location.href = targetUrl;
+    }}
+    
+    document.getElementById("aiTabSendBtn").onclick = handleTabSend;
+    document.getElementById("aiTabInputField").onkeydown = function(e) {{
+      if(e.key === "Enter") {{
+        handleTabSend();
+      }}
+    }};
+
+    // Unified Coordinate listeners for moving and resizing inside zoom/pan layer
+    var isDraggingTab = false;
+    var tabStartX, tabStartY;
+    document.getElementById("aiTabHeader").onmousedown = function(e) {{
+      isDraggingTab = true;
+      var scale = workspace.scale || 1;
+      tabStartX = e.clientX / scale - parseFloat(aiForeignObject.getAttribute("x"));
+      tabStartY = e.clientY / scale - parseFloat(aiForeignObject.getAttribute("y"));
+      e.stopPropagation();
+      e.preventDefault();
+    }};
+    
+    var isResizingTab = false;
+    var startWidth, startHeight, resizeStartX, resizeStartY;
+    document.getElementById("aiTabResizeHandle").onmousedown = function(e) {{
+      isResizingTab = true;
+      var scale = workspace.scale || 1;
+      startWidth = parseFloat(aiForeignObject.getAttribute("width"));
+      startHeight = parseFloat(aiForeignObject.getAttribute("height"));
+      resizeStartX = e.clientX / scale;
+      resizeStartY = e.clientY / scale;
+      e.stopPropagation();
+      e.preventDefault();
+    }};
+
+    document.addEventListener("mousemove", function(e) {{
+      var scale = workspace.scale || 1;
+      if (isDraggingWindow) {{
+        currentTermX = e.clientX - startX;
+        currentTermY = e.clientY - startY;
+        termWindow.style.left = currentTermX + 'px';
+        termWindow.style.top = currentTermY + 'px';
+      }}
+      if (isDraggingTab) {{
+        var newX = e.clientX / scale - tabStartX;
+        var newY = e.clientY / scale - tabStartY;
+        aiForeignObject.setAttribute("x", newX);
+        aiForeignObject.setAttribute("y", newY);
+      }}
+      if (isResizingTab) {{
+        var currentX = e.clientX / scale;
+        var currentY = e.clientY / scale;
+        var newWidth = startWidth + (currentX - resizeStartX);
+        var newHeight = startHeight + (currentY - resizeStartY);
+        if (newWidth > 200) aiForeignObject.setAttribute("width", newWidth);
+        if (newHeight > 200) aiForeignObject.setAttribute("height", newHeight);
+      }}
+    }});
+    
+    document.addEventListener("mouseup", function() {{
+      isDraggingWindow = false;
+      isDraggingTab = false;
+      isResizingTab = false;
+    }});
+
+    function processLiveDebugCompilations() {{
+      var topBlocks = workspace.getTopBlocks(false);
+      var generatedPythonCode = "";
+      var sequenceFound = false;
+      
+      for (var i = 0; i < topBlocks.length; i++) {{
+        if (topBlocks[i].type === 'when_sequence_activated') {{
+          sequenceFound = true;
+          generatedPythonCode += Blockly.Python.blockToCode(topBlocks[i]);
+        }}
+      }}
+      
+      var xmlDom = Blockly.Xml.workspaceToDom(workspace);
+      var currentXmlText = Blockly.Xml.domToText(xmlDom);
+      
+      if(sequenceFound) {{
+        var targetUrl = window.parent.location.origin + window.parent.location.pathname + "?payload_matrix=" + encodeURIComponent(generatedPythonCode) + "&xml_matrix=" + encodeURIComponent(currentXmlText);
+        if(window.parent.location.search !== "?payload_matrix=" + encodeURIComponent(generatedPythonCode) + "&xml_matrix=" + encodeURIComponent(currentXmlText)) {{
+           window.parent.history.replaceState({{}}, '', targetUrl);
+        }}
+      }}
+    }}
+
+    var compileTimeout = null;
+    workspace.addChangeListener(function(e) {{
+      if (e.type === Blockly.Events.BLOCK_CREATE || e.type === Blockly.Events.BLOCK_MOVE || e.type === Blockly.Events.BLOCK_CHANGE || e.type === Blockly.Events.BLOCK_DELETE) {{
+        clearTimeout(compileTimeout);
+        compileTimeout = setTimeout(processLiveDebugCompilations, 500);
+      }}
+    }});
+    
+  </script>
+</body>
+</html>
+"""
+
+components.html(blockly_html_payload, height=900, scrolling=False)
+
+st.markdown("---")
+st.markdown("### 🖥️ Main Engine Pipeline Terminal")
+
+with st.expander("📋 View Compiled Execution Code Output Stream", expanded=False):
+    st.session_state["synced_workspace_code"] = st.text_area(
+        "Live Track Payload Manifest",
+        value=st.session_state["synced_workspace_code"],
+        height=150
+    )
+    
+if st.button("⚡ Run Block Automation Flow", type="primary", use_container_width=True):
+    code_to_run = st.session_state["synced_workspace_code"].strip()
+    if not code_to_run or "Sequence Active" not in code_to_run:
+        st.error("❌ Pipeline Error: Drag and chain tools directly underneath the 'Sequence Start' trigger block first!")
+    else:
+        st.session_state["terminal_history_output"] = "🛰️ STREAMING PASSED ASSET DATA SECTIONS...\n-----------------------------------------\n"
+        try:
+            exec_scope = {"run_scan": run_scan, "time": time}
+            exec(code_to_run, exec_scope)
+            st.success("🟢 Execution automation run complete! Check terminal view log contents.")
+            st.rerun()
+        except Exception as runtime_err:
+            st.error(f"💥 PIPELINE BREAK: {str(runtime_err)}")
