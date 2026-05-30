@@ -1,5 +1,5 @@
-phonenumbers
-requests
 streamlit
+groq
+phonenumbers
 python-dotenv
-groquit.add
+requests
