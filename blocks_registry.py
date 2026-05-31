@@ -505,33 +505,9 @@ BLOCK_DEFINITIONS_JS = """
     };
 
     // UI Pieces for the gear menu
-    Blockly.Blocks['recon_mutator_container'] = { 
-        init: function() { 
-            this.appendDummyInput().appendField("⚙️ Logic Branches"); 
-            this.setNextStatement(true); 
-            this.setColour(210); 
-            this.contextMenu = false; 
-            this.setTooltip("Add or remove logic branches for this scan.");
-        } 
-    };
-    Blockly.Blocks['recon_mutator_success'] = { 
-        init: function() { 
-            this.appendDummyInput().appendField("✅ On Success"); 
-            this.setPreviousStatement(true); 
-            this.setNextStatement(true); 
-            this.setColour(120); 
-            this.setTooltip("Execute these blocks if the scan does not return an error.");
-        } 
-    };
-    Blockly.Blocks['recon_mutator_fail'] = { 
-        init: function() { 
-            this.appendDummyInput().appendField("❌ On Failure"); 
-            this.setPreviousStatement(true); 
-            this.setNextStatement(true); 
-            this.setColour(0); 
-            this.setTooltip("Execute these blocks if the scan fails or returns an error.");
-        } 
-    };
+    Blockly.Blocks['recon_mutator_container'] = { init: function() { this.appendDummyInput().appendField("⚙️ Logic Branches"); this.setNextStatement(true); this.setColour(210); this.contextMenu = false; } };
+    Blockly.Blocks['recon_mutator_success'] = { init: function() { this.appendDummyInput().appendField("✅ On Success"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(120); } };
+    Blockly.Blocks['recon_mutator_fail'] = { init: function() { this.appendDummyInput().appendField("❌ On Failure"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(0); } };
 
     // ==========================================
     // CORE BLOCKS
@@ -566,7 +542,6 @@ BLOCK_DEFINITIONS_JS = """
       init: function() {
         this.appendDummyInput().appendField("⏳ Wait for").appendField(new Blockly.FieldNumber(1, 0, 60), "SECONDS").appendField("seconds");
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(120);
-        this.setTooltip("Pause execution for the specified number of seconds.");
       }
     };
 
@@ -574,21 +549,18 @@ BLOCK_DEFINITIONS_JS = """
       init: function() {
         this.appendDummyInput().appendField("Target Domain:").appendField(new Blockly.FieldTextInput("google.com"), "RAW_TEXT");
         this.setOutput(true, "String"); this.setColour(160);
-        this.setTooltip("Provide a target domain, URL, or raw string.");
       }
     };
     Blockly.Blocks['global_phone_preset'] = {
       init: function() {
         this.appendDummyInput().appendField("📱 Preset Phone Target").appendField(new Blockly.FieldDropdown([["🇮🇩 +62","+62"], ["🇺🇸 +1","+1"], ["🇬🇧 +44","+44"]]), "CC_PREFIX").appendField(new Blockly.FieldTextInput("8123456789"), "PHONE_BODY");
         this.setOutput(true, "String"); this.setColour(160);
-        this.setTooltip("Select a country prefix and enter a phone number for tracking.");
       }
     };
     Blockly.Blocks['custom_phone_signature'] = {
       init: function() {
         this.appendDummyInput().appendField("🏳️ Custom Country Code Input").appendField(new Blockly.FieldTextInput("+61"), "CUSTOM_PREFIX").appendField("Number:").appendField(new Blockly.FieldTextInput("412345678"), "PHONE_BODY");
         this.setOutput(true, "String"); this.setColour(160);
-        this.setTooltip("Input a custom international country code and phone number.");
       }
     };
     
@@ -602,7 +574,7 @@ BLOCK_DEFINITIONS_JS = """
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(210);
         this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.hasSuccess_ = false; this.hasFail_ = false;
-        this.setTooltip("Execute a core OSINT scan (GeoIP, DNS, WHOIS, or Phone Trace). Click the gear to add success/fail branches.");
+        this.setTooltip("Click the gear to branch logic based on scan success or failure.");
       }
     };
     Object.assign(Blockly.Blocks['action_scan_base'], RECON_MUTATOR_MIXIN);
@@ -614,7 +586,6 @@ BLOCK_DEFINITIONS_JS = """
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(210);
         this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.hasSuccess_ = false; this.hasFail_ = false;
-        this.setTooltip("Extract specific DNS records (MX, NS, TXT). Click the gear to add success/fail branches.");
       }
     };
     Object.assign(Blockly.Blocks['action_dns_extractor'], RECON_MUTATOR_MIXIN);
@@ -625,7 +596,6 @@ BLOCK_DEFINITIONS_JS = """
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(210);
         this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.hasSuccess_ = false; this.hasFail_ = false;
-        this.setTooltip("Analyze security headers of a target URL. Click the gear to add success/fail branches.");
       }
     };
     Object.assign(Blockly.Blocks['action_http_header_audit'], RECON_MUTATOR_MIXIN);
@@ -636,7 +606,6 @@ BLOCK_DEFINITIONS_JS = """
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(210);
         this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.hasSuccess_ = false; this.hasFail_ = false;
-        this.setTooltip("Fetch subdomains from Certificate Transparency logs. Click the gear to add success/fail branches.");
       }
     };
     Object.assign(Blockly.Blocks['action_subdomain_ct_logs'], RECON_MUTATOR_MIXIN);
@@ -647,7 +616,6 @@ BLOCK_DEFINITIONS_JS = """
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(210);
         this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.hasSuccess_ = false; this.hasFail_ = false;
-        this.setTooltip("Check IP/Domain against threat intelligence databases. Click the gear to add success/fail branches.");
       }
     };
     Object.assign(Blockly.Blocks['action_threat_intel_reputation'], RECON_MUTATOR_MIXIN);
@@ -658,7 +626,6 @@ BLOCK_DEFINITIONS_JS = """
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(180);
         this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.hasSuccess_ = false; this.hasFail_ = false;
-        this.setTooltip("Scrape robots.txt and detect hidden paths. Click the gear to add success/fail branches.");
       }
     };
     Object.assign(Blockly.Blocks['action_robots_sitemap'], RECON_MUTATOR_MIXIN);
@@ -669,7 +636,6 @@ BLOCK_DEFINITIONS_JS = """
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(180);
         this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.hasSuccess_ = false; this.hasFail_ = false;
-        this.setTooltip("Retrieve and audit SSL/TLS certificate information. Click the gear to add success/fail branches.");
       }
     };
     Object.assign(Blockly.Blocks['action_ssl_audit'], RECON_MUTATOR_MIXIN);
@@ -680,7 +646,6 @@ BLOCK_DEFINITIONS_JS = """
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(180);
         this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.hasSuccess_ = false; this.hasFail_ = false;
-        this.setTooltip("Perform a passive Shodan lookup for open ports and vulnerabilities. Click the gear to add success/fail branches.");
       }
     };
     Object.assign(Blockly.Blocks['action_shodan_lookup'], RECON_MUTATOR_MIXIN);
@@ -690,7 +655,6 @@ BLOCK_DEFINITIONS_JS = """
       init: function() {
         this.appendDummyInput().appendField("🔎 Regex Grep Filter on Log Output Stream").appendField(new Blockly.FieldDropdown([["IP Addresses", "ip"], ["Email Addresses", "email"]]), "PATTERN");
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(290);
-        this.setTooltip("Filter the current terminal output to extract IPs or Emails.");
       }
     };
     Blockly.Blocks['action_webhook_notify'] = {
@@ -699,7 +663,6 @@ BLOCK_DEFINITIONS_JS = """
         this.appendValueInput("URL").setCheck("String").appendField("Webhook URL:");
         this.appendValueInput("MSG").setCheck("String").appendField("Payload Msg:");
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(290);
-        this.setTooltip("Send a custom payload to a webhook URL (e.g., Discord/Slack).");
       }
     };
 """
