@@ -41,11 +41,13 @@ def generate_completion_with_fallback(messages, response_format=None):
             return f"❌ AI Engine exception encountered: {str(general_err)}"
     return "🚨 ALL RESERVIST INFERENCE SYSTEMS EXHAUSTED: Free tier allocation is completely restricted. Wait 60 seconds."
 
-# --- 2. CSS & Layout Injection ---
+# --- 2. CSS & GLOBAL "REAL WEB" BACKGROUND INJECTION ---
 st.markdown("""
     <style>
-        /* Darken the Streamlit UI to match the hacker theme */
-        .stApp { background-color: #02040a !important; }
+        /* Make the Streamlit UI completely transparent so the injected background shows through */
+        .stApp { background-color: transparent !important; }
+        .main { background-color: transparent !important; }
+        header { background-color: transparent !important; }
         
         .main .block-container {
             padding-top: 0rem !important;
@@ -59,13 +61,120 @@ st.markdown("""
         .live-code-container {
             margin-top: 20px;
             padding: 15px;
-            background-color: #05070f;
+            background-color: #0b0f19;
             border-top: 2px solid #00ff66;
             border-radius: 8px;
             color: #00ff66;
         }
     </style>
 """, unsafe_allow_html=True)
+
+# Inject Interactive Canvas into the PARENT Streamlit Window
+components.html("""
+<script>
+try {
+    const parentDoc = window.parent.document;
+    const parentWin = window.parent;
+    
+    // Only inject if it doesn't already exist
+    if (!parentDoc.getElementById('global-cyber-bg')) {
+        const canvas = parentDoc.createElement('canvas');
+        canvas.id = 'global-cyber-bg';
+        canvas.style.position = 'fixed';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        canvas.style.width = '100vw';
+        canvas.style.height = '100vh';
+        canvas.style.zIndex = '-9999'; // Stay strictly in the background
+        canvas.style.pointerEvents = 'none'; // Do not block user clicks
+        canvas.style.backgroundColor = '#02040a'; // Core hacker dark void
+        
+        parentDoc.body.insertBefore(canvas, parentDoc.body.firstChild);
+        
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let particles = [];
+        const mouse = { x: null, y: null };
+
+        function resize() {
+            width = parentWin.innerWidth;
+            height = parentWin.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        parentWin.addEventListener('resize', resize);
+        resize();
+
+        parentWin.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 1.5;
+                this.vy = (Math.random() - 0.5) * 1.5;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 1.5, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0, 255, 102, 0.6)';
+                ctx.fill();
+            }
+        }
+
+        for(let i=0; i<120; i++) particles.push(new Particle());
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+                if (mouse.x != null) {
+                    let dx = mouse.x - p.x;
+                    let dy = mouse.y - p.y;
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < 200) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(0, 255, 102, ${1 - dist/200})`;
+                        ctx.lineWidth = 1;
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(mouse.x, mouse.y);
+                        ctx.stroke();
+                    }
+                }
+                particles.forEach(p2 => {
+                    let dx = p.x - p2.x;
+                    let dy = p.y - p2.y;
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < 100) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(0, 255, 102, ${0.15 - dist/600})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke();
+                    }
+                });
+            });
+            parentWin.requestAnimationFrame(animate);
+        }
+        animate();
+    }
+} catch(e) {
+    console.log("Parent injection restricted.");
+}
+</script>
+""", height=0)
+
 
 if "synced_workspace_code" not in st.session_state:
     st.session_state["synced_workspace_code"] = ""
@@ -138,18 +247,52 @@ blockly_html_payload = f"""
   <script src="https://unpkg.com/blockly/python_compressed.js"></script>
   <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
   <style>
-    html, body {{ height: 100%; margin: 0; padding: 0; background-color: #000; font-family: monospace; color: #1fec79; overflow: hidden; }}
+    html, body {{ height: 100%; margin: 0; padding: 0; background-color: transparent; overflow: hidden; }}
     
     #workspaceWrapper {{ display: flex; flex-direction: column; height: 95vh; padding: 0; box-sizing: border-box; position: relative; }}
     #blocklyDiv {{ flex: 1; border: 1px solid #1e293b; position: relative; z-index: 1; }}
     
-    /* BACKGROUND CANVAS FOR INTERACTIVE PARTICLES */
-    #particle-canvas {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background-color: #02040a; }}
+    /* BACKGROUND CANVAS FOR INTERACTIVE PARTICLES (INSIDE ARENA) */
+    #particle-canvas {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background-color: transparent; }}
 
-    /* BLOCKLY TRANSPARENCY TRICK (Lets particles show through) */
-    .blocklySvg {{ background-color: rgba(2, 4, 10, 0.80) !important; }}
-    .blocklyToolboxDiv {{ background-color: #05070f !important; border-right: 1px solid #00ff66; }}
-    .blocklyTreeLabel {{ color: #00ff66 !important; font-family: monospace; }}
+    /* BLOCKLY ARENA TRANSPARENCY (Lets particles show through) */
+    .blocklySvg {{ background-color: rgba(2, 4, 10, 0.85) !important; }}
+    
+    /* =======================================
+       HACKER TOOLBOX OVERRIDES (THE SECTIONS)
+       ======================================= */
+    .blocklyToolboxDiv {{
+        background-color: #0b0f19 !important; /* Dark hacker void color */
+        border-right: 2px solid #00ff66 !important; /* Neon border */
+        color: #ffffff !important;
+    }}
+    .blocklyTreeRoot {{
+        padding-top: 10px !important;
+    }}
+    .blocklyTreeRow {{
+        padding-left: 10px !important;
+        margin-bottom: 6px !important;
+        border-radius: 4px !important;
+        height: 32px !important;
+        line-height: 32px !important;
+        transition: background-color 0.2s;
+    }}
+    .blocklyTreeLabel {{
+        color: #ffffff !important; /* Bright white category text for readability */
+        font-family: monospace !important;
+        font-size: 14px !important;
+        font-weight: bold !important;
+    }}
+    .blocklyTreeRow:hover {{
+        background-color: rgba(0, 255, 102, 0.2) !important; /* Green glow on hover */
+    }}
+    .blocklyTreeSelected .blocklyTreeRow {{
+        background-color: #00ff66 !important; /* Solid green background when selected */
+    }}
+    .blocklyTreeSelected .blocklyTreeLabel {{
+        color: #000000 !important; /* Black text when selected so it doesn't blend in */
+    }}
+    /* ======================================= */
 
     /* Custom Floating Window HUDs */
     .hud-window {{ display: flex; flex-direction: column; height: 100%; background-color: #090d16; border: 1px solid #00ff66; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); overflow: hidden; position: relative; }}
@@ -178,7 +321,7 @@ blockly_html_payload = f"""
   {blocks_registry.TOOLBOX_XML}
 
   <script>
-    // --- 1. INTERACTIVE MOUSE PARTICLE SYSTEM ---
+    // --- 1. INTERACTIVE MOUSE PARTICLE SYSTEM (Inside Arena) ---
     const canvasEl = document.getElementById('particle-canvas');
     const ctx = canvasEl.getContext('2d');
     let width, height;
@@ -194,7 +337,6 @@ blockly_html_payload = f"""
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    // Listen to mousemove on the whole window
     window.addEventListener('mousemove', (e) => {{
         mouse.x = e.clientX;
         mouse.y = e.clientY;
@@ -229,8 +371,6 @@ blockly_html_payload = f"""
         particles.forEach(p => {{
             p.update();
             p.draw();
-            
-            // Connect to mouse
             if (mouse.x != null) {{
                 let dx = mouse.x - p.x;
                 let dy = mouse.y - p.y;
@@ -244,8 +384,6 @@ blockly_html_payload = f"""
                     ctx.stroke();
                 }}
             }}
-            
-            // Connect to other particles
             particles.forEach(p2 => {{
                 let dx = p.x - p2.x;
                 let dy = p.y - p2.y;
@@ -272,7 +410,6 @@ blockly_html_payload = f"""
       toolbox: document.getElementById('toolbox'),
       // Make length == spacing to create solid intersecting grid lines!
       grid: {{ spacing: 40, length: 40, colour: 'rgba(0, 255, 102, 0.2)', snap: true }}, 
-      // Enable full scrolling/panning 
       move: {{ scrollbars: true, drag: true, wheel: true }},
       zoom: {{ controls: true, wheel: true, startScale: 1.0, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 }},
       trashcan: true
@@ -291,7 +428,6 @@ blockly_html_payload = f"""
     var canvas = workspace.getCanvas();
 
     // --- 3. TERMINAL AND AI SVG TABS ---
-    // Embed SVG Viewports
     var termForeignObject = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
     termForeignObject.setAttribute("x", "40"); termForeignObject.setAttribute("y", "40");
     termForeignObject.setAttribute("width", "420"); termForeignObject.setAttribute("height", "280");
@@ -407,10 +543,8 @@ blockly_html_payload = f"""
 </html>
 """
 
-# Render the 95% layout blockly component window
 components.html(blockly_html_payload, height=850, scrolling=False)
 
-# Live compiled script footprint strictly at the bottom
 st.markdown('<div class="live-code-container">', unsafe_allow_html=True)
 st.subheader("📁 Live Compiled Automation Script")
 st.code(st.session_state.get("synced_workspace_code", "# No code blocks assembled yet."), language="python")
