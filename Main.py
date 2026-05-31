@@ -6,6 +6,8 @@ import urllib.parse
 import random
 import re
 import time
+import ssl
+import datetime
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -309,6 +311,109 @@ def perform_threat_intelligence(target: str) -> str:
     except Exception:
         return "❌ REPUTATION FAIL: Could not trace network database map tracking vector."
 
+def perform_robots_sitemap_sweep(target: str) -> str:
+    clean_host = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
+    clean_host = clean_host.replace("https://", "").replace("http://", "").split("/")[0]
+    if not clean_host: return "❌ ERROR: Target missing!"
+    if clean_host.startswith("+") or (clean_host.isdigit() and len(clean_host) > 6):
+        return "⚠️ SWEEP WARNING: Cannot perform web sweeps on telecom nodes."
+    try:
+        url = f"http://{clean_host}/robots.txt"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            robots_data = response.read().decode('utf-8').split('\n')
+        disallowed = [line for line in robots_data if line.lower().startswith('disallow:')]
+        interesting = [line for line in disallowed if any(kw in line.lower() for kw in ['admin', 'backup', 'dev', 'api', 'staging'])]
+        out = f"🤖 [ROBOTS.TXT SWEEP] Target: {clean_host}\n"
+        out += f"   • Total Disallowed Paths: {len(disallowed)}\n"
+        if interesting:
+            out += f"   • ⚠️ Interesting Paths Found:\n"
+            for p in interesting[:5]:
+                out += f"      {p.strip()}\n"
+        return out
+    except Exception as e:
+        return f"❌ ROBOTS SWEEP FAILURE: {str(e)}"
+
+def perform_ssl_certificate_audit(target: str) -> str:
+    clean_host = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
+    clean_host = clean_host.replace("https://", "").replace("http://", "").split("/")[0]
+    if clean_host.startswith("+") or clean_host.isdigit():
+        return "⚠️ SSL WARNING: Certificates apply to domain names, not phone strings."
+    try:
+        ctx = ssl.create_default_context()
+        with ctx.wrap_socket(socket.socket(), server_hostname=clean_host) as s:
+            s.settimeout(5.0)
+            s.connect((clean_host, 443))
+            cert = s.getpeercert()
+        
+        issuer = dict(x[0] for x in cert.get('issuer', []))
+        subject = dict(x[0] for x in cert.get('subject', []))
+        san = cert.get('subjectAltName', [])
+        san_list = [x[1] for x in san]
+        
+        out = f"🔐 [SSL/TLS CERTIFICATE AUDIT] Target: {clean_host}\n"
+        out += f"   • Issued To : {subject.get('commonName', 'Unknown')}\n"
+        out += f"   • Issued By : {issuer.get('organizationName', 'Unknown')}\n"
+        out += f"   • Expires   : {cert.get('notAfter', 'Unknown')}\n"
+        out += f"   • SAN Count : {len(san_list)} Subject Alternative Names discovered\n"
+        if len(san_list) > 1:
+            out += f"   • SAN Sample: {', '.join(san_list[:3])}...\n"
+        return out
+    except Exception as e:
+        return f"❌ SSL AUDIT FAILURE: {str(e)}"
+
+def perform_shodan_mock_lookup(target: str) -> str:
+    clean_host = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
+    clean_host = clean_host.replace("https://", "").replace("http://", "").split("/")[0]
+    if clean_host.startswith("+") or clean_host.isdigit():
+        return "⚠️ SHODAN WARNING: Port scans do not apply to cellular nodes."
+    try:
+        ip_addr = socket.gethostbyname(clean_host)
+        ports = random.sample([21, 22, 23, 25, 53, 80, 110, 135, 139, 143, 443, 445, 3306, 3389, 8080, 8443], random.randint(1, 4))
+        ports.sort()
+        vulns = random.sample(["CVE-2021-44228", "CVE-2019-0708", "CVE-2017-0144", "CVE-2014-0160", "None Found", "None Found"], 1)[0]
+        
+        out = f"👁️ [SHODAN PASSIVE INTEL (SIMULATED)] IP: {ip_addr}\n"
+        out += f"   • Open Ports Indexed : {', '.join(map(str, ports))}\n"
+        out += f"   • Known Vulns (Mock) : {vulns}\n"
+        out += f"   • ISP / Org Tracker  : Datacenter Routing Network\n"
+        return out
+    except Exception as e:
+        return f"❌ SHODAN LOOKUP FAILURE: {str(e)}"
+
+def perform_regex_filter(pattern_type: str) -> str:
+    global_state = st.session_state.get("terminal_history_output", "")
+    if pattern_type == "ip":
+        found = set(re.findall(r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b', global_state))
+        title = "IPv4 Addresses"
+    elif pattern_type == "email":
+        found = set(re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', global_state))
+        title = "Email Addresses"
+    else:
+        found = set()
+        title = "Custom Pattern"
+        
+    out = f"🔎 [REGEX INTELLIGENCE FILTER] Pattern: {title}\n"
+    if found:
+        out += f"   • Extracted {len(found)} unique items from log stream:\n"
+        for item in list(found)[:10]:
+            out += f"      -> {item}\n"
+    else:
+        out += f"   • No matches found in the current output stream.\n"
+    return out
+
+def perform_webhook_notify(url: str, message: str) -> str:
+    clean_url = str(url).strip().replace('"', '').replace("'", "")
+    if not clean_url.startswith("http"):
+        return "❌ WEBHOOK FAILURE: Invalid URL format. Must start with http(s)."
+    try:
+        out = f"📢 [WEBHOOK NOTIFIER] Target: {clean_url[:30]}...\n"
+        out += f"   • Payload Sent: {message}\n"
+        out += f"   • Status: 200 OK (Simulated Delivery)\n"
+        return out
+    except Exception as e:
+        return f"❌ WEBHOOK FAILURE: {str(e)}"
+
 # Pipeline Runtime Routing Hub
 if "terminal_history_output" not in st.session_state:
     st.session_state["terminal_history_output"] = "🚀 Automation Core Standby. Construct a block structure execution map...\n"
@@ -330,6 +435,16 @@ def run_scan(target: str, mode: str, structural_param: str = "all"):
         res = perform_subdomain_ct_logs(target)
     elif mode == "threat_intel":
         res = perform_threat_intelligence(target)
+    elif mode == "robots":
+        res = perform_robots_sitemap_sweep(target)
+    elif mode == "ssl_audit":
+        res = perform_ssl_certificate_audit(target)
+    elif mode == "shodan":
+        res = perform_shodan_mock_lookup(target)
+    elif mode == "regex":
+        res = perform_regex_filter(structural_param)
+    elif mode == "webhook":
+        res = perform_webhook_notify(target, structural_param)
     else:
         res = "⚠️ Error: Block matching parameter structure error."
         
@@ -397,7 +512,7 @@ try:
         # Log user text
         st.session_state["chat_messages"].append({"role": "user", "content": user_text})
         
-        # Standard Chat Fallback Routine (REVERTED FROM GPT OS TO PURE CHAT)
+        # Standard Chat Fallback Routine 
         if ai_client:
             system_context = f"""
             You are an elite pentesting AI assistant embedded in a visual block-coding platform.
@@ -567,6 +682,15 @@ blockly_html_payload = f"""
       <block type="action_subdomain_ct_logs"></block>
       <block type="action_threat_intel_reputation"></block>
     </category>
+    <category name="📡 Web & Infra Intel" colour="180">
+      <block type="action_robots_sitemap"></block>
+      <block type="action_ssl_audit"></block>
+      <block type="action_shodan_lookup"></block>
+    </category>
+    <category name="🛠️ Data Parsers & Output" colour="290">
+      <block type="action_regex_filter"></block>
+      <block type="action_webhook_notify"></block>
+    </category>
   </xml>
 
   <script>
@@ -692,6 +816,42 @@ blockly_html_payload = f"""
         this.setColour(210);
       }}
     }};
+
+    // --- NEW BLOCKS ---
+    Blockly.Blocks['action_robots_sitemap'] = {{
+      init: function() {{
+        this.appendValueInput("NAME").setCheck("String").appendField("🤖 Sweep Robots/Sitemap:");
+        this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(180);
+      }}
+    }};
+    Blockly.Blocks['action_ssl_audit'] = {{
+      init: function() {{
+        this.appendValueInput("NAME").setCheck("String").appendField("🔐 Audit SSL/TLS Cert:");
+        this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(180);
+      }}
+    }};
+    Blockly.Blocks['action_shodan_lookup'] = {{
+      init: function() {{
+        this.appendValueInput("NAME").setCheck("String").appendField("👁️ Shodan Passive Intel:");
+        this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(180);
+      }}
+    }};
+    Blockly.Blocks['action_regex_filter'] = {{
+      init: function() {{
+        this.appendDummyInput()
+            .appendField("🔎 Regex Grep Filter on Log Output Stream")
+            .appendField(new Blockly.FieldDropdown([["IP Addresses", "ip"], ["Email Addresses", "email"]]), "PATTERN");
+        this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(290);
+      }}
+    }};
+    Blockly.Blocks['action_webhook_notify'] = {{
+      init: function() {{
+        this.appendDummyInput().appendField("📢 Trigger Webhook Alert");
+        this.appendValueInput("URL").setCheck("String").appendField("Webhook URL:");
+        this.appendValueInput("MSG").setCheck("String").appendField("Payload Msg:");
+        this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(290);
+      }}
+    }};
     
     // --- Python Generator Mappings ---
     Blockly.Python.forBlock['when_sequence_activated'] = function(block) {{ return '# Sequence Active: ' + block.getFieldValue('SEQUENCE_ID') + '\\n'; }};
@@ -733,6 +893,29 @@ blockly_html_payload = f"""
     Blockly.Python.forBlock['action_threat_intel_reputation'] = function(block) {{
       var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
       return 'run_scan(target=' + val + ', mode="threat_intel")\\n';
+    }};
+
+    // --- NEW GENERATORS ---
+    Blockly.Python.forBlock['action_robots_sitemap'] = function(block) {{
+      var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
+      return 'run_scan(target=' + val + ', mode="robots")\\n';
+    }};
+    Blockly.Python.forBlock['action_ssl_audit'] = function(block) {{
+      var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
+      return 'run_scan(target=' + val + ', mode="ssl_audit")\\n';
+    }};
+    Blockly.Python.forBlock['action_shodan_lookup'] = function(block) {{
+      var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
+      return 'run_scan(target=' + val + ', mode="shodan")\\n';
+    }};
+    Blockly.Python.forBlock['action_regex_filter'] = function(block) {{
+      var pat = block.getFieldValue('PATTERN');
+      return 'run_scan(target="none", mode="regex", structural_param="' + pat + '")\\n';
+    }};
+    Blockly.Python.forBlock['action_webhook_notify'] = function(block) {{
+      var url = Blockly.Python.valueToCode(block, 'URL', 0) || "''";
+      var msg = Blockly.Python.valueToCode(block, 'MSG', 0) || "''";
+      return 'run_scan(target=' + url + ', mode="webhook", structural_param=' + msg + ')\\n';
     }};
 
     // --- Inject Workspace Engine ---
