@@ -386,7 +386,6 @@ def run_scan(target: str, mode: str, structural_param: str = "all"):
         res = "⚠️ Error: Block matching parameter structure error."
         
     st.session_state["terminal_history_output"] += f"\n[ENGINE TRACE] Activating Module -> {mode.upper()}\n{res}\n"
-    return res # Return value required for mutator python generators to analyze
 
 # ==========================================
 # 2. BLOCKLY HTML / JS REGISTRY DEFINITIONS
@@ -447,71 +446,6 @@ TOOLBOX_XML = """
 """
 
 BLOCK_DEFINITIONS_JS = """
-    // ==========================================
-    // GENERIC MUTATOR MIXIN FOR ALL BLOCKS
-    // ==========================================
-    const RECON_MUTATOR_MIXIN = {
-      mutationToDom: function() {
-        var container = Blockly.utils.xml.createElement('mutation');
-        if (this.hasSuccess_) container.setAttribute('success', 'true');
-        if (this.hasFail_) container.setAttribute('fail', 'true');
-        return container;
-      },
-      domToMutation: function(xmlElement) {
-        this.hasSuccess_ = (xmlElement.getAttribute('success') === 'true');
-        this.hasFail_ = (xmlElement.getAttribute('fail') === 'true');
-        this.updateShape_();
-      },
-      decompose: function(workspace) {
-        var containerBlock = workspace.newBlock('recon_mutator_container');
-        containerBlock.initSvg();
-        var connection = containerBlock.nextConnection;
-        if (this.hasSuccess_) {
-          var successBlock = workspace.newBlock('recon_mutator_success');
-          successBlock.initSvg();
-          connection.connect(successBlock.previousConnection);
-          connection = successBlock.nextConnection;
-        }
-        if (this.hasFail_) {
-          var failBlock = workspace.newBlock('recon_mutator_fail');
-          failBlock.initSvg();
-          connection.connect(failBlock.previousConnection);
-        }
-        return containerBlock;
-      },
-      compose: function(containerBlock) {
-        var clauseBlock = containerBlock.nextConnection.targetBlock();
-        this.hasSuccess_ = false;
-        this.hasFail_ = false;
-        while (clauseBlock) {
-          if (clauseBlock.type === 'recon_mutator_success') this.hasSuccess_ = true;
-          else if (clauseBlock.type === 'recon_mutator_fail') this.hasFail_ = true;
-          clauseBlock = clauseBlock.nextConnection && clauseBlock.nextConnection.targetBlock();
-        }
-        this.updateShape_();
-      },
-      updateShape_: function() {
-        if (this.hasSuccess_ && !this.getInput('ON_SUCCESS')) {
-          this.appendStatementInput('ON_SUCCESS').appendField("✅ If Success:");
-        } else if (!this.hasSuccess_ && this.getInput('ON_SUCCESS')) {
-          this.removeInput('ON_SUCCESS');
-        }
-        if (this.hasFail_ && !this.getInput('ON_FAIL')) {
-          this.appendStatementInput('ON_FAIL').appendField("❌ If Failure:");
-        } else if (!this.hasFail_ && this.getInput('ON_FAIL')) {
-          this.removeInput('ON_FAIL');
-        }
-      }
-    };
-
-    // UI Pieces for the gear menu
-    Blockly.Blocks['recon_mutator_container'] = { init: function() { this.appendDummyInput().appendField("⚙️ Logic Branches"); this.setNextStatement(true); this.setColour(210); this.contextMenu = false; } };
-    Blockly.Blocks['recon_mutator_success'] = { init: function() { this.appendDummyInput().appendField("✅ On Success"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(120); } };
-    Blockly.Blocks['recon_mutator_fail'] = { init: function() { this.appendDummyInput().appendField("❌ On Failure"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(0); } };
-
-    // ==========================================
-    // CORE BLOCKS
-    // ==========================================
     Blockly.Blocks['when_sequence_activated'] = {
       init: function() {
         this.appendDummyInput()
@@ -540,120 +474,123 @@ BLOCK_DEFINITIONS_JS = """
     
     Blockly.Blocks['action_wait_task'] = {
       init: function() {
-        this.appendDummyInput().appendField("⏳ Wait for").appendField(new Blockly.FieldNumber(1, 0, 60), "SECONDS").appendField("seconds");
-        this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(120);
+        this.appendDummyInput()
+            .appendField("⏳ Wait for")
+            .appendField(new Blockly.FieldNumber(1, 0, 60), "SECONDS")
+            .appendField("seconds");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(120);
       }
     };
 
     Blockly.Blocks['custom_input_string'] = {
       init: function() {
         this.appendDummyInput().appendField("Target Domain:").appendField(new Blockly.FieldTextInput("google.com"), "RAW_TEXT");
-        this.setOutput(true, "String"); this.setColour(160);
+        this.setOutput(true, "String");
+        this.setColour(160);
       }
     };
     Blockly.Blocks['global_phone_preset'] = {
       init: function() {
-        this.appendDummyInput().appendField("📱 Preset Phone Target").appendField(new Blockly.FieldDropdown([["🇮🇩 +62","+62"], ["🇺🇸 +1","+1"], ["🇬🇧 +44","+44"]]), "CC_PREFIX").appendField(new Blockly.FieldTextInput("8123456789"), "PHONE_BODY");
-        this.setOutput(true, "String"); this.setColour(160);
+        this.appendDummyInput()
+            .appendField("📱 Preset Phone Target")
+            .appendField(new Blockly.FieldDropdown([["🇮🇩 +62","+62"], ["🇺🇸 +1","+1"], ["🇬🇧 +44","+44"]]), "CC_PREFIX")
+            .appendField(new Blockly.FieldTextInput("8123456789"), "PHONE_BODY");
+        this.setOutput(true, "String");
+        this.setColour(160);
       }
     };
     Blockly.Blocks['custom_phone_signature'] = {
       init: function() {
-        this.appendDummyInput().appendField("🏳️ Custom Country Code Input").appendField(new Blockly.FieldTextInput("+61"), "CUSTOM_PREFIX").appendField("Number:").appendField(new Blockly.FieldTextInput("412345678"), "PHONE_BODY");
-        this.setOutput(true, "String"); this.setColour(160);
+        this.appendDummyInput()
+            .appendField("🏳️ Custom Country Code Input")
+            .appendField(new Blockly.FieldTextInput("+61"), "CUSTOM_PREFIX")
+            .appendField("Number:")
+            .appendField(new Blockly.FieldTextInput("412345678"), "PHONE_BODY");
+        this.setOutput(true, "String");
+        this.setColour(160);
       }
     };
-    
-    // ==========================================
-    // MUTABLE RECON BLOCKS
-    // ==========================================
     Blockly.Blocks['action_scan_base'] = {
       init: function() {
         this.appendValueInput("NAME").setCheck("String").appendField("Scan Profile Target:");
-        this.appendDummyInput().appendField("Execution Stream:").appendField(new Blockly.FieldDropdown([["🗺️ Geolocation Tracker Lookup", "geoip"],["🖥️ System DNS Server Resolve", "dns"],["🌐 WHOIS Public Asset Registry", "whois"],["📱 Global Mobile OSINT Trace", "phone"]]), "SCANTYPE");
-        this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(210);
-        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
-        this.hasSuccess_ = false; this.hasFail_ = false;
-        this.setTooltip("Click the gear to branch logic based on scan success or failure.");
+        this.appendDummyInput()
+            .appendField("Execution Stream:")
+            .appendField(new Blockly.FieldDropdown([
+              ["🗺️ Geolocation Tracker Lookup", "geoip"],
+              ["🖥️ System DNS Server Resolve", "dns"],
+              ["🌐 WHOIS Public Asset Registry", "whois"],
+              ["📱 Global Mobile OSINT Trace", "phone"]
+            ]), "SCANTYPE");
+        this.setPreviousStatement(true, null); 
+        this.setNextStatement(true, null);
+        this.setColour(210);
       }
     };
-    Object.assign(Blockly.Blocks['action_scan_base'], RECON_MUTATOR_MIXIN);
-
     Blockly.Blocks['action_dns_extractor'] = {
       init: function() {
         this.appendValueInput("NAME").setCheck("String").appendField("📡 Parse Records for:");
-        this.appendDummyInput().appendField("Target Record Matrix Type:").appendField(new Blockly.FieldDropdown([["MX (Mail Provider Routing Map)", "MX"],["NS (Authoritative Name Servers)", "NS"],["TXT (Security Verification Strings)", "TXT"]]), "DNS_TYPE");
-        this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(210);
-        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
-        this.hasSuccess_ = false; this.hasFail_ = false;
+        this.appendDummyInput()
+            .appendField("Target Record Matrix Type:")
+            .appendField(new Blockly.FieldDropdown([
+              ["MX (Mail Provider Routing Map)", "MX"],
+              ["NS (Authoritative Name Servers)", "NS"],
+              ["TXT (Security Verification Strings)", "TXT"]
+            ]), "DNS_TYPE");
+        this.setPreviousStatement(true, null); 
+        this.setNextStatement(true, null);
+        this.setColour(210);
       }
     };
-    Object.assign(Blockly.Blocks['action_dns_extractor'], RECON_MUTATOR_MIXIN);
-
     Blockly.Blocks['action_http_header_audit'] = {
       init: function() {
         this.appendValueInput("NAME").setCheck("String").appendField("🛡️ Audit Safety Headers for:");
-        this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(210);
-        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
-        this.hasSuccess_ = false; this.hasFail_ = false;
+        this.setPreviousStatement(true, null); 
+        this.setNextStatement(true, null);
+        this.setColour(210);
       }
     };
-    Object.assign(Blockly.Blocks['action_http_header_audit'], RECON_MUTATOR_MIXIN);
-
     Blockly.Blocks['action_subdomain_ct_logs'] = {
       init: function() {
         this.appendValueInput("NAME").setCheck("String").appendField("📧 Collect CT Log Subdomains for:");
-        this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(210);
-        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
-        this.hasSuccess_ = false; this.hasFail_ = false;
+        this.setPreviousStatement(true, null); 
+        this.setNextStatement(true, null);
+        this.setColour(210);
       }
     };
-    Object.assign(Blockly.Blocks['action_subdomain_ct_logs'], RECON_MUTATOR_MIXIN);
-
     Blockly.Blocks['action_threat_intel_reputation'] = {
       init: function() {
         this.appendValueInput("NAME").setCheck("String").appendField("🦺 Reputation Threat Intel Check:");
-        this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(210);
-        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
-        this.hasSuccess_ = false; this.hasFail_ = false;
+        this.setPreviousStatement(true, null); 
+        this.setNextStatement(true, null);
+        this.setColour(210);
       }
     };
-    Object.assign(Blockly.Blocks['action_threat_intel_reputation'], RECON_MUTATOR_MIXIN);
 
     Blockly.Blocks['action_robots_sitemap'] = {
       init: function() {
         this.appendValueInput("NAME").setCheck("String").appendField("🤖 Sweep Robots/Sitemap:");
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(180);
-        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
-        this.hasSuccess_ = false; this.hasFail_ = false;
       }
     };
-    Object.assign(Blockly.Blocks['action_robots_sitemap'], RECON_MUTATOR_MIXIN);
-
     Blockly.Blocks['action_ssl_audit'] = {
       init: function() {
         this.appendValueInput("NAME").setCheck("String").appendField("🔐 Audit SSL/TLS Cert:");
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(180);
-        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
-        this.hasSuccess_ = false; this.hasFail_ = false;
       }
     };
-    Object.assign(Blockly.Blocks['action_ssl_audit'], RECON_MUTATOR_MIXIN);
-
     Blockly.Blocks['action_shodan_lookup'] = {
       init: function() {
         this.appendValueInput("NAME").setCheck("String").appendField("👁️ Shodan Passive Intel:");
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(180);
-        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
-        this.hasSuccess_ = false; this.hasFail_ = false;
       }
     };
-    Object.assign(Blockly.Blocks['action_shodan_lookup'], RECON_MUTATOR_MIXIN);
-
-    // Filter/Webhook blocks (No Mutator Needed)
     Blockly.Blocks['action_regex_filter'] = {
       init: function() {
-        this.appendDummyInput().appendField("🔎 Regex Grep Filter on Log Output Stream").appendField(new Blockly.FieldDropdown([["IP Addresses", "ip"], ["Email Addresses", "email"]]), "PATTERN");
+        this.appendDummyInput()
+            .appendField("🔎 Regex Grep Filter on Log Output Stream")
+            .appendField(new Blockly.FieldDropdown([["IP Addresses", "ip"], ["Email Addresses", "email"]]), "PATTERN");
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(290);
       }
     };
@@ -668,25 +605,6 @@ BLOCK_DEFINITIONS_JS = """
 """
 
 PYTHON_GENERATORS_JS = """
-    // ==========================================
-    // REUSABLE HELPER FOR MUTATOR BLOCKS
-    // ==========================================
-    function applyMutatorBranches(block, basePythonCall) {
-      if (!block.hasSuccess_ && !block.hasFail_) {
-          return basePythonCall + '\\n';
-      }
-      var code = 'scan_res = ' + basePythonCall + '\\n';
-      if (block.hasSuccess_) {
-          var successBranch = Blockly.Python.statementToCode(block, 'ON_SUCCESS') || '  pass\\n';
-          code += 'if "❌" not in str(scan_res):\\n' + successBranch;
-      }
-      if (block.hasFail_) {
-          var failBranch = Blockly.Python.statementToCode(block, 'ON_FAIL') || '  pass\\n';
-          code += 'if "❌" in str(scan_res):\\n' + failBranch;
-      }
-      return code;
-    }
-
     Blockly.Python.forBlock['when_sequence_activated'] = function(block) { return '# Sequence Active: ' + block.getFieldValue('SEQUENCE_ID') + '\\n'; };
     
     Blockly.Python.forBlock['action_wait_task'] = function(block) { 
@@ -705,44 +623,40 @@ PYTHON_GENERATORS_JS = """
     Blockly.Python.forBlock['action_scan_base'] = function(block) {
       var type = block.getFieldValue('SCANTYPE');
       var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-      var pyCall = 'run_scan(target=' + val + ', mode="' + type + '")';
-      return applyMutatorBranches(block, pyCall);
+      return 'run_scan(target=' + val + ', mode="' + type + '")\\n';
     };
     Blockly.Python.forBlock['action_dns_extractor'] = function(block) {
       var dnsType = block.getFieldValue('DNS_TYPE');
       var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-      var pyCall = 'run_scan(target=' + val + ', mode="dns_extract", structural_param="' + dnsType + '")';
-      return applyMutatorBranches(block, pyCall);
+      return 'run_scan(target=' + val + ', mode="dns_extract", structural_param="' + dnsType + '")\\n';
     };
+
     Blockly.Python.forBlock['action_http_header_audit'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-      var pyCall = 'run_scan(target=' + val + ', mode="header_audit")';
-      return applyMutatorBranches(block, pyCall);
+      return 'run_scan(target=' + val + ', mode="header_audit")\\n';
     };
+
     Blockly.Python.forBlock['action_subdomain_ct_logs'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-      var pyCall = 'run_scan(target=' + val + ', mode="subdomain_ct")';
-      return applyMutatorBranches(block, pyCall);
+      return 'run_scan(target=' + val + ', mode="subdomain_ct")\\n';
     };
+
     Blockly.Python.forBlock['action_threat_intel_reputation'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-      var pyCall = 'run_scan(target=' + val + ', mode="threat_intel")';
-      return applyMutatorBranches(block, pyCall);
+      return 'run_scan(target=' + val + ', mode="threat_intel")\\n';
     };
+
     Blockly.Python.forBlock['action_robots_sitemap'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-      var pyCall = 'run_scan(target=' + val + ', mode="robots")';
-      return applyMutatorBranches(block, pyCall);
+      return 'run_scan(target=' + val + ', mode="robots")\\n';
     };
     Blockly.Python.forBlock['action_ssl_audit'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-      var pyCall = 'run_scan(target=' + val + ', mode="ssl_audit")';
-      return applyMutatorBranches(block, pyCall);
+      return 'run_scan(target=' + val + ', mode="ssl_audit")\\n';
     };
     Blockly.Python.forBlock['action_shodan_lookup'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-      var pyCall = 'run_scan(target=' + val + ', mode="shodan")';
-      return applyMutatorBranches(block, pyCall);
+      return 'run_scan(target=' + val + ', mode="shodan")\\n';
     };
     Blockly.Python.forBlock['action_regex_filter'] = function(block) {
       var pat = block.getFieldValue('PATTERN');
