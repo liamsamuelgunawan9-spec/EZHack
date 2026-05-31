@@ -44,6 +44,9 @@ def generate_completion_with_fallback(messages, response_format=None):
 # --- 2. CSS & Layout Injection ---
 st.markdown("""
     <style>
+        /* Darken the Streamlit UI to match the hacker theme */
+        .stApp { background-color: #02040a !important; }
+        
         .main .block-container {
             padding-top: 0rem !important;
             padding-bottom: 2rem !important;
@@ -56,9 +59,10 @@ st.markdown("""
         .live-code-container {
             margin-top: 20px;
             padding: 15px;
-            background-color: #0f172a;
-            border-top: 2px solid #334155;
+            background-color: #05070f;
+            border-top: 2px solid #00ff66;
             border-radius: 8px;
+            color: #00ff66;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -134,49 +138,143 @@ blockly_html_payload = f"""
   <script src="https://unpkg.com/blockly/python_compressed.js"></script>
   <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
   <style>
-    html, body {{ height: 100%; margin: 0; padding: 0; background-color: #0b0c10; font-family: monospace; color: #1fec79; overflow: hidden; }}
-    #workspaceWrapper {{ display: flex; flex-direction: column; height: 95vh; padding: 0; box-sizing: border-box; position: relative; }}
-    #blocklyDiv {{ flex: 1; border: 1px solid #1e293b; position: relative; }}
+    html, body {{ height: 100%; margin: 0; padding: 0; background-color: #000; font-family: monospace; color: #1fec79; overflow: hidden; }}
     
-    .hud-window {{
-      display: flex; flex-direction: column; height: 100%; background-color: #090d16; border: 1px solid #00ff66; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); overflow: hidden; position: relative;
-    }}
-    .hud-header {{
-      padding: 8px 12px; cursor: move; background-color: #111827; border-bottom: 1px solid #1f2937; font-weight: bold; color: #00ff66; font-size: 11px; display: flex; justify-content: space-between; align-items: center; user-select: none;
-    }}
-    .hud-body {{
-      flex: 1; padding: 10px; background-color: #05070f; overflow-y: auto; font-size: 11px; font-family: monospace; line-height: 1.4;
-    }}
-    .resize-handle {{
-      position: absolute; bottom: 0; right: 0; width: 14px; height: 14px; cursor: se-resize; background: linear-gradient(135deg, transparent 50%, #00ff66 50%); border-bottom-right-radius: 6px; z-index: 100;
-    }}
-    .ai-theme {{ border-color: #00ffcc; background-color: #1a1a24; }}
-    .ai-theme .hud-header {{ background-color: #0b0c10; border-color: #00ffcc; color: #00ffcc; }}
-    .ai-theme .hud-body {{ background-color: #050508; }}
+    #workspaceWrapper {{ display: flex; flex-direction: column; height: 95vh; padding: 0; box-sizing: border-box; position: relative; }}
+    #blocklyDiv {{ flex: 1; border: 1px solid #1e293b; position: relative; z-index: 1; }}
+    
+    /* BACKGROUND CANVAS FOR INTERACTIVE PARTICLES */
+    #particle-canvas {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background-color: #02040a; }}
+
+    /* BLOCKLY TRANSPARENCY TRICK (Lets particles show through) */
+    .blocklySvg {{ background-color: rgba(2, 4, 10, 0.80) !important; }}
+    .blocklyToolboxDiv {{ background-color: #05070f !important; border-right: 1px solid #00ff66; }}
+    .blocklyTreeLabel {{ color: #00ff66 !important; font-family: monospace; }}
+
+    /* Custom Floating Window HUDs */
+    .hud-window {{ display: flex; flex-direction: column; height: 100%; background-color: #090d16; border: 1px solid #00ff66; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); overflow: hidden; position: relative; }}
+    .hud-header {{ padding: 8px 12px; cursor: move; background-color: #02040a; border-bottom: 1px solid #00ff66; font-weight: bold; color: #00ff66; font-size: 11px; display: flex; justify-content: space-between; align-items: center; user-select: none; }}
+    .hud-body {{ flex: 1; padding: 10px; background-color: #05070f; overflow-y: auto; font-size: 11px; font-family: monospace; line-height: 1.4; }}
+    .resize-handle {{ position: absolute; bottom: 0; right: 0; width: 14px; height: 14px; cursor: se-resize; background: linear-gradient(135deg, transparent 50%, #00ff66 50%); border-bottom-right-radius: 6px; z-index: 100; }}
+    
+    .ai-theme {{ border-color: #00ffcc; }}
+    .ai-theme .hud-header {{ border-color: #00ffcc; color: #00ffcc; }}
     .ai-theme .resize-handle {{ background: linear-gradient(135deg, transparent 50%, #00ffcc 50%); }}
-    #aiTabInputArea {{ padding: 6px; background-color: #0b0c10; border-top: 1px solid #1f2833; display: flex; gap: 6px; }}
-    #aiTabInputField {{ flex: 1; background-color: #000000; border: 1px solid #1fec79; color: #1fec79; padding: 6px; border-radius: 4px; font-family: monospace; font-size: 11px; }}
-    #aiTabInputField:focus {{ outline: none; border-color: #00ffcc; }}
-    #aiTabSendBtn {{ background: #0b0c10; color: #00ffcc; border: 1px solid #00ffcc; padding: 4px 10px; cursor: pointer; border-radius: 4px; font-family: monospace; font-size: 11px; font-weight: bold; }}
-    #aiTabSendBtn:hover {{ background: #00ffcc; color: #0b0c10; }}
+    #aiTabInputArea {{ padding: 6px; background-color: #02040a; border-top: 1px solid #00ffcc; display: flex; gap: 6px; }}
+    #aiTabInputField {{ flex: 1; background-color: #05070f; border: 1px solid #00ffcc; color: #00ffcc; padding: 6px; border-radius: 4px; font-family: monospace; font-size: 11px; }}
+    #aiTabInputField:focus {{ outline: none; border-color: #1fec79; }}
+    #aiTabSendBtn {{ background: #02040a; color: #00ffcc; border: 1px solid #00ffcc; padding: 4px 10px; cursor: pointer; border-radius: 4px; font-family: monospace; font-size: 11px; font-weight: bold; }}
+    #aiTabSendBtn:hover {{ background: #00ffcc; color: #02040a; }}
   </style>
 </head>
 <body>
 
   <div id="workspaceWrapper">
+    <canvas id="particle-canvas"></canvas>
+    
     <div id="blocklyDiv"></div>
   </div>
 
   {blocks_registry.TOOLBOX_XML}
 
   <script>
-    // Inject Dynamic JS Block Generators 
+    // --- 1. INTERACTIVE MOUSE PARTICLE SYSTEM ---
+    const canvasEl = document.getElementById('particle-canvas');
+    const ctx = canvasEl.getContext('2d');
+    let width, height;
+    let particles = [];
+    const mouse = {{ x: null, y: null }};
+
+    function resizeCanvas() {{
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvasEl.width = width;
+        canvasEl.height = height;
+    }}
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Listen to mousemove on the whole window
+    window.addEventListener('mousemove', (e) => {{
+        mouse.x = e.clientX;
+        mouse.y = e.clientY;
+    }});
+
+    class Particle {{
+        constructor() {{
+            this.x = Math.random() * width;
+            this.y = Math.random() * height;
+            this.vx = (Math.random() - 0.5) * 1.5;
+            this.vy = (Math.random() - 0.5) * 1.5;
+        }}
+        update() {{
+            this.x += this.vx;
+            this.y += this.vy;
+            if (this.x < 0 || this.x > width) this.vx *= -1;
+            if (this.y < 0 || this.y > height) this.vy *= -1;
+        }}
+        draw() {{
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 1.5, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0, 255, 102, 0.8)';
+            ctx.fill();
+        }}
+    }}
+
+    for(let i = 0; i < 90; i++) particles.push(new Particle());
+
+    function animateParticles() {{
+        ctx.clearRect(0, 0, width, height);
+        
+        particles.forEach(p => {{
+            p.update();
+            p.draw();
+            
+            // Connect to mouse
+            if (mouse.x != null) {{
+                let dx = mouse.x - p.x;
+                let dy = mouse.y - p.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < 180) {{
+                    ctx.beginPath();
+                    ctx.strokeStyle = `rgba(0, 255, 102, ${{1 - dist/180}})`;
+                    ctx.lineWidth = 1;
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(mouse.x, mouse.y);
+                    ctx.stroke();
+                }}
+            }}
+            
+            // Connect to other particles
+            particles.forEach(p2 => {{
+                let dx = p.x - p2.x;
+                let dy = p.y - p2.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < 120) {{
+                    ctx.beginPath();
+                    ctx.strokeStyle = `rgba(0, 255, 102, ${{0.2 - dist/600}})`;
+                    ctx.lineWidth = 0.5;
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.stroke();
+                }}
+            }});
+        }});
+        requestAnimationFrame(animateParticles);
+    }}
+    animateParticles();
+
+    // --- 2. BLOCKLY INJECTION & LOGIC ---
     {blocks_registry.BLOCK_DEFINITIONS_JS}
     {blocks_registry.PYTHON_GENERATORS_JS}
 
     var workspace = Blockly.inject('blocklyDiv', {{
       toolbox: document.getElementById('toolbox'),
-      grid: {{ spacing: 25, length: 3, colour: '#1f2833', snap: true }}, 
+      // Make length == spacing to create solid intersecting grid lines!
+      grid: {{ spacing: 40, length: 40, colour: 'rgba(0, 255, 102, 0.2)', snap: true }}, 
+      // Enable full scrolling/panning 
+      move: {{ scrollbars: true, drag: true, wheel: true }},
+      zoom: {{ controls: true, wheel: true, startScale: 1.0, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 }},
       trashcan: true
     }});
     
@@ -192,6 +290,7 @@ blockly_html_payload = f"""
 
     var canvas = workspace.getCanvas();
 
+    // --- 3. TERMINAL AND AI SVG TABS ---
     // Embed SVG Viewports
     var termForeignObject = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
     termForeignObject.setAttribute("x", "40"); termForeignObject.setAttribute("y", "40");
@@ -202,7 +301,7 @@ blockly_html_payload = f"""
         <div id="terminalHeader" class="hud-header">
           <span>💻 SYSTEM TERMINAL OUTPUT</span><span style="font-size:9px; color:#888;">[DRAGGABLE WORKSPACE TAB]</span>
         </div>
-        <div class="hud-body"><pre id="terminalLogOutput" style="margin: 0; color: #d1d5db; font-size: 12px; line-height: 1.4; white-space: pre-wrap; font-family: monospace;"></pre></div>
+        <div class="hud-body"><pre id="terminalLogOutput" style="margin: 0; color: #00ff66; font-size: 12px; line-height: 1.4; white-space: pre-wrap; font-family: monospace;"></pre></div>
         <div class="resize-handle" id="terminalResizeAnchor"></div>
       </div>
     `;
@@ -243,9 +342,9 @@ blockly_html_payload = f"""
       chatHistory.forEach(function(msg) {{
         var msgDiv = document.createElement("div"); msgDiv.style.marginBottom = "10px"; msgDiv.style.padding = "6px 10px"; msgDiv.style.borderRadius = "4px"; msgDiv.style.wordBreak = "break-word";
         if (msg.role === "user") {{
-          msgDiv.style.backgroundColor = "#1f2833"; msgDiv.style.color = "#1fec79"; msgDiv.style.borderRight = "2px solid #1fec79"; msgDiv.innerHTML = "<div style='font-weight:bold;font-size:9px;color:#888;margin-bottom:2px;'>OPERATOR:</div>" + escapeHtml(msg.content);
+          msgDiv.style.backgroundColor = "#02040a"; msgDiv.style.color = "#00ffcc"; msgDiv.style.borderRight = "2px solid #00ffcc"; msgDiv.innerHTML = "<div style='font-weight:bold;font-size:9px;color:#888;margin-bottom:2px;'>OPERATOR:</div>" + escapeHtml(msg.content);
         }} else if (msg.role === "assistant") {{
-          msgDiv.style.backgroundColor = "#0b0c10"; msgDiv.style.color = "#ffffff"; msgDiv.style.borderLeft = "2px solid #00ffcc"; msgDiv.innerHTML = "<div style='font-weight:bold;font-size:9px;color:#00ffcc;margin-bottom:2px;'>GROQ CORERUN:</div>" + escapeHtml(msg.content);
+          msgDiv.style.backgroundColor = "#05070f"; msgDiv.style.color = "#ffffff"; msgDiv.style.borderLeft = "2px solid #00ffcc"; msgDiv.innerHTML = "<div style='font-weight:bold;font-size:9px;color:#00ffcc;margin-bottom:2px;'>GROQ CORERUN:</div>" + escapeHtml(msg.content);
         }}
         container.appendChild(msgDiv);
       }});
@@ -268,7 +367,7 @@ blockly_html_payload = f"""
     document.getElementById("aiTabSendBtn").onclick = handleTabSend;
     document.getElementById("aiTabInputField").onkeydown = function(e) {{ if(e.key === "Enter") {{ handleTabSend(); }} }};
 
-    // Unified Coordination
+    // --- 4. Unified Coordination (Canvas Dragging) ---
     var isDraggingTerm = false, termStartX, termStartY, isResizingTerm = false, termStartW, termStartH, termResStartX, termResStartY;
     document.getElementById("terminalHeader").onmousedown = function(e) {{ isDraggingTerm = true; var scale = workspace.scale || 1; termStartX = e.clientX / scale - parseFloat(termForeignObject.getAttribute("x")); termStartY = e.clientY / scale - parseFloat(termForeignObject.getAttribute("y")); e.stopPropagation(); e.preventDefault(); }};
     document.getElementById("terminalResizeAnchor").onmousedown = function(e) {{ isResizingTerm = true; var scale = workspace.scale || 1; termStartW = parseFloat(termForeignObject.getAttribute("width")); termStartH = parseFloat(termForeignObject.getAttribute("height")); termResStartX = e.clientX / scale; termResStartY = e.clientY / scale; e.stopPropagation(); e.preventDefault(); }};
@@ -308,8 +407,10 @@ blockly_html_payload = f"""
 </html>
 """
 
+# Render the 95% layout blockly component window
 components.html(blockly_html_payload, height=850, scrolling=False)
 
+# Live compiled script footprint strictly at the bottom
 st.markdown('<div class="live-code-container">', unsafe_allow_html=True)
 st.subheader("📁 Live Compiled Automation Script")
 st.code(st.session_state.get("synced_workspace_code", "# No code blocks assembled yet."), language="python")
