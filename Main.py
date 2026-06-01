@@ -520,79 +520,103 @@ blockly_html_payload = f"""
     document.getElementById("aiTabSendBtn").onclick = handleTabSend;
     document.getElementById("aiTabInputField").onkeydown = function(e) {{ if(e.key === "Enter") {{ handleTabSend(); }} }};
 
-    var isDraggingTerm = false, termStartX, termStartY, termScale, isResizingTerm = false, termStartW, termStartH, termResStartX, termResStartY;
-    var isDraggingAI = false, aiStartX, aiStartY, aiScale, isResizingAI = false, aiStartW, aiStartH, aiResStartX, aiResStartY;
+    // Unified drag/resize state management
+    var dragState = {{
+      active: null,  // null, 'termDrag', 'termResize', 'aiDrag', 'aiResize'
+      startX: 0, startY: 0,
+      startW: 0, startH: 0,
+      scale: 1,
+      target: null
+    }};
     
-    function resetAllDrag() {{
-      isDraggingTerm = false; isResizingTerm = false; isDraggingAI = false; isResizingAI = false;
+    function onTermHeaderMouseDown(e) {{
+      dragState.active = 'termDrag';
+      dragState.scale = window.workspace.scale || 1;
+      dragState.startX = e.clientX / dragState.scale - parseFloat(termForeignObject.getAttribute("x"));
+      dragState.startY = e.clientY / dragState.scale - parseFloat(termForeignObject.getAttribute("y"));
+      dragState.target = termForeignObject;
+      e.stopPropagation();
+      e.preventDefault();
     }}
     
-    document.getElementById("terminalHeader").addEventListener("mousedown", function(e) {{ 
-      termScale = window.workspace.scale || 1; 
-      isDraggingTerm = true; 
-      termStartX = e.clientX / termScale - parseFloat(termForeignObject.getAttribute("x")); 
-      termStartY = e.clientY / termScale - parseFloat(termForeignObject.getAttribute("y")); 
-      e.stopPropagation(); 
-      e.preventDefault(); 
-    }});
+    function onTermResizeMouseDown(e) {{
+      dragState.active = 'termResize';
+      dragState.scale = window.workspace.scale || 1;
+      dragState.startW = parseFloat(termForeignObject.getAttribute("width"));
+      dragState.startH = parseFloat(termForeignObject.getAttribute("height"));
+      dragState.startX = e.clientX / dragState.scale;
+      dragState.startY = e.clientY / dragState.scale;
+      dragState.target = termForeignObject;
+      e.stopPropagation();
+      e.preventDefault();
+    }}
     
-    document.getElementById("terminalResizeAnchor").addEventListener("mousedown", function(e) {{ 
-      termScale = window.workspace.scale || 1; 
-      isResizingTerm = true; 
-      termStartW = parseFloat(termForeignObject.getAttribute("width")); 
-      termStartH = parseFloat(termForeignObject.getAttribute("height")); 
-      termResStartX = e.clientX / termScale; 
-      termResStartY = e.clientY / termScale; 
-      e.stopPropagation(); 
-      e.preventDefault(); 
-    }});
-
-    document.getElementById("aiTabHeader").addEventListener("mousedown", function(e) {{ 
-      aiScale = window.workspace.scale || 1; 
-      isDraggingAI = true; 
-      aiStartX = e.clientX / aiScale - parseFloat(aiForeignObject.getAttribute("x")); 
-      aiStartY = e.clientY / aiScale - parseFloat(aiForeignObject.getAttribute("y")); 
-      e.stopPropagation(); 
-      e.preventDefault(); 
-    }});
+    function onAIHeaderMouseDown(e) {{
+      dragState.active = 'aiDrag';
+      dragState.scale = window.workspace.scale || 1;
+      dragState.startX = e.clientX / dragState.scale - parseFloat(aiForeignObject.getAttribute("x"));
+      dragState.startY = e.clientY / dragState.scale - parseFloat(aiForeignObject.getAttribute("y"));
+      dragState.target = aiForeignObject;
+      e.stopPropagation();
+      e.preventDefault();
+    }}
     
-    document.getElementById("aiTabResizeHandle").addEventListener("mousedown", function(e) {{ 
-      aiScale = window.workspace.scale || 1; 
-      isResizingAI = true; 
-      aiStartW = parseFloat(aiForeignObject.getAttribute("width")); 
-      aiStartH = parseFloat(aiForeignObject.getAttribute("height")); 
-      aiResStartX = e.clientX / aiScale; 
-      aiResStartY = e.clientY / aiScale; 
-      e.stopPropagation(); 
-      e.preventDefault(); 
-    }});
-
-    document.addEventListener("mousemove", function(e) {{
-      if (isDraggingTerm) {{ 
-        termForeignObject.setAttribute("x", e.clientX / termScale - termStartX); 
-        termForeignObject.setAttribute("y", e.clientY / termScale - termStartY); 
-      }}
-      if (isResizingTerm) {{ 
-        var newWT = termStartW + (e.clientX / termScale - termResStartX); 
-        var newHT = termStartH + (e.clientY / termScale - termResStartY); 
-        if (newWT > 200) termForeignObject.setAttribute("width", newWT); 
-        if (newHT > 150) termForeignObject.setAttribute("height", newHT); 
-      }}
-      if (isDraggingAI) {{ 
-        aiForeignObject.setAttribute("x", e.clientX / aiScale - aiStartX); 
-        aiForeignObject.setAttribute("y", e.clientY / aiScale - aiStartY); 
-      }}
-      if (isResizingAI) {{ 
-        var newWA = aiStartW + (e.clientX / aiScale - aiResStartX); 
-        var newHA = aiStartH + (e.clientY / aiScale - aiResStartY); 
-        if (newWA > 200) aiForeignObject.setAttribute("width", newWA); 
-        if (newHA > 200) aiForeignObject.setAttribute("height", newHA); 
-      }}
-    }}, false);
+    function onAIResizeMouseDown(e) {{
+      dragState.active = 'aiResize';
+      dragState.scale = window.workspace.scale || 1;
+      dragState.startW = parseFloat(aiForeignObject.getAttribute("width"));
+      dragState.startH = parseFloat(aiForeignObject.getAttribute("height"));
+      dragState.startX = e.clientX / dragState.scale;
+      dragState.startY = e.clientY / dragState.scale;
+      dragState.target = aiForeignObject;
+      e.stopPropagation();
+      e.preventDefault();
+    }}
     
-    window.addEventListener("mouseup", resetAllDrag, false);
-    document.addEventListener("mouseup", resetAllDrag, false);
-    window.addEventListener("mouseleave", resetAllDrag, false);
+    function onGlobalMouseMove(e) {{
+      if (!dragState.active || !dragState.target) return;
+      
+      var newX, newY, newW, newH;
+      switch(dragState.active) {{
+        case 'termDrag':
+          newX = e.clientX / dragState.scale - dragState.startX;
+          newY = e.clientY / dragState.scale - dragState.startY;
+          termForeignObject.setAttribute("x", newX);
+          termForeignObject.setAttribute("y", newY);
+          break;
+        case 'termResize':
+          newW = dragState.startW + (e.clientX / dragState.scale - dragState.startX);
+          newH = dragState.startH + (e.clientY / dragState.scale - dragState.startY);
+          if (newW > 200) termForeignObject.setAttribute("width", newW);
+          if (newH > 150) termForeignObject.setAttribute("height", newH);
+          break;
+        case 'aiDrag':
+          newX = e.clientX / dragState.scale - dragState.startX;
+          newY = e.clientY / dragState.scale - dragState.startY;
+          aiForeignObject.setAttribute("x", newX);
+          aiForeignObject.setAttribute("y", newY);
+          break;
+        case 'aiResize':
+          newW = dragState.startW + (e.clientX / dragState.scale - dragState.startX);
+          newH = dragState.startH + (e.clientY / dragState.scale - dragState.startY);
+          if (newW > 200) aiForeignObject.setAttribute("width", newW);
+          if (newH > 200) aiForeignObject.setAttribute("height", newH);
+          break;
+      }}
+    }}
+    
+    function onGlobalMouseUp(e) {{
+      dragState.active = null;
+      dragState.target = null;
+    }}
+    
+    document.getElementById("terminalHeader").addEventListener("mousedown", onTermHeaderMouseDown, true);
+    document.getElementById("terminalResizeAnchor").addEventListener("mousedown", onTermResizeMouseDown, true);
+    document.getElementById("aiTabHeader").addEventListener("mousedown", onAIHeaderMouseDown, true);
+    document.getElementById("aiTabResizeHandle").addEventListener("mousedown", onAIResizeMouseDown, true);
+    
+    document.addEventListener("mousemove", onGlobalMouseMove, true);
+    document.addEventListener("mouseup", onGlobalMouseUp, true);
 
     function processLiveDebugCompilations() {{
       var topBlocks = window.workspace.getTopBlocks(false); var generatedPythonCode = ""; var sequenceFound = false;
