@@ -249,7 +249,6 @@ blockly_html_payload = f"""
   <script src="https://unpkg.com/blockly/python_compressed.js"></script>
   <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
   <style>
-    /* CRITICAL FIX: Lock the body and wrapper sizes so Streamlit scrolling doesn't break the flyout coordinates */
     html, body {{ height: 100%; width: 100%; margin: 0; padding: 0; background-color: transparent; overflow: hidden; }}
     ::-webkit-scrollbar {{ display: none; }}
     
@@ -259,9 +258,6 @@ blockly_html_payload = f"""
     #particle-canvas {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background-color: transparent; }}
     .blocklySvg {{ background-color: rgba(2, 4, 10, 0.85) !important; }}
     
-    /* ========================================================
-       HACKER TOOLBOX CSS
-       ======================================================== */
     body .blocklyToolboxDiv {{
         background-color: #0b0f19 !important;
         border-right: 2px solid #00ff66 !important;
@@ -289,12 +285,9 @@ blockly_html_payload = f"""
     body .blocklyTreeSelected .blocklyTreeLabel {{
         color: #000000 !important;
     }}
-    /* Force the flyout to be visible over iframe boundaries */
     .blocklyFlyout {{ overflow: visible !important; z-index: 9999 !important; }}
     .blocklyFlyoutBackground {{ fill: #0b0f19 !important; fill-opacity: 0.95 !important; border-right: 1px solid #00ff66; }}
     
-    /* ======================================================== */
-
     .hud-window {{ display: flex; flex-direction: column; height: 100%; background-color: #090d16; border: 1px solid #00ff66; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); overflow: hidden; position: relative; }}
     .hud-header {{ padding: 8px 12px; cursor: move; background-color: #02040a; border-bottom: 1px solid #00ff66; font-weight: bold; color: #00ff66; font-size: 11px; display: flex; justify-content: space-between; align-items: center; user-select: none; }}
     .hud-body {{ flex: 1; padding: 10px; background-color: #05070f; overflow-y: auto; font-size: 11px; font-family: monospace; line-height: 1.4; }}
@@ -411,21 +404,30 @@ blockly_html_payload = f"""
       trashcan: true
     }});
     
-    // CRITICAL BUG FIX: Force Blockly to redraw the flyout on click to prevent transparent boxes
+    // THE ULTIMATE FIX: Disable transition animations and bind directly to click captures
     document.addEventListener("DOMContentLoaded", function() {{
         setTimeout(function() {{
             var toolboxContainer = document.querySelector('.blocklyToolboxDiv');
             if (toolboxContainer) {{
                 toolboxContainer.addEventListener('click', function(e) {{
-                    setTimeout(function() {{
-                        if (window.workspace) {{
-                            Blockly.svgResize(window.workspace);
-                            var flyout = window.workspace.getFlyout();
-                            if (flyout && flyout.isVisible()) {{
-                                flyout.reflow();
+                    // Intercept immediate changes and force an explicit layout evaluation loop
+                    for(let offset of [0, 50, 150, 300]) {{
+                        setTimeout(function() {{
+                            if (window.workspace) {{
+                                Blockly.svgResize(window.workspace);
+                                var flyout = window.workspace.getFlyout();
+                                if (flyout) {{
+                                    if (flyout.isVisible()) {{
+                                        flyout.reflow();
+                                        // Re-render blocks inside the flyout directly
+                                        if(flyout.workspace_) {{
+                                            Blockly.svgResize(flyout.workspace_);
+                                        }}
+                                    }}
+                                }}
                             }}
-                        }}
-                    }}, 50);
+                        }}, offset);
+                    }}
                 }}, true);
             }}
         }}, 500);
