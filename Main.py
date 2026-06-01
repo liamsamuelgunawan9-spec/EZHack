@@ -421,58 +421,33 @@ blockly_html_payload = f"""
       zoom: {{ controls: true, wheel: true, startScale: 1.0, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 }},
       trashcan: true
     }});
-    
-    // Track flyout state and force rebuild on corruption
-    var flyoutRenderCount = 0;
-    var lastBlockCount = 0;
-    var corruptionDetected = false;
-    
+
+    // Local flyout monitor for this iframe instance
     setInterval(function() {{
       if (!window.workspace) return;
-      
+
       var flyout = window.workspace.getFlyout();
       if (!flyout) return;
-      
+
       var svgGroup = flyout.svgGroup_;
       if (!svgGroup) return;
-      
+
       var isVisible = flyout.isVisible();
-      
-      // When flyout is visible, check for corruption
       if (isVisible) {{
-        // Count actual blocks rendered in the flyout
-        var blockCount = 0;
         try {{
+          flyout.reflow();
+          Blockly.svgResize(window.workspace);
           if (flyout.workspace_) {{
-            blockCount = flyout.workspace_.getTopBlocks().length;
+            Blockly.svgResize(flyout.workspace_);
           }}
-        }} catch(e) {{ }}
-        
-        // If flyout appears but has no blocks, force rebuild
-        if (blockCount === 0 && corruptionDetected === false) {{
-          corruptionDetected = true;
-          console.log("Flyout corruption detected - forcing rebuild");
-          
-          // Force hide and reshow flyout
-          flyout.hide();
-          setTimeout(function() {{
-            // Re-open the current toolbox category
-            var selectedRow = document.querySelector('.blocklyTreeSelected');
-            if (selectedRow) {{
-              selectedRow.click();
-            }}
-          }}, 50);
-        }} else if (blockCount > 0) {{
-          corruptionDetected = false;
-        }}
-        
-        // Ensure visibility
+        }} catch (e) {{}}
+
         svgGroup.style.display = 'block';
         svgGroup.style.visibility = 'visible';
         svgGroup.style.opacity = '1';
         svgGroup.style.pointerEvents = 'auto';
       }}
-    }}, 150);
+    }}, 200);
     
     try {{
       var initialXmlText = {safe_xml_state};
