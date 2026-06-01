@@ -299,6 +299,11 @@ blockly_html_payload = f"""
     }}
     .blocklyFlyoutSvg {{
       overflow: visible !important;
+      clip-path: none !important;
+      clip: none !important;
+    }}
+    .blocklyWorkspace {{
+      overflow: visible !important;
     }}
     
     .hud-window {{ display: flex; flex-direction: column; height: 100%; background-color: #090d16; border: 1px solid #00ff66; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); overflow: hidden; position: relative; }}
@@ -417,55 +422,43 @@ blockly_html_payload = f"""
       trashcan: true
     }});
     
-    // AGGRESSIVE FIX: Rebuild flyout completely on each show
-    var originalShow = Blockly.Flyout.prototype.show;
-    Blockly.Flyout.prototype.show = function(xmlList) {{
-      // Clear all existing blocks in flyout workspace before showing new ones
-      if (this.workspace_) {{
-        var allBlocks = this.workspace_.getAllBlocks();
-        for (var i = allBlocks.length - 1; i >= 0; i--) {{
-          allBlocks[i].dispose(false);
-        }}
+    // Track flyout visibility state
+    var lastFlyoutVisible = false;
+    
+    setInterval(function() {{
+      if (!window.workspace) return;
+      
+      var flyout = window.workspace.getFlyout();
+      if (!flyout) return;
+      
+      var svgGroup = flyout.svgGroup_;
+      if (!svgGroup) return;
+      
+      var isNowVisible = flyout.isVisible();
+      
+      // When flyout opens, force reflow
+      if (isNowVisible && !lastFlyoutVisible) {{
+        setTimeout(function() {{
+          try {{
+            flyout.reflow();
+            Blockly.svgResize(window.workspace);
+            if (flyout.workspace_) {{
+              Blockly.svgResize(flyout.workspace_);
+            }}
+          }} catch(e) {{ }}
+        }}, 0);
       }}
       
-      // Call original show method
-      var result = originalShow.call(this, xmlList);
+      // Always ensure SVG visibility
+      if (isNowVisible) {{
+        svgGroup.style.display = 'block';
+        svgGroup.style.visibility = 'visible';
+        svgGroup.style.opacity = '1';
+        svgGroup.style.pointerEvents = 'auto';
+      }}
       
-      // Force immediate reflow cycles
-      setTimeout(() => {{
-        if (this.isVisible()) {{
-          this.reflow();
-          Blockly.svgResize(window.workspace);
-          if (this.workspace_) {{
-            Blockly.svgResize(this.workspace_);
-          }}
-        }}
-      }}, 0);
-      
-      return result;
-    }};
-    
-    // Also hook into the toolbox category click to force rebuild
-    var categoryClickListeners = [];
-    var toolboxDiv = document.querySelector('.blocklyToolboxDiv');
-    if (toolboxDiv) {{
-      var observer = new MutationObserver(function(mutations) {{
-        setTimeout(function() {{
-          if (window.workspace) {{
-            var flyout = window.workspace.getFlyout();
-            if (flyout && flyout.isVisible()) {{
-              flyout.reflow();
-              Blockly.svgResize(window.workspace);
-              if (flyout.workspace_) {{
-                Blockly.svgResize(flyout.workspace_);
-              }}
-            }}
-          }}
-        }}, 10);
-      }});
-      
-      observer.observe(toolboxDiv, {{ childList: true, subtree: true, characterData: true }});
-    }}
+      lastFlyoutVisible = isNowVisible;
+    }}, 100);
     
     try {{
       var initialXmlText = {safe_xml_state};
