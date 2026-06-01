@@ -251,7 +251,7 @@ blockly_html_payload = f"""
     .blocklySvg {{ background-color: rgba(2, 4, 10, 0.85) !important; }}
     
     /* ========================================================
-       HACKER TOOLBOX & BUG FIX: PREVENT LOCKUP ON REPEATED CLICKS
+       HACKER TOOLBOX CSS
        ======================================================== */
     .blocklyToolboxDiv {{
         background-color: #0b0f19 !important;
@@ -259,7 +259,7 @@ blockly_html_payload = f"""
         -webkit-user-select: none !important;
         -moz-user-select: none !important;
         -ms-user-select: none !important;
-        user-select: none !important; /* Locks out browser text highlight engine */
+        user-select: none !important;
     }}
     .blocklyTreeRow {{
         border-radius: 4px !important;
@@ -267,7 +267,7 @@ blockly_html_payload = f"""
         -webkit-user-select: none !important;
         -moz-user-select: none !important;
         -ms-user-select: none !important;
-        user-select: none !important; /* Stops tracking selection nodes on fast clicks */
+        user-select: none !important;
     }}
     .blocklyTreeLabel {{
         color: #ffffff !important;
@@ -316,6 +316,29 @@ blockly_html_payload = f"""
   {blocks_registry.TOOLBOX_XML}
 
   <script>
+    // --- JS BUG FIX: RAPID CLICK RACE CONDITION LOCK ---
+    document.addEventListener("DOMContentLoaded", function() {{
+        setTimeout(function() {{
+            var toolboxDiv = document.querySelector('.blocklyToolboxDiv');
+            if (toolboxDiv) {{
+                // Intercept clicks before Blockly processes them
+                toolboxDiv.addEventListener('click', function(e) {{
+                    if (toolboxDiv.getAttribute('data-locked') === 'true') {{
+                        e.stopPropagation(); // Kill the click if it's too fast
+                        e.preventDefault();
+                    }} else {{
+                        // Lock the toolbox for 400ms to allow animation to finish safely
+                        toolboxDiv.setAttribute('data-locked', 'true');
+                        setTimeout(function() {{
+                            toolboxDiv.setAttribute('data-locked', 'false');
+                        }}, 400); 
+                    }}
+                }}, true); // The 'true' runs this in the Capture phase (first line of defense)
+            }}
+        }}, 500); // Wait 500ms for Blockly to finish building the UI
+    }});
+    // ---------------------------------------------------
+
     const canvasEl = document.getElementById('particle-canvas');
     const ctx = canvasEl.getContext('2d');
     let width, height;
