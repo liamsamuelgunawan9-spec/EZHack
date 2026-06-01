@@ -264,17 +264,9 @@ blockly_html_payload = f"""
     .blocklyToolboxDiv {{
         background-color: #0b0f19 !important; /* Dark hacker void color */
         border-right: 2px solid #00ff66 !important; /* Neon border */
-        color: #ffffff !important;
-    }}
-    .blocklyTreeRoot {{
-        padding-top: 10px !important;
     }}
     .blocklyTreeRow {{
-        padding-left: 10px !important;
-        margin-bottom: 6px !important;
         border-radius: 4px !important;
-        height: 32px !important;
-        line-height: 32px !important;
         transition: background-color 0.2s;
     }}
     .blocklyTreeLabel {{
@@ -282,6 +274,7 @@ blockly_html_payload = f"""
         font-family: monospace !important;
         font-size: 14px !important;
         font-weight: bold !important;
+        padding: 5px !important;
     }}
     .blocklyTreeRow:hover {{
         background-color: rgba(0, 255, 102, 0.2) !important; /* Green glow on hover */
@@ -408,7 +401,6 @@ blockly_html_payload = f"""
 
     var workspace = Blockly.inject('blocklyDiv', {{
       toolbox: document.getElementById('toolbox'),
-      // Make length == spacing to create solid intersecting grid lines!
       grid: {{ spacing: 40, length: 40, colour: 'rgba(0, 255, 102, 0.2)', snap: true }}, 
       move: {{ scrollbars: true, drag: true, wheel: true }},
       zoom: {{ controls: true, wheel: true, startScale: 1.0, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 }},
