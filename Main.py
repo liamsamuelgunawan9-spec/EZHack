@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from groq import Groq, RateLimitError
 
 # Import our separated block module payloads
-import block_registry as blocks_registry
+import block_registry
 
 # --- 1. Setup & Config ---
 load_dotenv()
