@@ -8,8 +8,8 @@ import streamlit.components.v1 as components
 from dotenv import load_dotenv
 from groq import Groq, RateLimitError
 
-# Import our separated block module payloads (Fixed to cleanly match the file 'block_registery.py')
-import blocks_registry
+# Import our separated block module payloads
+import block_registry as blocks_registry
 
 # --- 1. Setup & Config ---
 load_dotenv()
@@ -193,7 +193,7 @@ try:
         
     if "ai_msg" in st.query_params and st.query_params["ai_msg"]:
         user_text = urllib.parse.unquote(st.query_params["ai_msg"])
-        del st.query_params["ai_msg"]  # Clean query params to prevent reload loop anomalies
+        del st.query_params["ai_msg"]
         st.session_state["chat_messages"].append({"role": "user", "content": user_text})
         
         if ai_client:
@@ -217,7 +217,7 @@ try:
 
     if "run_sequence" in st.query_params and st.query_params["run_sequence"]:
         sequence_id_name = urllib.parse.unquote(st.query_params["run_sequence"])
-        del st.query_params["run_sequence"]  # Clean query params to prevent duplicate execution triggers
+        del st.query_params["run_sequence"]
         
         st.session_state["terminal_history_output"] += f"\n🤖 Booting sequence pipeline [{sequence_id_name}]...\nRunning target compiled script layers...\n"
         code_to_run = st.session_state["synced_workspace_code"].strip()
@@ -249,10 +249,12 @@ blockly_html_payload = f"""
   <script src="https://unpkg.com/blockly/python_compressed.js"></script>
   <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
   <style>
-    html, body {{ height: 100%; margin: 0; padding: 0; background-color: transparent; overflow: hidden; }}
+    /* CRITICAL FIX: Lock the body and wrapper sizes so Streamlit scrolling doesn't break the flyout coordinates */
+    html, body {{ height: 100%; width: 100%; margin: 0; padding: 0; background-color: transparent; overflow: hidden; }}
+    ::-webkit-scrollbar {{ display: none; }}
     
-    #workspaceWrapper {{ display: flex; flex-direction: column; height: 95vh; padding: 0; box-sizing: border-box; position: relative; }}
-    #blocklyDiv {{ flex: 1; border: 1px solid #1e293b; position: relative; z-index: 1; }}
+    #workspaceWrapper {{ position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; flex-direction: column; padding: 0; box-sizing: border-box; }}
+    #blocklyDiv {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }}
     
     #particle-canvas {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background-color: transparent; }}
     .blocklySvg {{ background-color: rgba(2, 4, 10, 0.85) !important; }}
@@ -260,42 +262,37 @@ blockly_html_payload = f"""
     /* ========================================================
        HACKER TOOLBOX CSS
        ======================================================== */
-    .blocklyToolboxDiv {{
+    body .blocklyToolboxDiv {{
         background-color: #0b0f19 !important;
         border-right: 2px solid #00ff66 !important;
         -webkit-user-select: none !important;
-        -moz-user-select: none !important;
-        -ms-user-select: none !important;
         user-select: none !important;
     }}
-    .blocklyTreeRow {{
+    body .blocklyTreeRow {{
+        background-color: #0b0f19 !important;
         border-radius: 4px !important;
         transition: background-color 0.1s;
-        -webkit-user-select: none !important;
-        -moz-user-select: none !important;
-        -ms-user-select: none !important;
-        user-select: none !important;
     }}
-    .blocklyTreeLabel {{
+    body .blocklyTreeLabel {{
         color: #ffffff !important;
         font-family: monospace !important;
         font-size: 14px !important;
         font-weight: bold !important;
         padding: 5px !important;
-        -webkit-user-select: none !important;
-        -moz-user-select: none !important;
-        -ms-user-select: none !important;
-        user-select: none !important;
     }}
-    .blocklyTreeRow:hover {{
+    body .blocklyTreeRow:hover {{
         background-color: rgba(0, 255, 102, 0.2) !important;
     }}
-    .blocklyTreeSelected .blocklyTreeRow {{
+    body .blocklyTreeSelected .blocklyTreeRow {{
         background-color: #00ff66 !important;
     }}
-    .blocklyTreeSelected .blocklyTreeLabel {{
+    body .blocklyTreeSelected .blocklyTreeLabel {{
         color: #000000 !important;
     }}
+    /* Force the flyout to be visible over iframe boundaries */
+    .blocklyFlyout {{ overflow: visible !important; z-index: 9999 !important; }}
+    .blocklyFlyoutBackground {{ fill: #0b0f19 !important; fill-opacity: 0.95 !important; border-right: 1px solid #00ff66; }}
+    
     /* ======================================================== */
 
     .hud-window {{ display: flex; flex-direction: column; height: 100%; background-color: #090d16; border: 1px solid #00ff66; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); overflow: hidden; position: relative; }}
@@ -323,27 +320,6 @@ blockly_html_payload = f"""
   {blocks_registry.TOOLBOX_XML}
 
   <script>
-    // --- JS BUG FIX: FORCED RENDER REFRESH ---
-    document.addEventListener("DOMContentLoaded", function() {{
-        setTimeout(function() {{
-            var toolboxDiv = document.querySelector('.blocklyToolboxDiv');
-            if (toolboxDiv) {{
-                toolboxDiv.addEventListener('click', function(e) {{
-                    var target = e.target.closest('.blocklyTreeRow');
-                    if (target) {{
-                        setTimeout(function() {{
-                            if (window.workspace) {{
-                                window.workspace.render();
-                                Blockly.svgResize(window.workspace);
-                            }}
-                        }}, 50);
-                    }}
-                }}, true);
-            }}
-        }}, 500);
-    }});
-    // ---------------------------------------------------
-
     const canvasEl = document.getElementById('particle-canvas');
     const ctx = canvasEl.getContext('2d');
     let width, height;
@@ -433,6 +409,26 @@ blockly_html_payload = f"""
       move: {{ scrollbars: true, drag: true, wheel: true }},
       zoom: {{ controls: true, wheel: true, startScale: 1.0, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 }},
       trashcan: true
+    }});
+    
+    // CRITICAL BUG FIX: Force Blockly to redraw the flyout on click to prevent transparent boxes
+    document.addEventListener("DOMContentLoaded", function() {{
+        setTimeout(function() {{
+            var toolboxContainer = document.querySelector('.blocklyToolboxDiv');
+            if (toolboxContainer) {{
+                toolboxContainer.addEventListener('click', function(e) {{
+                    setTimeout(function() {{
+                        if (window.workspace) {{
+                            Blockly.svgResize(window.workspace);
+                            var flyout = window.workspace.getFlyout();
+                            if (flyout && flyout.isVisible()) {{
+                                flyout.reflow();
+                            }}
+                        }}
+                    }}, 50);
+                }}, true);
+            }}
+        }}, 500);
     }});
     
     try {{
