@@ -316,24 +316,16 @@ blockly_html_payload = f"""
   {blocks_registry.TOOLBOX_XML}
 
   <script>
-    // --- JS BUG FIX: FORCED RENDER REFRESH ---
+    // --- JS BUG FIX: NATIVE RESIZE OBSERVER ---
+    // Instead of intercepting DOM clicks (which breaks Blockly's flyout state),
+    // we use a ResizeObserver to ensure the canvas is always exactly aligned.
+    const resizeObserver = new ResizeObserver(() => {{
+        if (window.workspace) {{
+            Blockly.svgResize(window.workspace);
+        }}
+    }});
     document.addEventListener("DOMContentLoaded", function() {{
-        setTimeout(function() {{
-            var toolboxDiv = document.querySelector('.blocklyToolboxDiv');
-            if (toolboxDiv) {{
-                toolboxDiv.addEventListener('click', function(e) {{
-                    var target = e.target.closest('.blocklyTreeRow');
-                    if (target) {{
-                        setTimeout(function() {{
-                            if (window.workspace) {{
-                                window.workspace.render();
-                                Blockly.svgResize(window.workspace);
-                            }}
-                        }}, 50);
-                    }}
-                }}, true);
-            }}
-        }}, 500);
+        resizeObserver.observe(document.getElementById('workspaceWrapper'));
     }});
     // ---------------------------------------------------
 
@@ -426,6 +418,16 @@ blockly_html_payload = f"""
       move: {{ scrollbars: true, drag: true, wheel: true }},
       zoom: {{ controls: true, wheel: true, startScale: 1.0, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 }},
       trashcan: true
+    }});
+    
+    // Listen for category clicks using Blockly's internal event loop
+    window.workspace.addChangeListener(function(e) {{
+        if (e.type === Blockly.Events.TOOLBOX_ITEM_SELECT) {{
+            // Nudge a soft resize so the UI recalculates cleanly without resetting
+            setTimeout(function() {{
+                Blockly.svgResize(window.workspace);
+            }}, 50);
+        }}
     }});
     
     try {{
