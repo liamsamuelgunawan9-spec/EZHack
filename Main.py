@@ -249,119 +249,34 @@ blockly_html_payload = f"""
   <script src="https://unpkg.com/blockly/python_compressed.js"></script>
   <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
   <style>
-    html, body {{ height: 100%; width: 100%; margin: 0; padding: 0; background-color: transparent; overflow: visible !important; }}
-    ::-webkit-scrollbar {{ display: none; }}
-    
-    #workspaceWrapper {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; padding: 0; box-sizing: border-box; }}
-    #blocklyDiv {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }}
-    
-    #particle-canvas {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background-color: transparent; }}
-    .blocklySvg {{ background-color: rgba(2, 4, 10, 0.85) !important; }}
-    
-    .hud-window {{ display: flex; flex-direction: column; height: 100%; background-color: #090d16; border: 1px solid #00ff66; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); overflow: hidden; position: absolute; z-index: 999; }}
-    .hud-header {{ padding: 8px 12px; cursor: move; background-color: #02040a; border-bottom: 1px solid #00ff66; font-weight: bold; color: #00ff66; font-size: 11px; display: flex; justify-content: space-between; align-items: center; user-select: none; }}
-    .hud-body {{ flex: 1; padding: 10px; background-color: #05070f; overflow-y: auto; font-size: 11px; font-family: monospace; line-height: 1.4; }}
-    .resize-handle {{ position: absolute; bottom: 0; right: 0; width: 14px; height: 14px; cursor: se-resize; background: linear-gradient(135deg, transparent 50%, #00ff66 50%); border-bottom-right-radius: 6px; z-index: 100; }}
-    
-    .ai-theme {{ border-color: #00ffcc; }}
-    .ai-theme .hud-header {{ border-color: #00ffcc; color: #00ffcc; }}
-    .ai-theme .resize-handle {{ background: linear-gradient(135deg, transparent 50%, #00ffcc 50%); }}
-    #aiTabInputArea {{ padding: 6px; background-color: #02040a; border-top: 1px solid #00ffcc; display: flex; gap: 6px; }}
-    #aiTabInputField {{ flex: 1; background-color: #05070f; border: 1px solid #00ffcc; color: #00ffcc; padding: 6px; border-radius: 4px; font-family: monospace; font-size: 11px; }}
-    #aiTabInputField:focus {{ outline: none; border-color: #1fec79; }}
-    #aiTabSendBtn {{ background: #02040a; color: #00ffcc; border: 1px solid #00ffcc; padding: 4px 10px; cursor: pointer; border-radius: 4px; font-family: monospace; font-size: 11px; font-weight: bold; }}
-    #aiTabSendBtn:hover {{ background: #00ffcc; color: #02040a; }}
+    html, body {{
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: transparent;
+    }}
+    #blocklyDiv {{
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }}
+    .blocklySvg {{
+      background-color: rgba(2, 4, 10, 0.85);
+    }}
   </style>
 </head>
 <body>
 
-  <div id="workspaceWrapper">
-    <canvas id="particle-canvas"></canvas>
-    <div id="blocklyDiv"></div>
-  </div>
+  <div id="blocklyDiv"></div>
 
   {blocks_registry.TOOLBOX_XML}
 
   <script>
     const canvasEl = document.getElementById('particle-canvas');
-    const ctx = canvasEl.getContext('2d');
-    let width, height;
-    let particles = [];
-    const mouse = {{ x: null, y: null }};
-
-    function resizeCanvas() {{
-        width = window.innerWidth;
-        height = window.innerHeight;
-        canvasEl.width = width;
-        canvasEl.height = height;
-    }}
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
-
-    window.addEventListener('mousemove', (e) => {{
-        mouse.x = e.clientX;
-        mouse.y = e.clientY;
-    }});
-
-    class Particle {{
-        constructor() {{
-            this.x = Math.random() * width;
-            this.y = Math.random() * height;
-            this.vx = (Math.random() - 0.5) * 1.5;
-            this.vy = (Math.random() - 0.5) * 1.5;
-        }}
-        update() {{
-            this.x += this.vx;
-            this.y += this.vy;
-            if (this.x < 0 || this.x > width) this.vx *= -1;
-            if (this.y < 0 || this.y > height) this.vy *= -1;
-        }}
-        draw() {{
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, 1.5, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(0, 255, 102, 0.8)';
-            ctx.fill();
-        }}
-    }}
-
-    for(let i = 0; i < 90; i++) particles.push(new Particle());
-
-    function animateParticles() {{
-        ctx.clearRect(0, 0, width, height);
-        
-        particles.forEach(p => {{
-            p.update();
-            p.draw();
-            if (mouse.x != null) {{
-                let dx = mouse.x - p.x;
-                let dy = mouse.y - p.y;
-                let dist = Math.sqrt(dx*dx + dy*dy);
-                if (dist < 180) {{
-                    ctx.beginPath();
-                    ctx.strokeStyle = `rgba(0, 255, 102, ${{1 - dist/180}})`;
-                    ctx.lineWidth = 1;
-                    ctx.moveTo(p.x, p.y);
-                    ctx.lineTo(mouse.x, mouse.y);
-                    ctx.stroke();
-                }}
-            }}
-            particles.forEach(p2 => {{
-                let dx = p.x - p2.x;
-                let dy = p.y - p2.y;
-                let dist = Math.sqrt(dx*dx + dy*dy);
-                if (dist < 120) {{
-                    ctx.beginPath();
-                    ctx.strokeStyle = `rgba(0, 255, 102, ${{0.2 - dist/600}})`;
-                    ctx.lineWidth = 0.5;
-                    ctx.moveTo(p.x, p.y);
-                    ctx.lineTo(p2.x, p2.y);
-                    ctx.stroke();
-                }}
-            }});
-        }});
-        requestAnimationFrame(animateParticles);
-    }}
-    animateParticles();
 
     {blocks_registry.BLOCK_DEFINITIONS_JS}
     {blocks_registry.PYTHON_GENERATORS_JS}
@@ -582,6 +497,69 @@ blockly_html_payload = f"""
         clearTimeout(compileTimeout); compileTimeout = setTimeout(processLiveDebugCompilations, 500);
       }}
     }});
+  </script>
+</body>
+</html>
+"""
+
+blockly_html_payload = f"""
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+  <script src="https://unpkg.com/blockly/python_compressed.js"></script>
+  <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
+  <style>
+    html, body {{
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: transparent;
+    }}
+    #blocklyDiv {{
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }}
+  </style>
+</head>
+<body>
+  <div id="blocklyDiv"></div>
+  {blocks_registry.TOOLBOX_XML}
+  <script>
+    {blocks_registry.BLOCK_DEFINITIONS_JS}
+    {blocks_registry.PYTHON_GENERATORS_JS}
+
+    window.workspace = Blockly.inject('blocklyDiv', {{
+      toolbox: document.getElementById('toolbox'),
+      grid: {{ spacing: 40, length: 40, colour: 'rgba(0, 255, 102, 0.2)', snap: true }},
+      move: {{ scrollbars: true, drag: true, wheel: true }},
+      zoom: {{ controls: true, wheel: true, startScale: 1.0, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 }},
+      trashcan: true
+    }});
+
+    function resizeBlockly() {{
+      if (window.workspace) {{
+        Blockly.svgResize(window.workspace);
+      }}
+    }}
+    window.addEventListener('resize', resizeBlockly);
+    setTimeout(resizeBlockly, 0);
+
+    try {{
+      var initialXmlText = {safe_xml_state};
+      if (initialXmlText && initialXmlText.trim() !== "") {{
+        var dom = Blockly.utils.xml.textToDom(initialXmlText);
+        Blockly.Xml.domToWorkspace(dom, window.workspace);
+      }}
+    }} catch (err) {{
+      console.error("Hydration Layer Failure:", err);
+    }}
   </script>
 </body>
 </html>
