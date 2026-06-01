@@ -386,7 +386,7 @@ def run_scan(target: str, mode: str, structural_param: str = "all"):
         res = "⚠️ Error: Block matching parameter structure error."
         
     st.session_state["terminal_history_output"] += f"\n[ENGINE TRACE] Activating Module -> {mode.upper()}\n{res}\n"
-    return res # Return value required for mutator python generators to analyze
+    return res
 
 # ==========================================
 # 2. BLOCKLY HTML / JS REGISTRY DEFINITIONS
@@ -504,7 +504,6 @@ BLOCK_DEFINITIONS_JS = """
       }
     };
 
-    // UI Pieces for the gear menu
     Blockly.Blocks['recon_mutator_container'] = { 
         init: function() { 
             this.appendDummyInput().appendField("⚙️ Logic Branches"); 
@@ -685,7 +684,6 @@ BLOCK_DEFINITIONS_JS = """
     };
     Object.assign(Blockly.Blocks['action_shodan_lookup'], RECON_MUTATOR_MIXIN);
 
-    // Filter/Webhook blocks (No Mutator Needed)
     Blockly.Blocks['action_regex_filter'] = {
       init: function() {
         this.appendDummyInput().appendField("🔎 Regex Grep Filter on Log Output Stream").appendField(new Blockly.FieldDropdown([["IP Addresses", "ip"], ["Email Addresses", "email"]]), "PATTERN");

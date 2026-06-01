@@ -44,7 +44,6 @@ def generate_completion_with_fallback(messages, response_format=None):
 # --- 2. CSS & GLOBAL "REAL WEB" BACKGROUND INJECTION ---
 st.markdown("""
     <style>
-        /* Make the Streamlit UI completely transparent so the injected background shows through */
         .stApp { background-color: transparent !important; }
         .main { background-color: transparent !important; }
         header { background-color: transparent !important; }
@@ -69,14 +68,12 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Inject Interactive Canvas into the PARENT Streamlit Window
 components.html("""
 <script>
 try {
     const parentDoc = window.parent.document;
     const parentWin = window.parent;
     
-    // Only inject if it doesn't already exist
     if (!parentDoc.getElementById('global-cyber-bg')) {
         const canvas = parentDoc.createElement('canvas');
         canvas.id = 'global-cyber-bg';
@@ -85,9 +82,9 @@ try {
         canvas.style.left = '0';
         canvas.style.width = '100vw';
         canvas.style.height = '100vh';
-        canvas.style.zIndex = '-9999'; // Stay strictly in the background
-        canvas.style.pointerEvents = 'none'; // Do not block user clicks
-        canvas.style.backgroundColor = '#02040a'; // Core hacker dark void
+        canvas.style.zIndex = '-9999';
+        canvas.style.pointerEvents = 'none';
+        canvas.style.backgroundColor = '#02040a';
         
         parentDoc.body.insertBefore(canvas, parentDoc.body.firstChild);
         
@@ -175,7 +172,6 @@ try {
 </script>
 """, height=0)
 
-
 if "synced_workspace_code" not in st.session_state:
     st.session_state["synced_workspace_code"] = ""
 if "blockly_xml_state" not in st.session_state:
@@ -224,7 +220,6 @@ try:
         code_to_run = st.session_state["synced_workspace_code"].strip()
         if code_to_run:
             try:
-                # Execution scope mapped perfectly to imported registry logic
                 exec_scope = {"run_scan": blocks_registry.run_scan, "time": time}
                 exec(code_to_run, exec_scope)
                 st.session_state["terminal_history_output"] += "\n🟢 Execution automation run complete!"
@@ -252,42 +247,50 @@ blockly_html_payload = f"""
     #workspaceWrapper {{ display: flex; flex-direction: column; height: 95vh; padding: 0; box-sizing: border-box; position: relative; }}
     #blocklyDiv {{ flex: 1; border: 1px solid #1e293b; position: relative; z-index: 1; }}
     
-    /* BACKGROUND CANVAS FOR INTERACTIVE PARTICLES (INSIDE ARENA) */
     #particle-canvas {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background-color: transparent; }}
-
-    /* BLOCKLY ARENA TRANSPARENCY (Lets particles show through) */
     .blocklySvg {{ background-color: rgba(2, 4, 10, 0.85) !important; }}
     
-    /* =======================================
-       HACKER TOOLBOX OVERRIDES (THE SECTIONS)
-       ======================================= */
+    /* ========================================================
+       HACKER TOOLBOX & BUG FIX: PREVENT LOCKUP ON REPEATED CLICKS
+       ======================================================== */
     .blocklyToolboxDiv {{
-        background-color: #0b0f19 !important; /* Dark hacker void color */
-        border-right: 2px solid #00ff66 !important; /* Neon border */
+        background-color: #0b0f19 !important;
+        border-right: 2px solid #00ff66 !important;
+        -webkit-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
+        user-select: none !important; /* Locks out browser text highlight engine */
     }}
     .blocklyTreeRow {{
         border-radius: 4px !important;
-        transition: background-color 0.2s;
+        transition: background-color 0.1s;
+        -webkit-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
+        user-select: none !important; /* Stops tracking selection nodes on fast clicks */
     }}
     .blocklyTreeLabel {{
-        color: #ffffff !important; /* Bright white category text for readability */
+        color: #ffffff !important;
         font-family: monospace !important;
         font-size: 14px !important;
         font-weight: bold !important;
         padding: 5px !important;
+        -webkit-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
+        user-select: none !important;
     }}
     .blocklyTreeRow:hover {{
-        background-color: rgba(0, 255, 102, 0.2) !important; /* Green glow on hover */
+        background-color: rgba(0, 255, 102, 0.2) !important;
     }}
     .blocklyTreeSelected .blocklyTreeRow {{
-        background-color: #00ff66 !important; /* Solid green background when selected */
+        background-color: #00ff66 !important;
     }}
     .blocklyTreeSelected .blocklyTreeLabel {{
-        color: #000000 !important; /* Black text when selected so it doesn't blend in */
+        color: #000000 !important;
     }}
-    /* ======================================= */
+    /* ======================================================== */
 
-    /* Custom Floating Window HUDs */
     .hud-window {{ display: flex; flex-direction: column; height: 100%; background-color: #090d16; border: 1px solid #00ff66; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); overflow: hidden; position: relative; }}
     .hud-header {{ padding: 8px 12px; cursor: move; background-color: #02040a; border-bottom: 1px solid #00ff66; font-weight: bold; color: #00ff66; font-size: 11px; display: flex; justify-content: space-between; align-items: center; user-select: none; }}
     .hud-body {{ flex: 1; padding: 10px; background-color: #05070f; overflow-y: auto; font-size: 11px; font-family: monospace; line-height: 1.4; }}
@@ -307,14 +310,12 @@ blockly_html_payload = f"""
 
   <div id="workspaceWrapper">
     <canvas id="particle-canvas"></canvas>
-    
     <div id="blocklyDiv"></div>
   </div>
 
   {blocks_registry.TOOLBOX_XML}
 
   <script>
-    // --- 1. INTERACTIVE MOUSE PARTICLE SYSTEM (Inside Arena) ---
     const canvasEl = document.getElementById('particle-canvas');
     const ctx = canvasEl.getContext('2d');
     let width, height;
@@ -395,7 +396,6 @@ blockly_html_payload = f"""
     }}
     animateParticles();
 
-    // --- 2. BLOCKLY INJECTION & LOGIC ---
     {blocks_registry.BLOCK_DEFINITIONS_JS}
     {blocks_registry.PYTHON_GENERATORS_JS}
 
@@ -419,7 +419,6 @@ blockly_html_payload = f"""
 
     var canvas = workspace.getCanvas();
 
-    // --- 3. TERMINAL AND AI SVG TABS ---
     var termForeignObject = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
     termForeignObject.setAttribute("x", "40"); termForeignObject.setAttribute("y", "40");
     termForeignObject.setAttribute("width", "420"); termForeignObject.setAttribute("height", "280");
@@ -495,7 +494,6 @@ blockly_html_payload = f"""
     document.getElementById("aiTabSendBtn").onclick = handleTabSend;
     document.getElementById("aiTabInputField").onkeydown = function(e) {{ if(e.key === "Enter") {{ handleTabSend(); }} }};
 
-    // --- 4. Unified Coordination (Canvas Dragging) ---
     var isDraggingTerm = false, termStartX, termStartY, isResizingTerm = false, termStartW, termStartH, termResStartX, termResStartY;
     document.getElementById("terminalHeader").onmousedown = function(e) {{ isDraggingTerm = true; var scale = workspace.scale || 1; termStartX = e.clientX / scale - parseFloat(termForeignObject.getAttribute("x")); termStartY = e.clientY / scale - parseFloat(termForeignObject.getAttribute("y")); e.stopPropagation(); e.preventDefault(); }};
     document.getElementById("terminalResizeAnchor").onmousedown = function(e) {{ isResizingTerm = true; var scale = workspace.scale || 1; termStartW = parseFloat(termForeignObject.getAttribute("width")); termStartH = parseFloat(termForeignObject.getAttribute("height")); termResStartX = e.clientX / scale; termResStartY = e.clientY / scale; e.stopPropagation(); e.preventDefault(); }};
