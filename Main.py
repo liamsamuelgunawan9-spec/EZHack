@@ -417,6 +417,56 @@ blockly_html_payload = f"""
       trashcan: true
     }});
     
+    // AGGRESSIVE FIX: Rebuild flyout completely on each show
+    var originalShow = Blockly.Flyout.prototype.show;
+    Blockly.Flyout.prototype.show = function(xmlList) {{
+      // Clear all existing blocks in flyout workspace before showing new ones
+      if (this.workspace_) {{
+        var allBlocks = this.workspace_.getAllBlocks();
+        for (var i = allBlocks.length - 1; i >= 0; i--) {{
+          allBlocks[i].dispose(false);
+        }}
+      }}
+      
+      // Call original show method
+      var result = originalShow.call(this, xmlList);
+      
+      // Force immediate reflow cycles
+      setTimeout(() => {{
+        if (this.isVisible()) {{
+          this.reflow();
+          Blockly.svgResize(window.workspace);
+          if (this.workspace_) {{
+            Blockly.svgResize(this.workspace_);
+          }}
+        }}
+      }}, 0);
+      
+      return result;
+    }};
+    
+    // Also hook into the toolbox category click to force rebuild
+    var categoryClickListeners = [];
+    var toolboxDiv = document.querySelector('.blocklyToolboxDiv');
+    if (toolboxDiv) {{
+      var observer = new MutationObserver(function(mutations) {{
+        setTimeout(function() {{
+          if (window.workspace) {{
+            var flyout = window.workspace.getFlyout();
+            if (flyout && flyout.isVisible()) {{
+              flyout.reflow();
+              Blockly.svgResize(window.workspace);
+              if (flyout.workspace_) {{
+                Blockly.svgResize(flyout.workspace_);
+              }}
+            }}
+          }}
+        }}, 10);
+      }});
+      
+      observer.observe(toolboxDiv, {{ childList: true, subtree: true, characterData: true }});
+    }}
+    
     try {{
       var initialXmlText = {safe_xml_state};
       if (initialXmlText && initialXmlText.trim() !== "") {{
