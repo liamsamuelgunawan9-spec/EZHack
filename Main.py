@@ -10,6 +10,7 @@ from groq import Groq, RateLimitError
 
 # Import our separated block module payloads
 import blocks_registry
+import blockly_panels
 
 # --- 1. Setup & Config ---
 load_dotenv()
@@ -542,6 +543,12 @@ blockly_html_payload = f"""
       zoom: {{ controls: true, wheel: true, startScale: 1.0, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 }},
       trashcan: true
     }});
+
+    try {{
+      {blockly_panels.instrumentation_js()}
+    }} catch (err) {{
+      console.error('Block panel instrumentation failed:', err);
+    }}
 
     function resizeBlockly() {{
       if (window.workspace) {{
