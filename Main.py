@@ -404,37 +404,65 @@ blockly_html_payload = f"""
       trashcan: true
     }});
     
-    // TOOLBOX FLY-OUT HANDLER: Robust panel management
-    var lastFlyoutState = false;
-    var flyoutMonitor = setInterval(function() {{
+    // FORCE FLYOUT RENDERING AND VISIBILITY
+    setTimeout(function() {{
+      // Get all toolbox category labels and attach click handlers
+      var toolboxDiv = document.querySelector('.blocklyToolboxDiv');
+      if (toolboxDiv) {{
+        var categoryLabels = toolboxDiv.querySelectorAll('.blocklyTreeLabel');
+        categoryLabels.forEach(function(label) {{
+          label.style.cursor = 'pointer';
+          label.addEventListener('click', function(e) {{
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Get the parent tree row
+            var treeRow = label.closest('.blocklyTreeRow');
+            if (treeRow) {{
+              // Simulate Blockly's category click
+              treeRow.click();
+              
+              // Force a render cycle
+              setTimeout(function() {{
+                if (window.workspace) {{
+                  var flyout = window.workspace.getFlyout();
+                  if (flyout) {{
+                    // Force visibility
+                    var flyoutSvg = flyout.svgGroup_;
+                    if (flyoutSvg) {{
+                      flyoutSvg.style.display = 'block';
+                      flyoutSvg.style.visibility = 'visible';
+                      flyoutSvg.style.opacity = '1';
+                    }}
+                    flyout.reflow();
+                    Blockly.svgResize(window.workspace);
+                    if (flyout.workspace_) {{
+                      Blockly.svgResize(flyout.workspace_);
+                    }}
+                  }}
+                }}
+              }}, 10);
+            }}
+          }}, false);
+        }});
+      }}
+    }}, 300);
+    
+    // CONTINUOUS MONITOR - Force flyout visibility
+    var flyoutVisibilityMonitor = setInterval(function() {{
       if (!window.workspace) return;
       var flyout = window.workspace.getFlyout();
       if (!flyout) return;
       
-      var isVisible = flyout.isVisible();
-      
-      // Detect state change (open or close)
-      if (isVisible !== lastFlyoutState) {{
-        lastFlyoutState = isVisible;
-        
-        // Force immediate reflow and resize
-        try {{
-          flyout.reflow();
-          Blockly.svgResize(window.workspace);
-          if (flyout.workspace_) {{
-            Blockly.svgResize(flyout.workspace_);
-          }}
-          // Additional resize passes to ensure layout stability
-          setTimeout(function() {{
-            if (flyout && flyout.workspace_) {{
-              Blockly.svgResize(flyout.workspace_);
-            }}
-          }}, 50);
-        }} catch(err) {{
-          console.log("Flyout reflow handler:", err);
-        }}
+      // Force SVG visibility if flyout is shown
+      var flyoutSvg = flyout.svgGroup_;
+      if (flyoutSvg && flyout.isVisible()) {{
+        flyoutSvg.style.display = 'block';
+        flyoutSvg.style.visibility = 'visible';
+        flyoutSvg.style.opacity = '1';
+        flyoutSvg.style.pointerEvents = 'auto';
       }}
-    }}, 100);
+    }}, 50);
     
     try {{
       var initialXmlText = {safe_xml_state};
