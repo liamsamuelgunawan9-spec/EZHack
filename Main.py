@@ -316,26 +316,24 @@ blockly_html_payload = f"""
   {blocks_registry.TOOLBOX_XML}
 
   <script>
-    // --- JS BUG FIX: RAPID CLICK RACE CONDITION LOCK ---
+    // --- JS BUG FIX: FORCED RENDER REFRESH ---
     document.addEventListener("DOMContentLoaded", function() {{
         setTimeout(function() {{
             var toolboxDiv = document.querySelector('.blocklyToolboxDiv');
             if (toolboxDiv) {{
-                // Intercept clicks before Blockly processes them
                 toolboxDiv.addEventListener('click', function(e) {{
-                    if (toolboxDiv.getAttribute('data-locked') === 'true') {{
-                        e.stopPropagation(); // Kill the click if it's too fast
-                        e.preventDefault();
-                    }} else {{
-                        // Lock the toolbox for 400ms to allow animation to finish safely
-                        toolboxDiv.setAttribute('data-locked', 'true');
+                    var target = e.target.closest('.blocklyTreeRow');
+                    if (target) {{
                         setTimeout(function() {{
-                            toolboxDiv.setAttribute('data-locked', 'false');
-                        }}, 400); 
+                            if (window.workspace) {{
+                                window.workspace.render();
+                                Blockly.svgResize(window.workspace);
+                            }}
+                        }}, 50);
                     }}
-                }}, true); // The 'true' runs this in the Capture phase (first line of defense)
+                }}, true);
             }}
-        }}, 500); // Wait 500ms for Blockly to finish building the UI
+        }}, 500);
     }});
     // ---------------------------------------------------
 
@@ -422,7 +420,7 @@ blockly_html_payload = f"""
     {blocks_registry.BLOCK_DEFINITIONS_JS}
     {blocks_registry.PYTHON_GENERATORS_JS}
 
-    var workspace = Blockly.inject('blocklyDiv', {{
+    window.workspace = Blockly.inject('blocklyDiv', {{
       toolbox: document.getElementById('toolbox'),
       grid: {{ spacing: 40, length: 40, colour: 'rgba(0, 255, 102, 0.2)', snap: true }}, 
       move: {{ scrollbars: true, drag: true, wheel: true }},
@@ -434,13 +432,13 @@ blockly_html_payload = f"""
       var initialXmlText = {safe_xml_state};
       if (initialXmlText && initialXmlText.trim() !== "") {{
         var dom = Blockly.utils.xml.textToDom(initialXmlText);
-        Blockly.Xml.domToWorkspace(dom, workspace);
+        Blockly.Xml.domToWorkspace(dom, window.workspace);
       }}
     }} catch (err) {{
       console.error("Hydration Layer Failure:", err);
     }}
 
-    var canvas = workspace.getCanvas();
+    var canvas = window.workspace.getCanvas();
 
     var termForeignObject = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
     termForeignObject.setAttribute("x", "40"); termForeignObject.setAttribute("y", "40");
@@ -507,9 +505,9 @@ blockly_html_payload = f"""
     function handleTabSend() {{
       var inputField = document.getElementById("aiTabInputField"); var text = inputField.value.trim();
       if(!text) return; inputField.value = "";
-      var topBlocks = workspace.getTopBlocks(false); var generatedPythonCode = "";
+      var topBlocks = window.workspace.getTopBlocks(false); var generatedPythonCode = "";
       for (var i = 0; i < topBlocks.length; i++) {{ if (topBlocks[i].type === 'when_sequence_activated') {{ generatedPythonCode += Blockly.Python.blockToCode(topBlocks[i]); }} }}
-      var xmlDom = Blockly.Xml.workspaceToDom(workspace); var currentXmlText = Blockly.Xml.domToText(xmlDom);
+      var xmlDom = Blockly.Xml.workspaceToDom(window.workspace); var currentXmlText = Blockly.Xml.domToText(xmlDom);
       var baseUrl = window.parent.location.origin + window.parent.location.pathname;
       var targetUrl = baseUrl + "?payload_matrix=" + encodeURIComponent(generatedPythonCode) + "&xml_matrix=" + encodeURIComponent(currentXmlText) + "&ai_msg=" + encodeURIComponent(text);
       window.parent.location.href = targetUrl;
@@ -518,15 +516,15 @@ blockly_html_payload = f"""
     document.getElementById("aiTabInputField").onkeydown = function(e) {{ if(e.key === "Enter") {{ handleTabSend(); }} }};
 
     var isDraggingTerm = false, termStartX, termStartY, isResizingTerm = false, termStartW, termStartH, termResStartX, termResStartY;
-    document.getElementById("terminalHeader").onmousedown = function(e) {{ isDraggingTerm = true; var scale = workspace.scale || 1; termStartX = e.clientX / scale - parseFloat(termForeignObject.getAttribute("x")); termStartY = e.clientY / scale - parseFloat(termForeignObject.getAttribute("y")); e.stopPropagation(); e.preventDefault(); }};
-    document.getElementById("terminalResizeAnchor").onmousedown = function(e) {{ isResizingTerm = true; var scale = workspace.scale || 1; termStartW = parseFloat(termForeignObject.getAttribute("width")); termStartH = parseFloat(termForeignObject.getAttribute("height")); termResStartX = e.clientX / scale; termResStartY = e.clientY / scale; e.stopPropagation(); e.preventDefault(); }};
+    document.getElementById("terminalHeader").onmousedown = function(e) {{ isDraggingTerm = true; var scale = window.workspace.scale || 1; termStartX = e.clientX / scale - parseFloat(termForeignObject.getAttribute("x")); termStartY = e.clientY / scale - parseFloat(termForeignObject.getAttribute("y")); e.stopPropagation(); e.preventDefault(); }};
+    document.getElementById("terminalResizeAnchor").onmousedown = function(e) {{ isResizingTerm = true; var scale = window.workspace.scale || 1; termStartW = parseFloat(termForeignObject.getAttribute("width")); termStartH = parseFloat(termForeignObject.getAttribute("height")); termResStartX = e.clientX / scale; termResStartY = e.clientY / scale; e.stopPropagation(); e.preventDefault(); }};
 
     var isDraggingAI = false, aiStartX, aiStartY, isResizingAI = false, aiStartW, aiStartH, aiResStartX, aiResStartY;
-    document.getElementById("aiTabHeader").onmousedown = function(e) {{ isDraggingAI = true; var scale = workspace.scale || 1; aiStartX = e.clientX / scale - parseFloat(aiForeignObject.getAttribute("x")); aiStartY = e.clientY / scale - parseFloat(aiForeignObject.getAttribute("y")); e.stopPropagation(); e.preventDefault(); }};
-    document.getElementById("aiTabResizeHandle").onmousedown = function(e) {{ isResizingAI = true; var scale = workspace.scale || 1; aiStartW = parseFloat(aiForeignObject.getAttribute("width")); aiStartH = parseFloat(aiForeignObject.getAttribute("height")); aiResStartX = e.clientX / scale; aiResStartY = e.clientY / scale; e.stopPropagation(); e.preventDefault(); }};
+    document.getElementById("aiTabHeader").onmousedown = function(e) {{ isDraggingAI = true; var scale = window.workspace.scale || 1; aiStartX = e.clientX / scale - parseFloat(aiForeignObject.getAttribute("x")); aiStartY = e.clientY / scale - parseFloat(aiForeignObject.getAttribute("y")); e.stopPropagation(); e.preventDefault(); }};
+    document.getElementById("aiTabResizeHandle").onmousedown = function(e) {{ isResizingAI = true; var scale = window.workspace.scale || 1; aiStartW = parseFloat(aiForeignObject.getAttribute("width")); aiStartH = parseFloat(aiForeignObject.getAttribute("height")); aiResStartX = e.clientX / scale; aiResStartY = e.clientY / scale; e.stopPropagation(); e.preventDefault(); }};
 
     document.addEventListener("mousemove", function(e) {{
-      var scale = workspace.scale || 1;
+      var scale = window.workspace.scale || 1;
       if (isDraggingTerm) {{ termForeignObject.setAttribute("x", e.clientX / scale - termStartX); termForeignObject.setAttribute("y", e.clientY / scale - termStartY); }}
       if (isResizingTerm) {{ var newWT = termStartW + (e.clientX / scale - termResStartX); var newHT = termStartH + (e.clientY / scale - termResStartY); if (newWT > 200) termForeignObject.setAttribute("width", newWT); if (newHT > 150) termForeignObject.setAttribute("height", newHT); }}
       if (isDraggingAI) {{ aiForeignObject.setAttribute("x", e.clientX / scale - aiStartX); aiForeignObject.setAttribute("y", e.clientY / scale - aiStartY); }}
@@ -536,9 +534,9 @@ blockly_html_payload = f"""
     document.addEventListener("mouseup", function() {{ isDraggingTerm = false; isResizingTerm = false; isDraggingAI = false; isResizingAI = false; }});
 
     function processLiveDebugCompilations() {{
-      var topBlocks = workspace.getTopBlocks(false); var generatedPythonCode = ""; var sequenceFound = false;
+      var topBlocks = window.workspace.getTopBlocks(false); var generatedPythonCode = ""; var sequenceFound = false;
       for (var i = 0; i < topBlocks.length; i++) {{ if (topBlocks[i].type === 'when_sequence_activated') {{ sequenceFound = true; generatedPythonCode += Blockly.Python.blockToCode(topBlocks[i]); }} }}
-      var xmlDom = Blockly.Xml.workspaceToDom(workspace); var currentXmlText = Blockly.Xml.domToText(xmlDom);
+      var xmlDom = Blockly.Xml.workspaceToDom(window.workspace); var currentXmlText = Blockly.Xml.domToText(xmlDom);
       if(sequenceFound) {{
         var targetUrl = window.parent.location.origin + window.parent.location.pathname + "?payload_matrix=" + encodeURIComponent(generatedPythonCode) + "&xml_matrix=" + encodeURIComponent(currentXmlText);
         if(window.parent.location.search !== "?payload_matrix=" + encodeURIComponent(generatedPythonCode) + "&xml_matrix=" + encodeURIComponent(currentXmlText)) {{ window.parent.history.replaceState({{}}, '', targetUrl); }}
@@ -546,7 +544,7 @@ blockly_html_payload = f"""
     }}
 
     var compileTimeout = null;
-    workspace.addChangeListener(function(e) {{
+    window.workspace.addChangeListener(function(e) {{
       if (e.type === Blockly.Events.BLOCK_CREATE || e.type === Blockly.Events.BLOCK_MOVE || e.type === Blockly.Events.BLOCK_CHANGE || e.type === Blockly.Events.BLOCK_DELETE) {{
         clearTimeout(compileTimeout); compileTimeout = setTimeout(processLiveDebugCompilations, 500);
       }}
