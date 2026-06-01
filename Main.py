@@ -422,8 +422,10 @@ blockly_html_payload = f"""
       trashcan: true
     }});
     
-    // Track flyout visibility state
-    var lastFlyoutVisible = false;
+    // Track flyout state and force rebuild on corruption
+    var flyoutRenderCount = 0;
+    var lastBlockCount = 0;
+    var corruptionDetected = false;
     
     setInterval(function() {{
       if (!window.workspace) return;
@@ -434,31 +436,43 @@ blockly_html_payload = f"""
       var svgGroup = flyout.svgGroup_;
       if (!svgGroup) return;
       
-      var isNowVisible = flyout.isVisible();
+      var isVisible = flyout.isVisible();
       
-      // When flyout opens, force reflow
-      if (isNowVisible && !lastFlyoutVisible) {{
-        setTimeout(function() {{
-          try {{
-            flyout.reflow();
-            Blockly.svgResize(window.workspace);
-            if (flyout.workspace_) {{
-              Blockly.svgResize(flyout.workspace_);
+      // When flyout is visible, check for corruption
+      if (isVisible) {{
+        // Count actual blocks rendered in the flyout
+        var blockCount = 0;
+        try {{
+          if (flyout.workspace_) {{
+            blockCount = flyout.workspace_.getTopBlocks().length;
+          }}
+        }} catch(e) {{ }}
+        
+        // If flyout appears but has no blocks, force rebuild
+        if (blockCount === 0 && corruptionDetected === false) {{
+          corruptionDetected = true;
+          console.log("Flyout corruption detected - forcing rebuild");
+          
+          // Force hide and reshow flyout
+          flyout.hide();
+          setTimeout(function() {{
+            // Re-open the current toolbox category
+            var selectedRow = document.querySelector('.blocklyTreeSelected');
+            if (selectedRow) {{
+              selectedRow.click();
             }}
-          }} catch(e) {{ }}
-        }}, 0);
-      }}
-      
-      // Always ensure SVG visibility
-      if (isNowVisible) {{
+          }}, 50);
+        }} else if (blockCount > 0) {{
+          corruptionDetected = false;
+        }}
+        
+        // Ensure visibility
         svgGroup.style.display = 'block';
         svgGroup.style.visibility = 'visible';
         svgGroup.style.opacity = '1';
         svgGroup.style.pointerEvents = 'auto';
       }}
-      
-      lastFlyoutVisible = isNowVisible;
-    }}, 100);
+    }}, 150);
     
     try {{
       var initialXmlText = {safe_xml_state};
