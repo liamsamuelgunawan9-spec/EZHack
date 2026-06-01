@@ -253,16 +253,17 @@ blockly_html_payload = f"""
     ::-webkit-scrollbar {{ display: none; }}
     
     #workspaceWrapper {{ position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; flex-direction: column; padding: 0; box-sizing: border-box; }}
-    #blocklyDiv {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }}
+    #blocklyDiv {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; overflow: visible !important; }}
     
     #particle-canvas {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background-color: transparent; }}
-    .blocklySvg {{ background-color: rgba(2, 4, 10, 0.85) !important; }}
+    .blocklySvg {{ background-color: rgba(2, 4, 10, 0.85) !important; overflow: visible !important; }}
     
     body .blocklyToolboxDiv {{
         background-color: #0b0f19 !important;
         border-right: 2px solid #00ff66 !important;
         -webkit-user-select: none !important;
         user-select: none !important;
+        z-index: 100 !important;
     }}
     body .blocklyTreeRow {{
         background-color: #0b0f19 !important;
@@ -285,8 +286,20 @@ blockly_html_payload = f"""
     body .blocklyTreeSelected .blocklyTreeLabel {{
         color: #000000 !important;
     }}
-    .blocklyFlyout {{ overflow: visible !important; z-index: 9999 !important; }}
-    .blocklyFlyoutBackground {{ fill: #0b0f19 !important; fill-opacity: 0.95 !important; border-right: 1px solid #00ff66; }}
+    .blocklyFlyout {{ 
+      overflow: visible !important; 
+      z-index: 10000 !important;
+      pointer-events: auto !important;
+    }}
+    .blocklyFlyoutBackground {{ 
+      fill: #0b0f19 !important; 
+      fill-opacity: 0.95 !important; 
+      border-right: 1px solid #00ff66;
+      pointer-events: auto !important;
+    }}
+    .blocklyFlyoutSvg {{
+      overflow: visible !important;
+    }}
     
     .hud-window {{ display: flex; flex-direction: column; height: 100%; background-color: #090d16; border: 1px solid #00ff66; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); overflow: hidden; position: relative; }}
     .hud-header {{ padding: 8px 12px; cursor: move; background-color: #02040a; border-bottom: 1px solid #00ff66; font-weight: bold; color: #00ff66; font-size: 11px; display: flex; justify-content: space-between; align-items: center; user-select: none; }}
@@ -403,66 +416,6 @@ blockly_html_payload = f"""
       zoom: {{ controls: true, wheel: true, startScale: 1.0, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 }},
       trashcan: true
     }});
-    
-    // FORCE FLYOUT RENDERING AND VISIBILITY
-    setTimeout(function() {{
-      // Get all toolbox category labels and attach click handlers
-      var toolboxDiv = document.querySelector('.blocklyToolboxDiv');
-      if (toolboxDiv) {{
-        var categoryLabels = toolboxDiv.querySelectorAll('.blocklyTreeLabel');
-        categoryLabels.forEach(function(label) {{
-          label.style.cursor = 'pointer';
-          label.addEventListener('click', function(e) {{
-            e.preventDefault();
-            e.stopPropagation();
-            
-            // Get the parent tree row
-            var treeRow = label.closest('.blocklyTreeRow');
-            if (treeRow) {{
-              // Simulate Blockly's category click
-              treeRow.click();
-              
-              // Force a render cycle
-              setTimeout(function() {{
-                if (window.workspace) {{
-                  var flyout = window.workspace.getFlyout();
-                  if (flyout) {{
-                    // Force visibility
-                    var flyoutSvg = flyout.svgGroup_;
-                    if (flyoutSvg) {{
-                      flyoutSvg.style.display = 'block';
-                      flyoutSvg.style.visibility = 'visible';
-                      flyoutSvg.style.opacity = '1';
-                    }}
-                    flyout.reflow();
-                    Blockly.svgResize(window.workspace);
-                    if (flyout.workspace_) {{
-                      Blockly.svgResize(flyout.workspace_);
-                    }}
-                  }}
-                }}
-              }}, 10);
-            }}
-          }}, false);
-        }});
-      }}
-    }}, 300);
-    
-    // CONTINUOUS MONITOR - Force flyout visibility
-    var flyoutVisibilityMonitor = setInterval(function() {{
-      if (!window.workspace) return;
-      var flyout = window.workspace.getFlyout();
-      if (!flyout) return;
-      
-      // Force SVG visibility if flyout is shown
-      var flyoutSvg = flyout.svgGroup_;
-      if (flyoutSvg && flyout.isVisible()) {{
-        flyoutSvg.style.display = 'block';
-        flyoutSvg.style.visibility = 'visible';
-        flyoutSvg.style.opacity = '1';
-        flyoutSvg.style.pointerEvents = 'auto';
-      }}
-    }}, 50);
     
     try {{
       var initialXmlText = {safe_xml_state};
