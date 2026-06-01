@@ -8,8 +8,8 @@ import streamlit.components.v1 as components
 from dotenv import load_dotenv
 from groq import Groq, RateLimitError
 
-# Import our separated block module payloads
-import blocks_registry
+# Import our separated block module payloads (Fixed to cleanly match the file 'block_registery.py')
+import block_registery as blocks_registry
 
 # --- 1. Setup & Config ---
 load_dotenv()
@@ -183,6 +183,8 @@ if "chat_messages" not in st.session_state:
 
 # --- 3. Reactive State Updates & Executions ---
 try:
+    rerun_required = False
+
     if "payload_matrix" in st.query_params:
         st.session_state["synced_workspace_code"] = urllib.parse.unquote(st.query_params["payload_matrix"])
         
@@ -191,7 +193,7 @@ try:
         
     if "ai_msg" in st.query_params and st.query_params["ai_msg"]:
         user_text = urllib.parse.unquote(st.query_params["ai_msg"])
-        st.query_params["ai_msg"] = ""
+        del st.query_params["ai_msg"]  # Clean query params to prevent reload loop anomalies
         st.session_state["chat_messages"].append({"role": "user", "content": user_text})
         
         if ai_client:
@@ -211,10 +213,11 @@ try:
             api_messages = [{"role": "system", "content": system_context}] + st.session_state["chat_messages"]
             reply = generate_completion_with_fallback(api_messages)
             st.session_state["chat_messages"].append({"role": "assistant", "content": reply})
+        rerun_required = True
 
     if "run_sequence" in st.query_params and st.query_params["run_sequence"]:
         sequence_id_name = urllib.parse.unquote(st.query_params["run_sequence"])
-        st.query_params["run_sequence"] = ""
+        del st.query_params["run_sequence"]  # Clean query params to prevent duplicate execution triggers
         
         st.session_state["terminal_history_output"] += f"\n🤖 Booting sequence pipeline [{sequence_id_name}]...\nRunning target compiled script layers...\n"
         code_to_run = st.session_state["synced_workspace_code"].strip()
@@ -225,6 +228,10 @@ try:
                 st.session_state["terminal_history_output"] += "\n🟢 Execution automation run complete!"
             except Exception as runtime_err:
                 st.session_state["terminal_history_output"] += f"\n💥 PIPELINE BREAK: {str(runtime_err)}"
+        rerun_required = True
+
+    if rerun_required:
+        st.rerun()
 except Exception:
     pass
 
@@ -316,16 +323,24 @@ blockly_html_payload = f"""
   {blocks_registry.TOOLBOX_XML}
 
   <script>
-    // --- JS BUG FIX: NATIVE RESIZE OBSERVER ---
-    // Instead of intercepting DOM clicks (which breaks Blockly's flyout state),
-    // we use a ResizeObserver to ensure the canvas is always exactly aligned.
-    const resizeObserver = new ResizeObserver(() => {{
-        if (window.workspace) {{
-            Blockly.svgResize(window.workspace);
-        }}
-    }});
+    // --- JS BUG FIX: FORCED RENDER REFRESH ---
     document.addEventListener("DOMContentLoaded", function() {{
-        resizeObserver.observe(document.getElementById('workspaceWrapper'));
+        setTimeout(function() {{
+            var toolboxDiv = document.querySelector('.blocklyToolboxDiv');
+            if (toolboxDiv) {{
+                toolboxDiv.addEventListener('click', function(e) {{
+                    var target = e.target.closest('.blocklyTreeRow');
+                    if (target) {{
+                        setTimeout(function() {{
+                            if (window.workspace) {{
+                                window.workspace.render();
+                                Blockly.svgResize(window.workspace);
+                            }}
+                        }}, 50);
+                    }}
+                }}, true);
+            }}
+        }}, 500);
     }});
     // ---------------------------------------------------
 
@@ -418,16 +433,6 @@ blockly_html_payload = f"""
       move: {{ scrollbars: true, drag: true, wheel: true }},
       zoom: {{ controls: true, wheel: true, startScale: 1.0, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 }},
       trashcan: true
-    }});
-    
-    // Listen for category clicks using Blockly's internal event loop
-    window.workspace.addChangeListener(function(e) {{
-        if (e.type === Blockly.Events.TOOLBOX_ITEM_SELECT) {{
-            // Nudge a soft resize so the UI recalculates cleanly without resetting
-            setTimeout(function() {{
-                Blockly.svgResize(window.workspace);
-            }}, 50);
-        }}
     }});
     
     try {{
