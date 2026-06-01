@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from groq import Groq, RateLimitError
 
 # Import our separated block module payloads
-import block_registry
+import blocks_registry
 
 # --- 1. Setup & Config ---
 load_dotenv()
@@ -520,23 +520,79 @@ blockly_html_payload = f"""
     document.getElementById("aiTabSendBtn").onclick = handleTabSend;
     document.getElementById("aiTabInputField").onkeydown = function(e) {{ if(e.key === "Enter") {{ handleTabSend(); }} }};
 
-    var isDraggingTerm = false, termStartX, termStartY, isResizingTerm = false, termStartW, termStartH, termResStartX, termResStartY;
-    document.getElementById("terminalHeader").onmousedown = function(e) {{ isDraggingTerm = true; var scale = window.workspace.scale || 1; termStartX = e.clientX / scale - parseFloat(termForeignObject.getAttribute("x")); termStartY = e.clientY / scale - parseFloat(termForeignObject.getAttribute("y")); e.stopPropagation(); e.preventDefault(); }};
-    document.getElementById("terminalResizeAnchor").onmousedown = function(e) {{ isResizingTerm = true; var scale = window.workspace.scale || 1; termStartW = parseFloat(termForeignObject.getAttribute("width")); termStartH = parseFloat(termForeignObject.getAttribute("height")); termResStartX = e.clientX / scale; termResStartY = e.clientY / scale; e.stopPropagation(); e.preventDefault(); }};
-
-    var isDraggingAI = false, aiStartX, aiStartY, isResizingAI = false, aiStartW, aiStartH, aiResStartX, aiResStartY;
-    document.getElementById("aiTabHeader").onmousedown = function(e) {{ isDraggingAI = true; var scale = window.workspace.scale || 1; aiStartX = e.clientX / scale - parseFloat(aiForeignObject.getAttribute("x")); aiStartY = e.clientY / scale - parseFloat(aiForeignObject.getAttribute("y")); e.stopPropagation(); e.preventDefault(); }};
-    document.getElementById("aiTabResizeHandle").onmousedown = function(e) {{ isResizingAI = true; var scale = window.workspace.scale || 1; aiStartW = parseFloat(aiForeignObject.getAttribute("width")); aiStartH = parseFloat(aiForeignObject.getAttribute("height")); aiResStartX = e.clientX / scale; aiResStartY = e.clientY / scale; e.stopPropagation(); e.preventDefault(); }};
-
-    document.addEventListener("mousemove", function(e) {{
-      var scale = window.workspace.scale || 1;
-      if (isDraggingTerm) {{ termForeignObject.setAttribute("x", e.clientX / scale - termStartX); termForeignObject.setAttribute("y", e.clientY / scale - termStartY); }}
-      if (isResizingTerm) {{ var newWT = termStartW + (e.clientX / scale - termResStartX); var newHT = termStartH + (e.clientY / scale - termResStartY); if (newWT > 200) termForeignObject.setAttribute("width", newWT); if (newHT > 150) termForeignObject.setAttribute("height", newHT); }}
-      if (isDraggingAI) {{ aiForeignObject.setAttribute("x", e.clientX / scale - aiStartX); aiForeignObject.setAttribute("y", e.clientY / scale - aiStartY); }}
-      if (isResizingAI) {{ var newWA = aiStartW + (e.clientX / scale - aiResStartX); var newHA = aiStartH + (e.clientY / scale - aiResStartY); if (newWA > 200) aiForeignObject.setAttribute("width", newWA); if (newHA > 200) aiForeignObject.setAttribute("height", newHA); }}
+    var isDraggingTerm = false, termStartX, termStartY, termScale, isResizingTerm = false, termStartW, termStartH, termResStartX, termResStartY;
+    var isDraggingAI = false, aiStartX, aiStartY, aiScale, isResizingAI = false, aiStartW, aiStartH, aiResStartX, aiResStartY;
+    
+    function resetAllDrag() {{
+      isDraggingTerm = false; isResizingTerm = false; isDraggingAI = false; isResizingAI = false;
+    }}
+    
+    document.getElementById("terminalHeader").addEventListener("mousedown", function(e) {{ 
+      termScale = window.workspace.scale || 1; 
+      isDraggingTerm = true; 
+      termStartX = e.clientX / termScale - parseFloat(termForeignObject.getAttribute("x")); 
+      termStartY = e.clientY / termScale - parseFloat(termForeignObject.getAttribute("y")); 
+      e.stopPropagation(); 
+      e.preventDefault(); 
     }});
     
-    document.addEventListener("mouseup", function() {{ isDraggingTerm = false; isResizingTerm = false; isDraggingAI = false; isResizingAI = false; }});
+    document.getElementById("terminalResizeAnchor").addEventListener("mousedown", function(e) {{ 
+      termScale = window.workspace.scale || 1; 
+      isResizingTerm = true; 
+      termStartW = parseFloat(termForeignObject.getAttribute("width")); 
+      termStartH = parseFloat(termForeignObject.getAttribute("height")); 
+      termResStartX = e.clientX / termScale; 
+      termResStartY = e.clientY / termScale; 
+      e.stopPropagation(); 
+      e.preventDefault(); 
+    }});
+
+    document.getElementById("aiTabHeader").addEventListener("mousedown", function(e) {{ 
+      aiScale = window.workspace.scale || 1; 
+      isDraggingAI = true; 
+      aiStartX = e.clientX / aiScale - parseFloat(aiForeignObject.getAttribute("x")); 
+      aiStartY = e.clientY / aiScale - parseFloat(aiForeignObject.getAttribute("y")); 
+      e.stopPropagation(); 
+      e.preventDefault(); 
+    }});
+    
+    document.getElementById("aiTabResizeHandle").addEventListener("mousedown", function(e) {{ 
+      aiScale = window.workspace.scale || 1; 
+      isResizingAI = true; 
+      aiStartW = parseFloat(aiForeignObject.getAttribute("width")); 
+      aiStartH = parseFloat(aiForeignObject.getAttribute("height")); 
+      aiResStartX = e.clientX / aiScale; 
+      aiResStartY = e.clientY / aiScale; 
+      e.stopPropagation(); 
+      e.preventDefault(); 
+    }});
+
+    document.addEventListener("mousemove", function(e) {{
+      if (isDraggingTerm) {{ 
+        termForeignObject.setAttribute("x", e.clientX / termScale - termStartX); 
+        termForeignObject.setAttribute("y", e.clientY / termScale - termStartY); 
+      }}
+      if (isResizingTerm) {{ 
+        var newWT = termStartW + (e.clientX / termScale - termResStartX); 
+        var newHT = termStartH + (e.clientY / termScale - termResStartY); 
+        if (newWT > 200) termForeignObject.setAttribute("width", newWT); 
+        if (newHT > 150) termForeignObject.setAttribute("height", newHT); 
+      }}
+      if (isDraggingAI) {{ 
+        aiForeignObject.setAttribute("x", e.clientX / aiScale - aiStartX); 
+        aiForeignObject.setAttribute("y", e.clientY / aiScale - aiStartY); 
+      }}
+      if (isResizingAI) {{ 
+        var newWA = aiStartW + (e.clientX / aiScale - aiResStartX); 
+        var newHA = aiStartH + (e.clientY / aiScale - aiResStartY); 
+        if (newWA > 200) aiForeignObject.setAttribute("width", newWA); 
+        if (newHA > 200) aiForeignObject.setAttribute("height", newHA); 
+      }}
+    }}, false);
+    
+    window.addEventListener("mouseup", resetAllDrag, false);
+    document.addEventListener("mouseup", resetAllDrag, false);
+    window.addEventListener("mouseleave", resetAllDrag, false);
 
     function processLiveDebugCompilations() {{
       var topBlocks = window.workspace.getTopBlocks(false); var generatedPythonCode = ""; var sequenceFound = false;
