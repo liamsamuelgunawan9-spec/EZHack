@@ -404,34 +404,37 @@ blockly_html_payload = f"""
       trashcan: true
     }});
     
-    // THE ULTIMATE FIX: Disable transition animations and bind directly to click captures
-    document.addEventListener("DOMContentLoaded", function() {{
-        setTimeout(function() {{
-            var toolboxContainer = document.querySelector('.blocklyToolboxDiv');
-            if (toolboxContainer) {{
-                toolboxContainer.addEventListener('click', function(e) {{
-                    // Intercept immediate changes and force an explicit layout evaluation loop
-                    for(let offset of [0, 50, 150, 300]) {{
-                        setTimeout(function() {{
-                            if (window.workspace) {{
-                                Blockly.svgResize(window.workspace);
-                                var flyout = window.workspace.getFlyout();
-                                if (flyout) {{
-                                    if (flyout.isVisible()) {{
-                                        flyout.reflow();
-                                        // Re-render blocks inside the flyout directly
-                                        if(flyout.workspace_) {{
-                                            Blockly.svgResize(flyout.workspace_);
-                                        }}
-                                    }}
-                                }}
-                            }}
-                        }}, offset);
-                    }}
-                }}, true);
+    // TOOLBOX FLY-OUT HANDLER: Robust panel management
+    var lastFlyoutState = false;
+    var flyoutMonitor = setInterval(function() {{
+      if (!window.workspace) return;
+      var flyout = window.workspace.getFlyout();
+      if (!flyout) return;
+      
+      var isVisible = flyout.isVisible();
+      
+      // Detect state change (open or close)
+      if (isVisible !== lastFlyoutState) {{
+        lastFlyoutState = isVisible;
+        
+        // Force immediate reflow and resize
+        try {{
+          flyout.reflow();
+          Blockly.svgResize(window.workspace);
+          if (flyout.workspace_) {{
+            Blockly.svgResize(flyout.workspace_);
+          }}
+          // Additional resize passes to ensure layout stability
+          setTimeout(function() {{
+            if (flyout && flyout.workspace_) {{
+              Blockly.svgResize(flyout.workspace_);
             }}
-        }}, 500);
-    }});
+          }}, 50);
+        }} catch(err) {{
+          console.log("Flyout reflow handler:", err);
+        }}
+      }}
+    }}, 100);
     
     try {{
       var initialXmlText = {safe_xml_state};
