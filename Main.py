@@ -252,61 +252,13 @@ blockly_html_payload = f"""
     html, body {{ height: 100%; width: 100%; margin: 0; padding: 0; background-color: transparent; overflow: visible !important; }}
     ::-webkit-scrollbar {{ display: none; }}
     
-    #workspaceWrapper {{ position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; flex-direction: column; padding: 0; box-sizing: border-box; overflow: visible !important; }}
-    #blocklyDiv {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; overflow: visible !important; }}
+    #workspaceWrapper {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; padding: 0; box-sizing: border-box; }}
+    #blocklyDiv {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }}
     
     #particle-canvas {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background-color: transparent; }}
-    .blocklySvg {{ background-color: rgba(2, 4, 10, 0.85) !important; overflow: visible !important; }}
+    .blocklySvg {{ background-color: rgba(2, 4, 10, 0.85) !important; }}
     
-    body .blocklyToolboxDiv {{
-        background-color: #0b0f19 !important;
-        border-right: 2px solid #00ff66 !important;
-        -webkit-user-select: none !important;
-        user-select: none !important;
-        z-index: 100 !important;
-    }}
-    body .blocklyTreeRow {{
-        background-color: #0b0f19 !important;
-        border-radius: 4px !important;
-        transition: background-color 0.1s;
-    }}
-    body .blocklyTreeLabel {{
-        color: #ffffff !important;
-        font-family: monospace !important;
-        font-size: 14px !important;
-        font-weight: bold !important;
-        padding: 5px !important;
-    }}
-    body .blocklyTreeRow:hover {{
-        background-color: rgba(0, 255, 102, 0.2) !important;
-    }}
-    body .blocklyTreeSelected .blocklyTreeRow {{
-        background-color: #00ff66 !important;
-    }}
-    body .blocklyTreeSelected .blocklyTreeLabel {{
-        color: #000000 !important;
-    }}
-    .blocklyFlyout {{ 
-      overflow: visible !important; 
-      z-index: 10000 !important;
-      pointer-events: auto !important;
-    }}
-    .blocklyFlyoutBackground {{ 
-      fill: #0b0f19 !important; 
-      fill-opacity: 0.95 !important; 
-      border-right: 1px solid #00ff66;
-      pointer-events: auto !important;
-    }}
-    .blocklyFlyoutSvg {{
-      overflow: visible !important;
-      clip-path: none !important;
-      clip: none !important;
-    }}
-    .blocklyWorkspace {{
-      overflow: visible !important;
-    }}
-    
-    .hud-window {{ display: flex; flex-direction: column; height: 100%; background-color: #090d16; border: 1px solid #00ff66; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); overflow: hidden; position: relative; }}
+    .hud-window {{ display: flex; flex-direction: column; height: 100%; background-color: #090d16; border: 1px solid #00ff66; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); overflow: hidden; position: absolute; z-index: 999; }}
     .hud-header {{ padding: 8px 12px; cursor: move; background-color: #02040a; border-bottom: 1px solid #00ff66; font-weight: bold; color: #00ff66; font-size: 11px; display: flex; justify-content: space-between; align-items: center; user-select: none; }}
     .hud-body {{ flex: 1; padding: 10px; background-color: #05070f; overflow-y: auto; font-size: 11px; font-family: monospace; line-height: 1.4; }}
     .resize-handle {{ position: absolute; bottom: 0; right: 0; width: 14px; height: 14px; cursor: se-resize; background: linear-gradient(135deg, transparent 50%, #00ff66 50%); border-bottom-right-radius: 6px; z-index: 100; }}
@@ -423,11 +375,13 @@ blockly_html_payload = f"""
     }});
 
     // Keep Blockly workspace responsive after initial render
-    setTimeout(function() {{
+    function resizeBlockly() {{
       if (window.workspace) {{
         Blockly.svgResize(window.workspace);
       }}
-    }}, 0);
+    }}
+    setTimeout(resizeBlockly, 0);
+    window.addEventListener('resize', resizeBlockly);
     
     try {{
       var initialXmlText = {safe_xml_state};
@@ -439,51 +393,53 @@ blockly_html_payload = f"""
       console.error("Hydration Layer Failure:", err);
     }}
 
-    var canvas = window.workspace.getCanvas();
+    var workspaceWrapperEl = document.getElementById('workspaceWrapper');
 
-    var termForeignObject = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-    termForeignObject.setAttribute("x", "40"); termForeignObject.setAttribute("y", "40");
-    termForeignObject.setAttribute("width", "420"); termForeignObject.setAttribute("height", "280");
-    var termTabDiv = document.createElement("div"); termTabDiv.style.width = "100%"; termTabDiv.style.height = "100%";
-    termTabDiv.innerHTML = `
-      <div id="terminalWindow" class="hud-window">
-        <div id="terminalHeader" class="hud-header">
-          <span>💻 SYSTEM TERMINAL OUTPUT</span><span style="font-size:9px; color:#888;">[DRAGGABLE WORKSPACE TAB]</span>
-        </div>
-        <div class="hud-body"><pre id="terminalLogOutput" style="margin: 0; color: #00ff66; font-size: 12px; line-height: 1.4; white-space: pre-wrap; font-family: monospace;"></pre></div>
-        <div class="resize-handle" id="terminalResizeAnchor"></div>
+    var termPanel = document.createElement('div');
+    termPanel.id = 'terminalPanel';
+    termPanel.className = 'hud-window';
+    termPanel.style.left = '40px';
+    termPanel.style.top = '40px';
+    termPanel.style.width = '420px';
+    termPanel.style.height = '280px';
+    termPanel.innerHTML = `
+      <div id="terminalHeader" class="hud-header">
+        <span>💻 SYSTEM TERMINAL OUTPUT</span><span style="font-size:9px; color:#888;">[DRAGGABLE WORKSPACE TAB]</span>
       </div>
+      <div class="hud-body"><pre id="terminalLogOutput" style="margin: 0; color: #00ff66; font-size: 12px; line-height: 1.4; white-space: pre-wrap; font-family: monospace;"></pre></div>
+      <div class="resize-handle" id="terminalResizeAnchor"></div>
     `;
-    termForeignObject.appendChild(termTabDiv); canvas.appendChild(termForeignObject);
-    termTabDiv.addEventListener("mousedown", function(e) {{ e.stopPropagation(); }});
-    termTabDiv.addEventListener("pointerdown", function(e) {{ e.stopPropagation(); }});
-    termTabDiv.addEventListener("keydown", function(e) {{ e.stopPropagation(); }});
+    workspaceWrapperEl.appendChild(termPanel);
+    termPanel.addEventListener("mousedown", function(e) {{ e.stopPropagation(); }});
+    termPanel.addEventListener("pointerdown", function(e) {{ e.stopPropagation(); }});
+    termPanel.addEventListener("keydown", function(e) {{ e.stopPropagation(); }});
 
     var termLogOutput = document.getElementById("terminalLogOutput");
     termLogOutput.textContent = {safe_terminal_output};
     termLogOutput.parentElement.scrollTop = termLogOutput.parentElement.scrollHeight;
 
-    var aiForeignObject = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-    aiForeignObject.setAttribute("x", "480"); aiForeignObject.setAttribute("y", "40");
-    aiForeignObject.setAttribute("width", "390"); aiForeignObject.setAttribute("height", "520");
-    var aiTabDiv = document.createElement("div"); aiTabDiv.style.width = "100%"; aiTabDiv.style.height = "100%";
-    aiTabDiv.innerHTML = `
-      <div id="aiTabWindow" class="hud-window ai-theme">
-        <div id="aiTabHeader" class="hud-header">
-          <span>🤖 AI CO-PILOT MATRIX</span><span style="font-size:9px; color:#888;">[DRAGGABLE WORKSPACE TAB]</span>
-        </div>
-        <div class="hud-body" id="aiTabChatContent"></div>
-        <div id="aiTabInputArea">
-          <input type="text" id="aiTabInputField" placeholder="Ask AI Copilot or type logic prompt..." autocomplete="off">
-          <button id="aiTabSendBtn">SEND</button>
-        </div>
-        <div class="resize-handle" id="aiTabResizeHandle"></div>
+    var aiPanel = document.createElement('div');
+    aiPanel.id = 'aiTabPanel';
+    aiPanel.className = 'hud-window ai-theme';
+    aiPanel.style.left = '480px';
+    aiPanel.style.top = '40px';
+    aiPanel.style.width = '390px';
+    aiPanel.style.height = '520px';
+    aiPanel.innerHTML = `
+      <div id="aiTabHeader" class="hud-header">
+        <span>🤖 AI CO-PILOT MATRIX</span><span style="font-size:9px; color:#888;">[DRAGGABLE WORKSPACE TAB]</span>
       </div>
+      <div class="hud-body" id="aiTabChatContent"></div>
+      <div id="aiTabInputArea">
+        <input type="text" id="aiTabInputField" placeholder="Ask AI Copilot or type logic prompt..." autocomplete="off">
+        <button id="aiTabSendBtn">SEND</button>
+      </div>
+      <div class="resize-handle" id="aiTabResizeHandle"></div>
     `;
-    aiForeignObject.appendChild(aiTabDiv); canvas.appendChild(aiForeignObject);
-    aiTabDiv.addEventListener("mousedown", function(e) {{ e.stopPropagation(); }});
-    aiTabDiv.addEventListener("pointerdown", function(e) {{ e.stopPropagation(); }});
-    aiTabDiv.addEventListener("keydown", function(e) {{ e.stopPropagation(); }});
+    workspaceWrapperEl.appendChild(aiPanel);
+    aiPanel.addEventListener("mousedown", function(e) {{ e.stopPropagation(); }});
+    aiPanel.addEventListener("pointerdown", function(e) {{ e.stopPropagation(); }});
+    aiPanel.addEventListener("keydown", function(e) {{ e.stopPropagation(); }});
     
     var chatHistory = {safe_chat_history};
     function renderChatHistory() {{
@@ -527,44 +483,40 @@ blockly_html_payload = f"""
     
     function onTermHeaderMouseDown(e) {{
       dragState.active = 'termDrag';
-      dragState.scale = window.workspace.scale || 1;
-      dragState.startX = e.clientX / dragState.scale - parseFloat(termForeignObject.getAttribute("x"));
-      dragState.startY = e.clientY / dragState.scale - parseFloat(termForeignObject.getAttribute("y"));
-      dragState.target = termForeignObject;
+      dragState.startX = e.clientX - termPanel.offsetLeft;
+      dragState.startY = e.clientY - termPanel.offsetTop;
+      dragState.target = termPanel;
       e.stopPropagation();
       e.preventDefault();
     }}
     
     function onTermResizeMouseDown(e) {{
       dragState.active = 'termResize';
-      dragState.scale = window.workspace.scale || 1;
-      dragState.startW = parseFloat(termForeignObject.getAttribute("width"));
-      dragState.startH = parseFloat(termForeignObject.getAttribute("height"));
-      dragState.startX = e.clientX / dragState.scale;
-      dragState.startY = e.clientY / dragState.scale;
-      dragState.target = termForeignObject;
+      dragState.startW = termPanel.offsetWidth;
+      dragState.startH = termPanel.offsetHeight;
+      dragState.startX = e.clientX;
+      dragState.startY = e.clientY;
+      dragState.target = termPanel;
       e.stopPropagation();
       e.preventDefault();
     }}
     
     function onAIHeaderMouseDown(e) {{
       dragState.active = 'aiDrag';
-      dragState.scale = window.workspace.scale || 1;
-      dragState.startX = e.clientX / dragState.scale - parseFloat(aiForeignObject.getAttribute("x"));
-      dragState.startY = e.clientY / dragState.scale - parseFloat(aiForeignObject.getAttribute("y"));
-      dragState.target = aiForeignObject;
+      dragState.startX = e.clientX - aiPanel.offsetLeft;
+      dragState.startY = e.clientY - aiPanel.offsetTop;
+      dragState.target = aiPanel;
       e.stopPropagation();
       e.preventDefault();
     }}
     
     function onAIResizeMouseDown(e) {{
       dragState.active = 'aiResize';
-      dragState.scale = window.workspace.scale || 1;
-      dragState.startW = parseFloat(aiForeignObject.getAttribute("width"));
-      dragState.startH = parseFloat(aiForeignObject.getAttribute("height"));
-      dragState.startX = e.clientX / dragState.scale;
-      dragState.startY = e.clientY / dragState.scale;
-      dragState.target = aiForeignObject;
+      dragState.startW = aiPanel.offsetWidth;
+      dragState.startH = aiPanel.offsetHeight;
+      dragState.startX = e.clientX;
+      dragState.startY = e.clientY;
+      dragState.target = aiPanel;
       e.stopPropagation();
       e.preventDefault();
     }}
@@ -575,28 +527,28 @@ blockly_html_payload = f"""
       var newX, newY, newW, newH;
       switch(dragState.active) {{
         case 'termDrag':
-          newX = e.clientX / dragState.scale - dragState.startX;
-          newY = e.clientY / dragState.scale - dragState.startY;
-          termForeignObject.setAttribute("x", newX);
-          termForeignObject.setAttribute("y", newY);
+          newX = e.clientX - dragState.startX;
+          newY = e.clientY - dragState.startY;
+          dragState.target.style.left = newX + 'px';
+          dragState.target.style.top = newY + 'px';
           break;
         case 'termResize':
-          newW = dragState.startW + (e.clientX / dragState.scale - dragState.startX);
-          newH = dragState.startH + (e.clientY / dragState.scale - dragState.startY);
-          if (newW > 200) termForeignObject.setAttribute("width", newW);
-          if (newH > 150) termForeignObject.setAttribute("height", newH);
+          newW = dragState.startW + (e.clientX - dragState.startX);
+          newH = dragState.startH + (e.clientY - dragState.startY);
+          if (newW > 200) dragState.target.style.width = newW + 'px';
+          if (newH > 150) dragState.target.style.height = newH + 'px';
           break;
         case 'aiDrag':
-          newX = e.clientX / dragState.scale - dragState.startX;
-          newY = e.clientY / dragState.scale - dragState.startY;
-          aiForeignObject.setAttribute("x", newX);
-          aiForeignObject.setAttribute("y", newY);
+          newX = e.clientX - dragState.startX;
+          newY = e.clientY - dragState.startY;
+          dragState.target.style.left = newX + 'px';
+          dragState.target.style.top = newY + 'px';
           break;
         case 'aiResize':
-          newW = dragState.startW + (e.clientX / dragState.scale - dragState.startX);
-          newH = dragState.startH + (e.clientY / dragState.scale - dragState.startY);
-          if (newW > 200) aiForeignObject.setAttribute("width", newW);
-          if (newH > 200) aiForeignObject.setAttribute("height", newH);
+          newW = dragState.startW + (e.clientX - dragState.startX);
+          newH = dragState.startH + (e.clientY - dragState.startY);
+          if (newW > 200) dragState.target.style.width = newW + 'px';
+          if (newH > 200) dragState.target.style.height = newH + 'px';
           break;
       }}
     }}
