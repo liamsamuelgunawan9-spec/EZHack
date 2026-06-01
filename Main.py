@@ -249,10 +249,10 @@ blockly_html_payload = f"""
   <script src="https://unpkg.com/blockly/python_compressed.js"></script>
   <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
   <style>
-    html, body {{ height: 100%; width: 100%; margin: 0; padding: 0; background-color: transparent; overflow: hidden; }}
+    html, body {{ height: 100%; width: 100%; margin: 0; padding: 0; background-color: transparent; overflow: visible !important; }}
     ::-webkit-scrollbar {{ display: none; }}
     
-    #workspaceWrapper {{ position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; flex-direction: column; padding: 0; box-sizing: border-box; }}
+    #workspaceWrapper {{ position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; flex-direction: column; padding: 0; box-sizing: border-box; overflow: visible !important; }}
     #blocklyDiv {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; overflow: visible !important; }}
     
     #particle-canvas {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background-color: transparent; }}
@@ -422,32 +422,12 @@ blockly_html_payload = f"""
       trashcan: true
     }});
 
-    // Local flyout monitor for this iframe instance
-    setInterval(function() {{
-      if (!window.workspace) return;
-
-      var flyout = window.workspace.getFlyout();
-      if (!flyout) return;
-
-      var svgGroup = flyout.svgGroup_;
-      if (!svgGroup) return;
-
-      var isVisible = flyout.isVisible();
-      if (isVisible) {{
-        try {{
-          flyout.reflow();
-          Blockly.svgResize(window.workspace);
-          if (flyout.workspace_) {{
-            Blockly.svgResize(flyout.workspace_);
-          }}
-        }} catch (e) {{}}
-
-        svgGroup.style.display = 'block';
-        svgGroup.style.visibility = 'visible';
-        svgGroup.style.opacity = '1';
-        svgGroup.style.pointerEvents = 'auto';
+    // Keep Blockly workspace responsive after initial render
+    setTimeout(function() {{
+      if (window.workspace) {{
+        Blockly.svgResize(window.workspace);
       }}
-    }}, 200);
+    }}, 0);
     
     try {{
       var initialXmlText = {safe_xml_state};
