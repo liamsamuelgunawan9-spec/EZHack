@@ -250,9 +250,6 @@ blockly_html_payload = f"""
     #particle-canvas {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background-color: transparent; }}
     .blocklySvg {{ background-color: rgba(2, 4, 10, 0.85) !important; }}
     
-    /* ========================================================
-       HACKER TOOLBOX CSS
-       ======================================================== */
     .blocklyToolboxDiv {{
         background-color: #0b0f19 !important;
         border-right: 2px solid #00ff66 !important;
@@ -289,7 +286,6 @@ blockly_html_payload = f"""
     .blocklyTreeSelected .blocklyTreeLabel {{
         color: #000000 !important;
     }}
-    /* ======================================================== */
 
     .hud-window {{ display: flex; flex-direction: column; height: 100%; background-color: #090d16; border: 1px solid #00ff66; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); overflow: hidden; position: relative; }}
     .hud-header {{ padding: 8px 12px; cursor: move; background-color: #02040a; border-bottom: 1px solid #00ff66; font-weight: bold; color: #00ff66; font-size: 11px; display: flex; justify-content: space-between; align-items: center; user-select: none; }}
@@ -316,27 +312,6 @@ blockly_html_payload = f"""
   {blocks_registry.TOOLBOX_XML}
 
   <script>
-    // --- JS BUG FIX: FORCED RENDER REFRESH ---
-    document.addEventListener("DOMContentLoaded", function() {{
-        setTimeout(function() {{
-            var toolboxDiv = document.querySelector('.blocklyToolboxDiv');
-            if (toolboxDiv) {{
-                toolboxDiv.addEventListener('click', function(e) {{
-                    var target = e.target.closest('.blocklyTreeRow');
-                    if (target) {{
-                        setTimeout(function() {{
-                            if (window.workspace) {{
-                                window.workspace.render();
-                                Blockly.svgResize(window.workspace);
-                            }}
-                        }}, 50);
-                    }}
-                }}, true);
-            }}
-        }}, 500);
-    }});
-    // ---------------------------------------------------
-
     const canvasEl = document.getElementById('particle-canvas');
     const ctx = canvasEl.getContext('2d');
     let width, height;
@@ -427,6 +402,23 @@ blockly_html_payload = f"""
       zoom: {{ controls: true, wheel: true, startScale: 1.0, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 }},
       trashcan: true
     }});
+    
+    // --- NON-INVASIVE FLYOUT RENDER FIX ---
+    // Forces Blockly to redraw the visual SVG dimensions when sections are clicked,
+    // solving the issue where block panels ghost out on rapid/repeated opening.
+    document.addEventListener("DOMContentLoaded", function() {{
+        setTimeout(function() {{
+            var toolboxDiv = document.querySelector('.blocklyToolboxDiv');
+            if (toolboxDiv) {{
+                toolboxDiv.addEventListener('click', function() {{
+                    if (window.workspace) {{
+                        Blockly.svgResize(window.workspace);
+                    }}
+                }});
+            }}
+        }}, 500);
+    }});
+    // ----------------------------------------
     
     try {{
       var initialXmlText = {safe_xml_state};
