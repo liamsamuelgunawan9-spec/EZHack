@@ -10,7 +10,6 @@ from groq import Groq, RateLimitError
 
 # Import our separated block module payloads
 import blocks_registry
-import blockly_panels
 
 # --- 1. Setup & Config ---
 load_dotenv()
@@ -184,8 +183,6 @@ if "chat_messages" not in st.session_state:
 
 # --- 3. Reactive State Updates & Executions ---
 try:
-    rerun_required = False
-
     if "payload_matrix" in st.query_params:
         st.session_state["synced_workspace_code"] = urllib.parse.unquote(st.query_params["payload_matrix"])
         
@@ -194,7 +191,7 @@ try:
         
     if "ai_msg" in st.query_params and st.query_params["ai_msg"]:
         user_text = urllib.parse.unquote(st.query_params["ai_msg"])
-        del st.query_params["ai_msg"]
+        st.query_params["ai_msg"] = ""
         st.session_state["chat_messages"].append({"role": "user", "content": user_text})
         
         if ai_client:
@@ -214,11 +211,10 @@ try:
             api_messages = [{"role": "system", "content": system_context}] + st.session_state["chat_messages"]
             reply = generate_completion_with_fallback(api_messages)
             st.session_state["chat_messages"].append({"role": "assistant", "content": reply})
-        rerun_required = True
 
     if "run_sequence" in st.query_params and st.query_params["run_sequence"]:
         sequence_id_name = urllib.parse.unquote(st.query_params["run_sequence"])
-        del st.query_params["run_sequence"]
+        st.query_params["run_sequence"] = ""
         
         st.session_state["terminal_history_output"] += f"\n🤖 Booting sequence pipeline [{sequence_id_name}]...\nRunning target compiled script layers...\n"
         code_to_run = st.session_state["synced_workspace_code"].strip()
@@ -229,10 +225,6 @@ try:
                 st.session_state["terminal_history_output"] += "\n🟢 Execution automation run complete!"
             except Exception as runtime_err:
                 st.session_state["terminal_history_output"] += f"\n💥 PIPELINE BREAK: {str(runtime_err)}"
-        rerun_required = True
-
-    if rerun_required:
-        st.rerun()
 except Exception:
     pass
 
@@ -250,34 +242,180 @@ blockly_html_payload = f"""
   <script src="https://unpkg.com/blockly/python_compressed.js"></script>
   <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
   <style>
-    html, body {{
-      height: 100%;
-      width: 100%;
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      background: transparent;
+    html, body {{ height: 100%; margin: 0; padding: 0; background-color: transparent; overflow: hidden; }}
+    
+    #workspaceWrapper {{ display: flex; flex-direction: column; height: 95vh; padding: 0; box-sizing: border-box; position: relative; }}
+    #blocklyDiv {{ flex: 1; border: 1px solid #1e293b; position: relative; z-index: 1; }}
+    
+    #particle-canvas {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background-color: transparent; }}
+    .blocklySvg {{ background-color: rgba(2, 4, 10, 0.85) !important; }}
+    
+    /* ========================================================
+       HACKER TOOLBOX CSS
+       ======================================================== */
+    .blocklyToolboxDiv {{
+        background-color: #0b0f19 !important;
+        border-right: 2px solid #00ff66 !important;
+        -webkit-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
+        user-select: none !important;
     }}
-    #blocklyDiv {{
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+    .blocklyTreeRow {{
+        border-radius: 4px !important;
+        transition: background-color 0.1s;
+        -webkit-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
+        user-select: none !important;
     }}
-    .blocklySvg {{
-      background-color: rgba(2, 4, 10, 0.85);
+    .blocklyTreeLabel {{
+        color: #ffffff !important;
+        font-family: monospace !important;
+        font-size: 14px !important;
+        font-weight: bold !important;
+        padding: 5px !important;
+        -webkit-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
+        user-select: none !important;
     }}
+    .blocklyTreeRow:hover {{
+        background-color: rgba(0, 255, 102, 0.2) !important;
+    }}
+    .blocklyTreeSelected .blocklyTreeRow {{
+        background-color: #00ff66 !important;
+    }}
+    .blocklyTreeSelected .blocklyTreeLabel {{
+        color: #000000 !important;
+    }}
+    /* ======================================================== */
+
+    .hud-window {{ display: flex; flex-direction: column; height: 100%; background-color: #090d16; border: 1px solid #00ff66; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); overflow: hidden; position: relative; }}
+    .hud-header {{ padding: 8px 12px; cursor: move; background-color: #02040a; border-bottom: 1px solid #00ff66; font-weight: bold; color: #00ff66; font-size: 11px; display: flex; justify-content: space-between; align-items: center; user-select: none; }}
+    .hud-body {{ flex: 1; padding: 10px; background-color: #05070f; overflow-y: auto; font-size: 11px; font-family: monospace; line-height: 1.4; }}
+    .resize-handle {{ position: absolute; bottom: 0; right: 0; width: 14px; height: 14px; cursor: se-resize; background: linear-gradient(135deg, transparent 50%, #00ff66 50%); border-bottom-right-radius: 6px; z-index: 100; }}
+    
+    .ai-theme {{ border-color: #00ffcc; }}
+    .ai-theme .hud-header {{ border-color: #00ffcc; color: #00ffcc; }}
+    .ai-theme .resize-handle {{ background: linear-gradient(135deg, transparent 50%, #00ffcc 50%); }}
+    #aiTabInputArea {{ padding: 6px; background-color: #02040a; border-top: 1px solid #00ffcc; display: flex; gap: 6px; }}
+    #aiTabInputField {{ flex: 1; background-color: #05070f; border: 1px solid #00ffcc; color: #00ffcc; padding: 6px; border-radius: 4px; font-family: monospace; font-size: 11px; }}
+    #aiTabInputField:focus {{ outline: none; border-color: #1fec79; }}
+    #aiTabSendBtn {{ background: #02040a; color: #00ffcc; border: 1px solid #00ffcc; padding: 4px 10px; cursor: pointer; border-radius: 4px; font-family: monospace; font-size: 11px; font-weight: bold; }}
+    #aiTabSendBtn:hover {{ background: #00ffcc; color: #02040a; }}
   </style>
 </head>
 <body>
 
-  <div id="blocklyDiv"></div>
+  <div id="workspaceWrapper">
+    <canvas id="particle-canvas"></canvas>
+    <div id="blocklyDiv"></div>
+  </div>
 
   {blocks_registry.TOOLBOX_XML}
 
   <script>
+    // --- JS BUG FIX: FORCED RENDER REFRESH ---
+    document.addEventListener("DOMContentLoaded", function() {{
+        setTimeout(function() {{
+            var toolboxDiv = document.querySelector('.blocklyToolboxDiv');
+            if (toolboxDiv) {{
+                toolboxDiv.addEventListener('click', function(e) {{
+                    var target = e.target.closest('.blocklyTreeRow');
+                    if (target) {{
+                        setTimeout(function() {{
+                            if (window.workspace) {{
+                                window.workspace.render();
+                                Blockly.svgResize(window.workspace);
+                            }}
+                        }}, 50);
+                    }}
+                }}, true);
+            }}
+        }}, 500);
+    }});
+    // ---------------------------------------------------
+
     const canvasEl = document.getElementById('particle-canvas');
+    const ctx = canvasEl.getContext('2d');
+    let width, height;
+    let particles = [];
+    const mouse = {{ x: null, y: null }};
+
+    function resizeCanvas() {{
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvasEl.width = width;
+        canvasEl.height = height;
+    }}
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    window.addEventListener('mousemove', (e) => {{
+        mouse.x = e.clientX;
+        mouse.y = e.clientY;
+    }});
+
+    class Particle {{
+        constructor() {{
+            this.x = Math.random() * width;
+            this.y = Math.random() * height;
+            this.vx = (Math.random() - 0.5) * 1.5;
+            this.vy = (Math.random() - 0.5) * 1.5;
+        }}
+        update() {{
+            this.x += this.vx;
+            this.y += this.vy;
+            if (this.x < 0 || this.x > width) this.vx *= -1;
+            if (this.y < 0 || this.y > height) this.vy *= -1;
+        }}
+        draw() {{
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 1.5, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0, 255, 102, 0.8)';
+            ctx.fill();
+        }}
+    }}
+
+    for(let i = 0; i < 90; i++) particles.push(new Particle());
+
+    function animateParticles() {{
+        ctx.clearRect(0, 0, width, height);
+        
+        particles.forEach(p => {{
+            p.update();
+            p.draw();
+            if (mouse.x != null) {{
+                let dx = mouse.x - p.x;
+                let dy = mouse.y - p.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < 180) {{
+                    ctx.beginPath();
+                    ctx.strokeStyle = `rgba(0, 255, 102, ${{1 - dist/180}})`;
+                    ctx.lineWidth = 1;
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(mouse.x, mouse.y);
+                    ctx.stroke();
+                }}
+            }}
+            particles.forEach(p2 => {{
+                let dx = p.x - p2.x;
+                let dy = p.y - p2.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < 120) {{
+                    ctx.beginPath();
+                    ctx.strokeStyle = `rgba(0, 255, 102, ${{0.2 - dist/600}})`;
+                    ctx.lineWidth = 0.5;
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.stroke();
+                }}
+            }});
+        }});
+        requestAnimationFrame(animateParticles);
+    }}
+    animateParticles();
 
     {blocks_registry.BLOCK_DEFINITIONS_JS}
     {blocks_registry.PYTHON_GENERATORS_JS}
@@ -289,15 +427,6 @@ blockly_html_payload = f"""
       zoom: {{ controls: true, wheel: true, startScale: 1.0, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 }},
       trashcan: true
     }});
-
-    // Keep Blockly workspace responsive after initial render
-    function resizeBlockly() {{
-      if (window.workspace) {{
-        Blockly.svgResize(window.workspace);
-      }}
-    }}
-    setTimeout(resizeBlockly, 0);
-    window.addEventListener('resize', resizeBlockly);
     
     try {{
       var initialXmlText = {safe_xml_state};
@@ -309,53 +438,51 @@ blockly_html_payload = f"""
       console.error("Hydration Layer Failure:", err);
     }}
 
-    var workspaceWrapperEl = document.getElementById('workspaceWrapper');
+    var canvas = window.workspace.getCanvas();
 
-    var termPanel = document.createElement('div');
-    termPanel.id = 'terminalPanel';
-    termPanel.className = 'hud-window';
-    termPanel.style.left = '40px';
-    termPanel.style.top = '40px';
-    termPanel.style.width = '420px';
-    termPanel.style.height = '280px';
-    termPanel.innerHTML = `
-      <div id="terminalHeader" class="hud-header">
-        <span>💻 SYSTEM TERMINAL OUTPUT</span><span style="font-size:9px; color:#888;">[DRAGGABLE WORKSPACE TAB]</span>
+    var termForeignObject = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
+    termForeignObject.setAttribute("x", "40"); termForeignObject.setAttribute("y", "40");
+    termForeignObject.setAttribute("width", "420"); termForeignObject.setAttribute("height", "280");
+    var termTabDiv = document.createElement("div"); termTabDiv.style.width = "100%"; termTabDiv.style.height = "100%";
+    termTabDiv.innerHTML = `
+      <div id="terminalWindow" class="hud-window">
+        <div id="terminalHeader" class="hud-header">
+          <span>💻 SYSTEM TERMINAL OUTPUT</span><span style="font-size:9px; color:#888;">[DRAGGABLE WORKSPACE TAB]</span>
+        </div>
+        <div class="hud-body"><pre id="terminalLogOutput" style="margin: 0; color: #00ff66; font-size: 12px; line-height: 1.4; white-space: pre-wrap; font-family: monospace;"></pre></div>
+        <div class="resize-handle" id="terminalResizeAnchor"></div>
       </div>
-      <div class="hud-body"><pre id="terminalLogOutput" style="margin: 0; color: #00ff66; font-size: 12px; line-height: 1.4; white-space: pre-wrap; font-family: monospace;"></pre></div>
-      <div class="resize-handle" id="terminalResizeAnchor"></div>
     `;
-    workspaceWrapperEl.appendChild(termPanel);
-    termPanel.addEventListener("mousedown", function(e) {{ e.stopPropagation(); }});
-    termPanel.addEventListener("pointerdown", function(e) {{ e.stopPropagation(); }});
-    termPanel.addEventListener("keydown", function(e) {{ e.stopPropagation(); }});
+    termForeignObject.appendChild(termTabDiv); canvas.appendChild(termForeignObject);
+    termTabDiv.addEventListener("mousedown", function(e) {{ e.stopPropagation(); }});
+    termTabDiv.addEventListener("pointerdown", function(e) {{ e.stopPropagation(); }});
+    termTabDiv.addEventListener("keydown", function(e) {{ e.stopPropagation(); }});
 
     var termLogOutput = document.getElementById("terminalLogOutput");
     termLogOutput.textContent = {safe_terminal_output};
     termLogOutput.parentElement.scrollTop = termLogOutput.parentElement.scrollHeight;
 
-    var aiPanel = document.createElement('div');
-    aiPanel.id = 'aiTabPanel';
-    aiPanel.className = 'hud-window ai-theme';
-    aiPanel.style.left = '480px';
-    aiPanel.style.top = '40px';
-    aiPanel.style.width = '390px';
-    aiPanel.style.height = '520px';
-    aiPanel.innerHTML = `
-      <div id="aiTabHeader" class="hud-header">
-        <span>🤖 AI CO-PILOT MATRIX</span><span style="font-size:9px; color:#888;">[DRAGGABLE WORKSPACE TAB]</span>
+    var aiForeignObject = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
+    aiForeignObject.setAttribute("x", "480"); aiForeignObject.setAttribute("y", "40");
+    aiForeignObject.setAttribute("width", "390"); aiForeignObject.setAttribute("height", "520");
+    var aiTabDiv = document.createElement("div"); aiTabDiv.style.width = "100%"; aiTabDiv.style.height = "100%";
+    aiTabDiv.innerHTML = `
+      <div id="aiTabWindow" class="hud-window ai-theme">
+        <div id="aiTabHeader" class="hud-header">
+          <span>🤖 AI CO-PILOT MATRIX</span><span style="font-size:9px; color:#888;">[DRAGGABLE WORKSPACE TAB]</span>
+        </div>
+        <div class="hud-body" id="aiTabChatContent"></div>
+        <div id="aiTabInputArea">
+          <input type="text" id="aiTabInputField" placeholder="Ask AI Copilot or type logic prompt..." autocomplete="off">
+          <button id="aiTabSendBtn">SEND</button>
+        </div>
+        <div class="resize-handle" id="aiTabResizeHandle"></div>
       </div>
-      <div class="hud-body" id="aiTabChatContent"></div>
-      <div id="aiTabInputArea">
-        <input type="text" id="aiTabInputField" placeholder="Ask AI Copilot or type logic prompt..." autocomplete="off">
-        <button id="aiTabSendBtn">SEND</button>
-      </div>
-      <div class="resize-handle" id="aiTabResizeHandle"></div>
     `;
-    workspaceWrapperEl.appendChild(aiPanel);
-    aiPanel.addEventListener("mousedown", function(e) {{ e.stopPropagation(); }});
-    aiPanel.addEventListener("pointerdown", function(e) {{ e.stopPropagation(); }});
-    aiPanel.addEventListener("keydown", function(e) {{ e.stopPropagation(); }});
+    aiForeignObject.appendChild(aiTabDiv); canvas.appendChild(aiForeignObject);
+    aiTabDiv.addEventListener("mousedown", function(e) {{ e.stopPropagation(); }});
+    aiTabDiv.addEventListener("pointerdown", function(e) {{ e.stopPropagation(); }});
+    aiTabDiv.addEventListener("keydown", function(e) {{ e.stopPropagation(); }});
     
     var chatHistory = {safe_chat_history};
     function renderChatHistory() {{
@@ -388,99 +515,23 @@ blockly_html_payload = f"""
     document.getElementById("aiTabSendBtn").onclick = handleTabSend;
     document.getElementById("aiTabInputField").onkeydown = function(e) {{ if(e.key === "Enter") {{ handleTabSend(); }} }};
 
-    // Unified drag/resize state management
-    var dragState = {{
-      active: null,  // null, 'termDrag', 'termResize', 'aiDrag', 'aiResize'
-      startX: 0, startY: 0,
-      startW: 0, startH: 0,
-      scale: 1,
-      target: null
-    }};
+    var isDraggingTerm = false, termStartX, termStartY, isResizingTerm = false, termStartW, termStartH, termResStartX, termResStartY;
+    document.getElementById("terminalHeader").onmousedown = function(e) {{ isDraggingTerm = true; var scale = window.workspace.scale || 1; termStartX = e.clientX / scale - parseFloat(termForeignObject.getAttribute("x")); termStartY = e.clientY / scale - parseFloat(termForeignObject.getAttribute("y")); e.stopPropagation(); e.preventDefault(); }};
+    document.getElementById("terminalResizeAnchor").onmousedown = function(e) {{ isResizingTerm = true; var scale = window.workspace.scale || 1; termStartW = parseFloat(termForeignObject.getAttribute("width")); termStartH = parseFloat(termForeignObject.getAttribute("height")); termResStartX = e.clientX / scale; termResStartY = e.clientY / scale; e.stopPropagation(); e.preventDefault(); }};
+
+    var isDraggingAI = false, aiStartX, aiStartY, isResizingAI = false, aiStartW, aiStartH, aiResStartX, aiResStartY;
+    document.getElementById("aiTabHeader").onmousedown = function(e) {{ isDraggingAI = true; var scale = window.workspace.scale || 1; aiStartX = e.clientX / scale - parseFloat(aiForeignObject.getAttribute("x")); aiStartY = e.clientY / scale - parseFloat(aiForeignObject.getAttribute("y")); e.stopPropagation(); e.preventDefault(); }};
+    document.getElementById("aiTabResizeHandle").onmousedown = function(e) {{ isResizingAI = true; var scale = window.workspace.scale || 1; aiStartW = parseFloat(aiForeignObject.getAttribute("width")); aiStartH = parseFloat(aiForeignObject.getAttribute("height")); aiResStartX = e.clientX / scale; aiResStartY = e.clientY / scale; e.stopPropagation(); e.preventDefault(); }};
+
+    document.addEventListener("mousemove", function(e) {{
+      var scale = window.workspace.scale || 1;
+      if (isDraggingTerm) {{ termForeignObject.setAttribute("x", e.clientX / scale - termStartX); termForeignObject.setAttribute("y", e.clientY / scale - termStartY); }}
+      if (isResizingTerm) {{ var newWT = termStartW + (e.clientX / scale - termResStartX); var newHT = termStartH + (e.clientY / scale - termResStartY); if (newWT > 200) termForeignObject.setAttribute("width", newWT); if (newHT > 150) termForeignObject.setAttribute("height", newHT); }}
+      if (isDraggingAI) {{ aiForeignObject.setAttribute("x", e.clientX / scale - aiStartX); aiForeignObject.setAttribute("y", e.clientY / scale - aiStartY); }}
+      if (isResizingAI) {{ var newWA = aiStartW + (e.clientX / scale - aiResStartX); var newHA = aiStartH + (e.clientY / scale - aiResStartY); if (newWA > 200) aiForeignObject.setAttribute("width", newWA); if (newHA > 200) aiForeignObject.setAttribute("height", newHA); }}
+    }});
     
-    function onTermHeaderMouseDown(e) {{
-      dragState.active = 'termDrag';
-      dragState.startX = e.clientX - termPanel.offsetLeft;
-      dragState.startY = e.clientY - termPanel.offsetTop;
-      dragState.target = termPanel;
-      e.stopPropagation();
-      e.preventDefault();
-    }}
-    
-    function onTermResizeMouseDown(e) {{
-      dragState.active = 'termResize';
-      dragState.startW = termPanel.offsetWidth;
-      dragState.startH = termPanel.offsetHeight;
-      dragState.startX = e.clientX;
-      dragState.startY = e.clientY;
-      dragState.target = termPanel;
-      e.stopPropagation();
-      e.preventDefault();
-    }}
-    
-    function onAIHeaderMouseDown(e) {{
-      dragState.active = 'aiDrag';
-      dragState.startX = e.clientX - aiPanel.offsetLeft;
-      dragState.startY = e.clientY - aiPanel.offsetTop;
-      dragState.target = aiPanel;
-      e.stopPropagation();
-      e.preventDefault();
-    }}
-    
-    function onAIResizeMouseDown(e) {{
-      dragState.active = 'aiResize';
-      dragState.startW = aiPanel.offsetWidth;
-      dragState.startH = aiPanel.offsetHeight;
-      dragState.startX = e.clientX;
-      dragState.startY = e.clientY;
-      dragState.target = aiPanel;
-      e.stopPropagation();
-      e.preventDefault();
-    }}
-    
-    function onGlobalMouseMove(e) {{
-      if (!dragState.active || !dragState.target) return;
-      
-      var newX, newY, newW, newH;
-      switch(dragState.active) {{
-        case 'termDrag':
-          newX = e.clientX - dragState.startX;
-          newY = e.clientY - dragState.startY;
-          dragState.target.style.left = newX + 'px';
-          dragState.target.style.top = newY + 'px';
-          break;
-        case 'termResize':
-          newW = dragState.startW + (e.clientX - dragState.startX);
-          newH = dragState.startH + (e.clientY - dragState.startY);
-          if (newW > 200) dragState.target.style.width = newW + 'px';
-          if (newH > 150) dragState.target.style.height = newH + 'px';
-          break;
-        case 'aiDrag':
-          newX = e.clientX - dragState.startX;
-          newY = e.clientY - dragState.startY;
-          dragState.target.style.left = newX + 'px';
-          dragState.target.style.top = newY + 'px';
-          break;
-        case 'aiResize':
-          newW = dragState.startW + (e.clientX - dragState.startX);
-          newH = dragState.startH + (e.clientY - dragState.startY);
-          if (newW > 200) dragState.target.style.width = newW + 'px';
-          if (newH > 200) dragState.target.style.height = newH + 'px';
-          break;
-      }}
-    }}
-    
-    function onGlobalMouseUp(e) {{
-      dragState.active = null;
-      dragState.target = null;
-    }}
-    
-    document.getElementById("terminalHeader").addEventListener("mousedown", onTermHeaderMouseDown, true);
-    document.getElementById("terminalResizeAnchor").addEventListener("mousedown", onTermResizeMouseDown, true);
-    document.getElementById("aiTabHeader").addEventListener("mousedown", onAIHeaderMouseDown, true);
-    document.getElementById("aiTabResizeHandle").addEventListener("mousedown", onAIResizeMouseDown, true);
-    
-    document.addEventListener("mousemove", onGlobalMouseMove, true);
-    document.addEventListener("mouseup", onGlobalMouseUp, true);
+    document.addEventListener("mouseup", function() {{ isDraggingTerm = false; isResizingTerm = false; isDraggingAI = false; isResizingAI = false; }});
 
     function processLiveDebugCompilations() {{
       var topBlocks = window.workspace.getTopBlocks(false); var generatedPythonCode = ""; var sequenceFound = false;
@@ -503,82 +554,7 @@ blockly_html_payload = f"""
 </html>
 """
 
-blockly_html_payload = f"""
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <script src="https://unpkg.com/blockly/blockly.min.js"></script>
-  <script src="https://unpkg.com/blockly/python_compressed.js"></script>
-  <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
-  <style>
-    html, body {{
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      background: transparent;
-    }}
-    #blocklyDiv {{
-      width: 100%;
-      height: 100%;
-      position: absolute;
-      top: 0;
-      left: 0;
-    }}
-  </style>
-</head>
-<body>
-  <div id="blocklyDiv"></div>
-  {blocks_registry.TOOLBOX_XML}
-  <script>
-    {blocks_registry.BLOCK_DEFINITIONS_JS}
-    {blocks_registry.PYTHON_GENERATORS_JS}
-
-    window.workspace = Blockly.inject('blocklyDiv', {{
-      toolbox: document.getElementById('toolbox'),
-      grid: {{ spacing: 40, length: 40, colour: 'rgba(0, 255, 102, 0.2)', snap: true }},
-      move: {{ scrollbars: true, drag: true, wheel: true }},
-      zoom: {{ controls: true, wheel: true, startScale: 1.0, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 }},
-      trashcan: true
-    }});
-
-    try {{
-      {blockly_panels.instrumentation_js()}
-    }} catch (err) {{
-      console.error('Block panel instrumentation failed:', err);
-    }}
-
-    function resizeBlockly() {{
-      if (window.workspace) {{
-        Blockly.svgResize(window.workspace);
-      }}
-    }}
-    window.addEventListener('resize', resizeBlockly);
-    setTimeout(resizeBlockly, 0);
-
-    try {{
-      var initialXmlText = {safe_xml_state};
-      if (initialXmlText && initialXmlText.trim() !== "") {{
-        var dom = Blockly.utils.xml.textToDom(initialXmlText);
-        Blockly.Xml.domToWorkspace(dom, window.workspace);
-      }}
-    }} catch (err) {{
-      console.error("Hydration Layer Failure:", err);
-    }}
-  </script>
-</body>
-</html>
-"""
-
-st.iframe(
-    "data:text/html;charset=utf-8," + urllib.parse.quote(blockly_html_payload),
-    height=850,
-    width="stretch"
-)
-
-st.info('Open your browser tab for this Streamlit app and press F12 or right-click -> Inspect to view the browser console. Look for [BLOCKLY-PANELS] logs.')
+components.html(blockly_html_payload, height=850, scrolling=False)
 
 st.markdown('<div class="live-code-container">', unsafe_allow_html=True)
 st.subheader("📁 Live Compiled Automation Script")
