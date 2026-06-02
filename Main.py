@@ -575,7 +575,7 @@ blockly_html_payload = f"""
 st.iframe(
     "data:text/html;charset=utf-8," + urllib.parse.quote(blockly_html_payload),
     height=850,
-    width="100%"
+    width="stretch"
 )
 
 st.info('Open your browser tab for this Streamlit app and press F12 or right-click -> Inspect to view the browser console. Look for [BLOCKLY-PANELS] logs.')
