@@ -592,97 +592,97 @@ BLOCK_DEFINITIONS_JS = """
     };
     
     // ==========================================
-    // MUTABLE RECON BLOCKS
+    // MUTABLE RECON BLOCKS (BUG FIXED)
     // ==========================================
     Blockly.Blocks['action_scan_base'] = {
       init: function() {
         this.appendValueInput("NAME").setCheck("String").appendField("Scan Profile Target:");
         this.appendDummyInput().appendField("Execution Stream:").appendField(new Blockly.FieldDropdown([["🗺️ Geolocation Tracker Lookup", "geoip"],["🖥️ System DNS Server Resolve", "dns"],["🌐 WHOIS Public Asset Registry", "whois"],["📱 Global Mobile OSINT Trace", "phone"]]), "SCANTYPE");
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(210);
-        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.hasSuccess_ = false; this.hasFail_ = false;
+        Object.assign(this, RECON_MUTATOR_MIXIN);
+        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.setTooltip("Execute a core OSINT scan (GeoIP, DNS, WHOIS, or Phone Trace). Click the gear to add success/fail branches.");
       }
     };
-    Object.assign(Blockly.Blocks['action_scan_base'], RECON_MUTATOR_MIXIN);
 
     Blockly.Blocks['action_dns_extractor'] = {
       init: function() {
         this.appendValueInput("NAME").setCheck("String").appendField("📡 Parse Records for:");
         this.appendDummyInput().appendField("Target Record Matrix Type:").appendField(new Blockly.FieldDropdown([["MX (Mail Provider Routing Map)", "MX"],["NS (Authoritative Name Servers)", "NS"],["TXT (Security Verification Strings)", "TXT"]]), "DNS_TYPE");
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(210);
-        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.hasSuccess_ = false; this.hasFail_ = false;
+        Object.assign(this, RECON_MUTATOR_MIXIN);
+        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.setTooltip("Extract specific DNS records (MX, NS, TXT). Click the gear to add success/fail branches.");
       }
     };
-    Object.assign(Blockly.Blocks['action_dns_extractor'], RECON_MUTATOR_MIXIN);
 
     Blockly.Blocks['action_http_header_audit'] = {
       init: function() {
         this.appendValueInput("NAME").setCheck("String").appendField("🛡️ Audit Safety Headers for:");
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(210);
-        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.hasSuccess_ = false; this.hasFail_ = false;
+        Object.assign(this, RECON_MUTATOR_MIXIN);
+        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.setTooltip("Analyze security headers of a target URL. Click the gear to add success/fail branches.");
       }
     };
-    Object.assign(Blockly.Blocks['action_http_header_audit'], RECON_MUTATOR_MIXIN);
 
     Blockly.Blocks['action_subdomain_ct_logs'] = {
       init: function() {
         this.appendValueInput("NAME").setCheck("String").appendField("📧 Collect CT Log Subdomains for:");
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(210);
-        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.hasSuccess_ = false; this.hasFail_ = false;
+        Object.assign(this, RECON_MUTATOR_MIXIN);
+        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.setTooltip("Fetch subdomains from Certificate Transparency logs. Click the gear to add success/fail branches.");
       }
     };
-    Object.assign(Blockly.Blocks['action_subdomain_ct_logs'], RECON_MUTATOR_MIXIN);
 
     Blockly.Blocks['action_threat_intel_reputation'] = {
       init: function() {
         this.appendValueInput("NAME").setCheck("String").appendField("🦺 Reputation Threat Intel Check:");
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(210);
-        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.hasSuccess_ = false; this.hasFail_ = false;
+        Object.assign(this, RECON_MUTATOR_MIXIN);
+        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.setTooltip("Check IP/Domain against threat intelligence databases. Click the gear to add success/fail branches.");
       }
     };
-    Object.assign(Blockly.Blocks['action_threat_intel_reputation'], RECON_MUTATOR_MIXIN);
 
     Blockly.Blocks['action_robots_sitemap'] = {
       init: function() {
         this.appendValueInput("NAME").setCheck("String").appendField("🤖 Sweep Robots/Sitemap:");
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(180);
-        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.hasSuccess_ = false; this.hasFail_ = false;
+        Object.assign(this, RECON_MUTATOR_MIXIN);
+        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.setTooltip("Scrape robots.txt and detect hidden paths. Click the gear to add success/fail branches.");
       }
     };
-    Object.assign(Blockly.Blocks['action_robots_sitemap'], RECON_MUTATOR_MIXIN);
 
     Blockly.Blocks['action_ssl_audit'] = {
       init: function() {
         this.appendValueInput("NAME").setCheck("String").appendField("🔐 Audit SSL/TLS Cert:");
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(180);
-        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.hasSuccess_ = false; this.hasFail_ = false;
+        Object.assign(this, RECON_MUTATOR_MIXIN);
+        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.setTooltip("Retrieve and audit SSL/TLS certificate information. Click the gear to add success/fail branches.");
       }
     };
-    Object.assign(Blockly.Blocks['action_ssl_audit'], RECON_MUTATOR_MIXIN);
 
     Blockly.Blocks['action_shodan_lookup'] = {
       init: function() {
         this.appendValueInput("NAME").setCheck("String").appendField("👁️ Shodan Passive Intel:");
         this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(180);
-        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.hasSuccess_ = false; this.hasFail_ = false;
+        Object.assign(this, RECON_MUTATOR_MIXIN);
+        this.setMutator(new Blockly.Mutator(['recon_mutator_success', 'recon_mutator_fail']));
         this.setTooltip("Perform a passive Shodan lookup for open ports and vulnerabilities. Click the gear to add success/fail branches.");
       }
     };
-    Object.assign(Blockly.Blocks['action_shodan_lookup'], RECON_MUTATOR_MIXIN);
 
     // Filter/Webhook blocks (No Mutator Needed)
     Blockly.Blocks['action_regex_filter'] = {
