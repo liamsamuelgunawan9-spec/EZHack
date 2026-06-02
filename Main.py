@@ -572,7 +572,13 @@ blockly_html_payload = f"""
 </html>
 """
 
-components.html(blockly_html_payload, height=850, scrolling=False)
+st.iframe(
+    "data:text/html;charset=utf-8," + urllib.parse.quote(blockly_html_payload),
+    height=850,
+    width="100%"
+)
+
+st.info('Open your browser tab for this Streamlit app and press F12 or right-click -> Inspect to view the browser console. Look for [BLOCKLY-PANELS] logs.')
 
 st.markdown('<div class="live-code-container">', unsafe_allow_html=True)
 st.subheader("📁 Live Compiled Automation Script")
