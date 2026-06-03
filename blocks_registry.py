@@ -162,179 +162,201 @@ def perform_regex_filter(text: str, pattern: str) -> str:
 
 def run_scan(target: str, mode: str, structural=None) -> str:
     if mode == "dns":
-        return perform_dns_lookup(target)
-    elif mode == "geoip":
-        return perform_ip_geolocation(target)
-    elif mode == "robots":
-        return perform_robots_sitemap_scan(target)
-    elif mode == "ssl_audit":
-        return perform_ssl_audit(target)
+        res = perform_dns_lookup(target)
+    elif mode == "geo":
+        res = perform_ip_geolocation(target)
+    elif mode == "phone":
+        res = perform_phone_tracking(target)
+    elif mode == "whois":
+        res = perform_whois_lookup(target)
+    elif mode == "header_audit":
+        res = perform_http_header_audit(target)
     elif mode == "shodan":
-        return perform_shodan_lookup(target)
-    elif mode == "regex" and structural:
-        return perform_regex_filter(target, structural)
+        res = perform_shodan_lookup(target)
     else:
-        return f"⚠️ Unknown tactical processing directive assigned: {mode}"
+        res = f"⚠️ Error: Block matching parameter structure error for mode: {mode}"
+        
+    st.session_state["terminal_history_output"] += f"\n[ENGINE TRACE] Activating Module -> {mode.upper()}\n{res}\n"
+    return res 
 
 # ==========================================
-# 2. TOOLBOX MATRIX DEFINITION XML
+# 2. CLEANED BLOCKLY TOOLBOX XML
 # ==========================================
 
 TOOLBOX_XML = """
-<xml id="toolbox" style="display: none">
-    <category name="🧠 Core Triggers" colour="210">
-        <block type="when_sequence_activated"></block>
-        <block type="action_wait_task"></block>
+  <xml id="toolbox" style="display: none">
+    <category name="🧠 Core Logic" colour="210">
+      <block type="controls_if"></block>
+      <block type="logic_compare"></block>
+      <block type="logic_operation"></block>
+      <block type="logic_negate"></block>
+      <block type="logic_boolean"></block>
     </category>
-    <category name="🔤 Data Streams" colour="160">
-        <block type="custom_input_string"></block>
-        <block type="global_phone_preset"></block>
-        <block type="custom_phone_signature"></block>
+    <category name="🔁 Loops & Wait" colour="120">
+      <block type="controls_repeat_ext">
+        <value name="TIMES">
+          <shadow type="math_number">
+            <field name="NUM">5</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="controls_whileUntil"></block>
+      <block type="action_wait_task"></block>
     </category>
-    <category name="📡 Tactical Recon" colour="290">
-        <block type="action_threat_intel"></block>
-        <block type="action_robots_sitemap"></block>
-        <block type="action_ssl_audit"></block>
+    <category name="🔢 Math & Data" colour="230">
+      <block type="math_number"></block>
+      <block type="math_arithmetic"></block>
+      <block type="text"></block>
+      <block type="text_print"></block>
+    </category>
+    <sep></sep>
+    <category name="🏁 Sequence Triggers" colour="0">
+      <block type="when_sequence_activated"></block>
+    </category>
+    <category name="🌐 Core Inputs" colour="160">
+      <block type="custom_input_string"></block>
+      <block type="global_phone_preset"></block>
+      <block type="custom_phone_signature"></block>
+    </category>
+    <category name="🔎 Passive Recon Suite" colour="#4A90E2">
+        <block type="action_dns_resolve"></block>
+        <block type="action_ip_geolocation"></block>
+        <block type="action_phone_tracker"></block>
+    </category>
+    <category name="🕵️ Target Recon" colour="#E67E22">
+        <block type="action_whois_lookup"></block>
         <block type="action_shodan_lookup"></block>
-        <block type="action_regex_filter"></block>
     </category>
-</xml>
+    <category name="🕸️ Web Fingerprinting" colour="#27AE60">
+        <block type="action_http_header_audit"></block>
+    </category>
+  </xml>
 """
 
 # ==========================================
-# 3. VISUAL BLOCK ARCHITECTURES (JAVASCRIPT LAYER)
+# 3. CLEANED JAVASCRIPT LOGIC
 # ==========================================
 
 BLOCK_DEFINITIONS_JS = """
-    // Event Starter Node (Vertical Output Driver)
     Blockly.Blocks['when_sequence_activated'] = {
       init: function() {
         this.appendDummyInput()
-            .appendField("🚀 When Sequence Activated")
-            .appendField(new Blockly.FieldTextInput("SEQ_01"), "SEQUENCE_ID");
+            .appendField("🚀 SEQUENCE GENERATOR")
+            .appendField(new Blockly.FieldTextInput("passive_recon_agent"), "SEQUENCE_ID");
         this.setNextStatement(true, null);
-        this.setColour(210);
-        this.setTooltip("The root command block to initialize automated operational execution chains.");
+        this.setColour(0);
+        this.setTooltip("Right-click workspace element to activate this modular route sequence block.");
+      },
+      customContextMenu: function(options) {
+          var currentBlockInstance = this;
+          var activateOption = {
+              enabled: true,
+              text: "⚡ Activate This Sequence",
+              callback: function() {
+                  var targetedSequencePayload = Blockly.Python.blockToCode(currentBlockInstance);
+                  var sequenceIdentifier = currentBlockInstance.getFieldValue("SEQUENCE_ID");
+                  var baseUrl = window.parent.location.origin + window.parent.location.pathname;
+                  var targetUrl = baseUrl + "?payload_matrix=" + encodeURIComponent(targetedSequencePayload) + "&run_sequence=" + encodeURIComponent(sequenceIdentifier);
+                  window.parent.location.href = targetUrl;
+              }
+          };
+          options.push(activateOption);
       }
     };
-
-    // Execution Control Flow
+    
     Blockly.Blocks['action_wait_task'] = {
       init: function() {
-        this.appendDummyInput()
-            .appendField("⏳ Operational Pause:")
-            .appendField(new Blockly.FieldNumber(5, 1, 3600), "SECONDS")
-            .appendField("seconds");
+        this.appendDummyInput().appendField("⏳ Wait for").appendField(new Blockly.FieldNumber(1, 0, 60), "SECONDS").appendField("seconds");
+        this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(120);
+        this.setTooltip("Halts the sequencing execution thread for a fixed duration value before continuing.");
+      }
+    };
+
+    // --- SUPPORT BLOCKS (HORIZONTAL VALUE INPUTS) ---
+
+    Blockly.Blocks['custom_input_string'] = {
+      init: function() {
+        this.appendDummyInput().appendField("Target Domain:").appendField(new Blockly.FieldTextInput("google.com"), "RAW_TEXT");
+        this.setOutput(true, "String"); this.setColour(160);
+        this.setTooltip("Provide a target domain, URL, or raw string.");
+      }
+    };
+    
+    Blockly.Blocks['global_phone_preset'] = {
+      init: function() {
+        this.appendDummyInput().appendField("📱 Preset Phone Target").appendField(new Blockly.FieldDropdown([["🇮🇩 +62","+62"], ["🇺🇸 +1","+1"], ["🇬🇧 +44","+44"]]), "CC_PREFIX").appendField(new Blockly.FieldTextInput("8123456789"), "PHONE_BODY");
+        this.setOutput(true, "String"); this.setColour(160);
+        this.setTooltip("Select a country prefix and enter a phone number for tracking.");
+      }
+    };
+    
+    Blockly.Blocks['custom_phone_signature'] = {
+      init: function() {
+        this.appendDummyInput().appendField("🏳️ Custom Country Code Input").appendField(new Blockly.FieldTextInput("+61"), "CUSTOM_PREFIX").appendField("Number:").appendField(new Blockly.FieldTextInput("412345678"), "PHONE_BODY");
+        this.setOutput(true, "String"); this.setColour(160);
+        this.setTooltip("Input a custom international country code and phone number.");
+      }
+    };
+
+    // --- ACTION BLOCKS (VERTICAL STATEMENTS W/ VALUE RECEPTACLES) ---
+
+    Blockly.Blocks['action_dns_resolve'] = {
+      init: function() {
+        this.appendValueInput("NAME").setCheck("String").appendField("📡 Resolve DNS Record Host");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour(210);
-        this.setTooltip("Suspends task worker progression to bypass dynamic request limit counters.");
+        this.setTooltip("Queries standard network nameservers passively to determine the current mapped IPv4 address destination.");
       }
     };
 
-    // Passive Domain Input Form
-    Blockly.Blocks['custom_input_string'] = {
+    Blockly.Blocks['action_ip_geolocation'] = {
       init: function() {
-        this.appendDummyInput()
-            .appendField("🔤 Target Host/Domain")
-            .appendField(new Blockly.FieldTextInput("example.com"), "RAW_TEXT");
-        this.setOutput(true, "String");
-        this.setColour(160);
-        this.setTooltip("Encapsulates raw text strings, target web endpoints, domains, or direct host pointers.");
-      }
-    };
-
-    // Global Phone Presets
-    Blockly.Blocks['global_phone_preset'] = {
-      init: function() {
-        this.appendDummyInput()
-            .appendField("📞 Global Format Preset")
-            .appendField(new Blockly.FieldDropdown([["US (+1)", "+1"], ["UK (+44)", "+44"], ["ID (+62)", "+62"], ["AU (+61)", "+61"]]), "CC_PREFIX")
-            .appendField("Body:")
-            .appendField(new Blockly.FieldTextInput("812345678"), "PHONE_BODY");
-        this.setOutput(true, "String");
-        this.setColour(160);
-      }
-    };
-
-    // Custom Country Prefixes
-    Blockly.Blocks['custom_phone_signature'] = {
-      init: function() {
-        this.appendDummyInput()
-            .appendField("🏳️ Custom Country Code Input")
-            .appendField(new Blockly.FieldTextInput("+61"), "CUSTOM_PREFIX")
-            .appendField("Number:")
-            .appendField(new Blockly.FieldTextInput("412345678"), "PHONE_BODY");
-        this.setOutput(true, "String");
-        this.setColour(160);
-      }
-    };
-
-    // Operational Scanner: Threat Intelligence
-    Blockly.Blocks['action_threat_intel'] = {
-      init: function() {
-        this.appendValueInput("NAME")
-            .setCheck("String")
-            .appendField("📡 Scan Threat Intel Target:");
+        this.appendValueInput("NAME").setCheck("String").appendField("🌐 Fetch IP Location Profile");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
-        this.setColour(290);
-        this.setTooltip("Performs high-fidelity passive intelligence aggregation via DNS mapping and infrastructure evaluation.");
+        this.setColour(210);
+        this.setTooltip("Queries public geolocation datasets to return city, province, country code, and owner properties.");
       }
     };
 
-    // Operational Scanner: Robots & Sitemap Extractor
-    Blockly.Blocks['action_robots_sitemap'] = {
+    Blockly.Blocks['action_phone_tracker'] = {
       init: function() {
-        this.appendValueInput("NAME")
-            .setCheck("String")
-            .appendField("🕸️ Extract Crawler Footprints:");
+        this.appendValueInput("NAME").setCheck("String").appendField("📞 Parse Telecom Carrier Registry");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
-        this.setColour(290);
-        this.setTooltip("Probes target directory paths, evaluating public robots.txt and sitemap layouts for directory listings.");
+        this.setColour(210);
+        this.setTooltip("Uses public parsing models to safely identify the regional carrier provider and active timezone of a telephone node.");
       }
     };
 
-    // Operational Scanner: SSL Configuration Auditor
-    Blockly.Blocks['action_ssl_audit'] = {
+    Blockly.Blocks['action_whois_lookup'] = {
       init: function() {
-        this.appendValueInput("NAME")
-            .setCheck("String")
-            .appendField("🔒 Audit Target TLS/SSL:");
+        this.appendValueInput("NAME").setCheck("String").appendField("🌐 Fetch WHOIS Record");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
-        this.setColour(290);
-        this.setTooltip("Establishes a passive connection to pull cryptographic certificate strings, verifying authority validation paths.");
+        this.setColour(210);
+        this.setTooltip("Performs a WHOIS query to determine domain registrar info, creation dates, and administrative footprints.");
       }
     };
 
-    // Operational Scanner: Shodan Threat Lookup
+    Blockly.Blocks['action_http_header_audit'] = {
+      init: function() {
+        this.appendValueInput("NAME").setCheck("String").appendField("🛡️ Audit HTTP Headers");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(210);
+        this.setTooltip("Sends a lightweight request to extract server banners and check for security configurations.");
+      }
+    };
+
     Blockly.Blocks['action_shodan_lookup'] = {
       init: function() {
-        this.appendValueInput("NAME")
-            .setCheck("String")
-            .appendField("🛰️ Probe Shodan Database Index:");
+        this.appendValueInput("NAME").setCheck("String").appendField("👁️ Shodan Passive Intel");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
-        this.setColour(290);
-        this.setTooltip("Queries public pre-cached telemetry metrics regarding known edge port vulnerabilities and services.");
-      }
-    };
-
-    // Functional Stream Evaluator: Regular Expression Parser
-    Blockly.Blocks['action_regex_filter'] = {
-      init: function() {
-        this.appendDummyInput()
-            .appendField("🎯 Match Stream Logic via Expression:")
-            .appendField(new Blockly.FieldTextInput("[0-9]{1,3}\\\\.[0-9]{1,3}"), "PATTERN");
-        this.appendValueInput("NAME")
-            .setCheck("String")
-            .appendField("    Input Vector Text:");
-        this.setPreviousStatement(true, null);
-        this.setNextStatement(true, null);
-        this.setColour(290);
-        this.setTooltip("Evaluates targeted streams against structural regex constraints to extract configuration strings.");
+        this.setColour(210);
+        this.setTooltip("Queries passive Shodan indexes to map open ports and known vulnerability exposures.");
       }
     };
 """
@@ -344,62 +366,46 @@ BLOCK_DEFINITIONS_JS = """
 # ==========================================
 
 PYTHON_GENERATORS_JS = """
-    function applyMutatorBranches(block, pyCall) {
-        // Appends localized system printer statements to feed content right back into telemetry consoles
-        return "print_output(" + pyCall + ")\\n";
-    }
-
-    Blockly.Python.forBlock['when_sequence_activated'] = function(block) {
-        return "# --- START PIPELINE SEQUENCE SEQUENCE INTERCEPT [" + block.getFieldValue('SEQUENCE_ID') + "] ---\\n";
-    };
-
-    Blockly.Python.forBlock['action_wait_task'] = function(block) {
-        return "time.sleep(" + block.getFieldValue('SECONDS') + ")\\n";
-    };
-
-    Blockly.Python.forBlock['custom_input_string'] = function(block) {
-        var rawText = block.getFieldValue('RAW_TEXT');
-        return ["'" + rawText.replace(/'/g, "\\\\'") + "'", 0];
-    };
-
-    Blockly.Python.forBlock['global_phone_preset'] = function(block) {
-        var mergedNum = block.getFieldValue('CC_PREFIX') + block.getFieldValue('PHONE_BODY');
-        return ["'" + mergedNum + "'", 0];
-    };
-
+    Blockly.Python.forBlock['when_sequence_activated'] = function(block) { return '# Sequence Active: ' + block.getFieldValue('SEQUENCE_ID') + '\\n'; };
+    Blockly.Python.forBlock['action_wait_task'] = function(block) { return 'time.sleep(' + block.getFieldValue('SECONDS') + ')\\n'; };
+    
+    // Support generators (return values)
+    Blockly.Python.forBlock['custom_input_string'] = function(block) { return ["'" + block.getFieldValue('RAW_TEXT') + "'", Blockly.Python.ORDER_ATOMIC]; };
+    Blockly.Python.forBlock['global_phone_preset'] = function(block) { return ["'" + block.getFieldValue('CC_PREFIX') + block.getFieldValue('PHONE_BODY') + "'", Blockly.Python.ORDER_ATOMIC]; };
     Blockly.Python.forBlock['custom_phone_signature'] = function(block) {
-        var mergedCustom = block.getFieldValue('CUSTOM_PREFIX') + block.getFieldValue('PHONE_BODY');
-        return ["'" + mergedCustom + "'", 0];
+      var prefix = block.getFieldValue('CUSTOM_PREFIX').trim();
+      if(!prefix.startsWith("+")) { prefix = "+" + prefix; }
+      return ["'" + prefix + block.getFieldValue('PHONE_BODY').trim() + "'", Blockly.Python.ORDER_ATOMIC];
     };
 
-    Blockly.Python.forBlock['action_threat_intel'] = function(block) {
-        var valueParam = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-        var pyCall = "run_scan(target=" + valueParam + ", mode='dns')";
-        return applyMutatorBranches(block, pyCall);
+    // Action generators (return executable statements)
+    Blockly.Python.forBlock['action_dns_resolve'] = function(block) {
+      var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+      return 'run_scan(target=' + val + ', mode="dns")\\n';
+    };
+    
+    Blockly.Python.forBlock['action_ip_geolocation'] = function(block) {
+      var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+      return 'run_scan(target=' + val + ', mode="geo")\\n';
+    };
+    
+    Blockly.Python.forBlock['action_phone_tracker'] = function(block) {
+      var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+      return 'run_scan(target=' + val + ', mode="phone")\\n';
     };
 
-    Blockly.Python.forBlock['action_robots_sitemap'] = function(block) {
-        var valueParam = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-        var pyCall = "run_scan(target=" + valueParam + ", mode='robots')";
-        return applyMutatorBranches(block, pyCall);
+    Blockly.Python.forBlock['action_whois_lookup'] = function(block) {
+      var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+      return 'run_scan(target=' + val + ', mode="whois")\\n';
     };
 
-    Blockly.Python.forBlock['action_ssl_audit'] = function(block) {
-        var valueParam = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-        var pyCall = "run_scan(target=" + valueParam + ", mode='ssl_audit')";
-        return applyMutatorBranches(block, pyCall);
+    Blockly.Python.forBlock['action_http_header_audit'] = function(block) {
+      var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+      return 'run_scan(target=' + val + ', mode="header_audit")\\n';
     };
 
     Blockly.Python.forBlock['action_shodan_lookup'] = function(block) {
-        var valueParam = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-        var pyCall = "run_scan(target=" + valueParam + ", mode='shodan')";
-        return applyMutatorBranches(block, pyCall);
-    };
-
-    Blockly.Python.forBlock['action_regex_filter'] = function(block) {
-        var regexPattern = block.getFieldValue('PATTERN');
-        var valueParam = Blockly.Python.valueToCode(block, 'NAME', 0) || "''";
-        var pyCall = "run_scan(target=" + valueParam + ", mode='regex', structural='" + regexPattern.replace(/'/g, "\\\\'") + "')";
-        return applyMutatorBranches(block, pyCall);
+      var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+      return 'run_scan(target=' + val + ', mode="shodan")\\n';
     };
 """
