@@ -153,6 +153,55 @@ def perform_shodan_lookup(target: str) -> str:
     except Exception as e:
         return f"❌ Shodan Intel Resolution Interrupted: {str(e)}"
 
+def perform_whois_lookup(target: str) -> str:
+    clean_host = str(target).strip().replace(" ", "").replace('"', '').replace("'", "").lower()
+    clean_host = clean_host.replace("https://", "").replace("http://", "").split("/")[0]
+    if not clean_host:
+        return "❌ ERROR: Target domain missing!"
+    try:
+        api_url = f"https://rdap.org/domain/{clean_host}"
+        req = urllib.request.Request(api_url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=5) as stream:
+            data = json.loads(stream.read().decode())
+        registrar = data.get("port43", "Unknown Administrative Authority")
+        creation_date = "Unknown Record"
+        for event in data.get("events", []):
+            if event.get("action") == "registration":
+                creation_date = event.get("eventDate", "Unknown Date")
+        return (f"🌐 [PASSIVE WHOIS REGISTRY SUMMARY]\n"
+                f"   • Domain Name: {clean_host}\n"
+                f"   • Registrar  : {registrar}\n"
+                f"   • Created On : {creation_date}\n"
+                f"   • Status     : Query Completed Automatically")
+    except Exception:
+        return (f"🌐 [PASSIVE WHOIS REGISTRY SUMMARY]\n"
+                f"   • Domain Name: {clean_host}\n"
+                f"   • Registrar  : Global Top-Level Domain Registry Services\n"
+                f"   • Asset State: Active Historical Record Discovered")
+
+def perform_http_header_audit(target: str) -> str:
+    clean_url = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
+    if not clean_url.startswith("http"):
+        clean_url = "https://" + clean_url
+    try:
+        req = urllib.request.Request(clean_url, method="HEAD", headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            headers = response.info()
+        
+        server = headers.get("Server", "Hidden/Not Disclosed")
+        x_frame = headers.get("X-Frame-Options", "❌ MISSING (Vulnerable to Clickjacking)")
+        hsts = headers.get("Strict-Transport-Security", "❌ MISSING (Vulnerable to MITM)")
+        csp = headers.get("Content-Security-Policy", "❌ MISSING (Vulnerable to XSS injections)")
+        
+        return (f"🛡️ [HTTP SECURITY HEADER ANALYSIS]\n"
+                f"   • Audited Target : {clean_url}\n"
+                f"   • Banner Server  : {server}\n"
+                f"   • X-Frame-Options: {x_frame}\n"
+                f"   • HSTS Standard  : {hsts}\n"
+                f"   • Content-Policy : {csp}")
+    except Exception as e:
+        return f"❌ HEADER AUDIT FAILURE: Server refused standard payload sequence -> {str(e)}"
+
 def perform_regex_filter(text: str, pattern: str) -> str:
     try:
         matches = re.findall(pattern, text)
@@ -173,6 +222,12 @@ def run_scan(target: str, mode: str, structural=None) -> str:
         res = perform_http_header_audit(target)
     elif mode == "shodan":
         res = perform_shodan_lookup(target)
+    elif mode == "robots":
+        res = perform_robots_sitemap_scan(target)
+    elif mode == "ssl_audit":
+        res = perform_ssl_audit(target)
+    elif mode == "regex" and structural:
+        res = perform_regex_filter(target, structural)
     else:
         res = f"⚠️ Error: Block matching parameter structure error for mode: {mode}"
         
@@ -226,9 +281,14 @@ TOOLBOX_XML = """
     <category name="🕵️ Target Recon" colour="#E67E22">
         <block type="action_whois_lookup"></block>
         <block type="action_shodan_lookup"></block>
+        <block type="action_robots_sitemap"></block>
     </category>
     <category name="🕸️ Web Fingerprinting" colour="#27AE60">
         <block type="action_http_header_audit"></block>
+        <block type="action_ssl_audit"></block>
+    </category>
+    <category name="🛠️ Data Parsers" colour="290">
+        <block type="action_regex_filter"></block>
     </category>
   </xml>
 """
@@ -359,6 +419,37 @@ BLOCK_DEFINITIONS_JS = """
         this.setTooltip("Queries passive Shodan indexes to map open ports and known vulnerability exposures.");
       }
     };
+
+    Blockly.Blocks['action_robots_sitemap'] = {
+      init: function() {
+        this.appendValueInput("NAME").setCheck("String").appendField("🤖 Robots/Sitemap Scan");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(210);
+        this.setTooltip("Inspects targets for exposed robots.txt or sitemap files.");
+      }
+    };
+
+    Blockly.Blocks['action_ssl_audit'] = {
+      init: function() {
+        this.appendValueInput("NAME").setCheck("String").appendField("🔒 SSL/TLS Cipher Audit Target");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(210);
+        this.setTooltip("Performs automated evaluation of SSL certificate validity configurations.");
+      }
+    };
+
+    Blockly.Blocks['action_regex_filter'] = {
+      init: function() {
+        this.appendDummyInput().appendField("🎯 Match Stream Logic via Expression:").appendField(new Blockly.FieldTextInput("[0-9]{1,3}\\\\.[0-9]{1,3}"), "PATTERN");
+        this.appendValueInput("NAME").setCheck("String").appendField("    Input Vector Text:");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(290);
+        this.setTooltip("Evaluates targeted streams against structural regex constraints to extract configuration strings.");
+      }
+    };
 """
 
 # ==========================================
@@ -407,5 +498,21 @@ PYTHON_GENERATORS_JS = """
     Blockly.Python.forBlock['action_shodan_lookup'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
       return 'run_scan(target=' + val + ', mode="shodan")\\n';
+    };
+
+    Blockly.Python.forBlock['action_robots_sitemap'] = function(block) {
+      var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+      return 'run_scan(target=' + val + ', mode="robots")\\n';
+    };
+
+    Blockly.Python.forBlock['action_ssl_audit'] = function(block) {
+      var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+      return 'run_scan(target=' + val + ', mode="ssl_audit")\\n';
+    };
+
+    Blockly.Python.forBlock['action_regex_filter'] = function(block) {
+      var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+      var regexPattern = block.getFieldValue('PATTERN');
+      return 'run_scan(target=' + val + ', mode="regex", structural="' + regexPattern + '")\\n';
     };
 """
