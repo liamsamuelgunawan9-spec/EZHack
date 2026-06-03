@@ -268,26 +268,22 @@ TOOLBOX_XML = """
     <category name="🏁 Sequence Triggers" colour="0">
       <block type="when_sequence_activated"></block>
     </category>
-    <category name="🌐 Core Inputs" colour="160">
+    
+    <category name="🌐 Core Inputs (Support Blocks)" colour="160">
       <block type="custom_input_string"></block>
       <block type="global_phone_preset"></block>
       <block type="custom_phone_signature"></block>
     </category>
-    <category name="🔎 Passive Recon Suite" colour="#4A90E2">
+    
+    <category name="⚔️ Recon & Attack (Action Scans)" colour="#d63031">
         <block type="action_dns_resolve"></block>
         <block type="action_ip_geolocation"></block>
         <block type="action_phone_tracker"></block>
-    </category>
-    <category name="🕵️ Target Recon" colour="#E67E22">
         <block type="action_whois_lookup"></block>
         <block type="action_shodan_lookup"></block>
         <block type="action_robots_sitemap"></block>
-    </category>
-    <category name="🕸️ Web Fingerprinting" colour="#27AE60">
         <block type="action_http_header_audit"></block>
         <block type="action_ssl_audit"></block>
-    </category>
-    <category name="🛠️ Data Parsers" colour="290">
         <block type="action_regex_filter"></block>
     </category>
   </xml>
