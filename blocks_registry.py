@@ -275,7 +275,7 @@ TOOLBOX_XML = """
       <block type="custom_phone_signature"></block>
     </category>
     
-    <category name="⚔️ Recon & Attack (Action Scans)" colour="#d63031">
+    <category name="⚔️ Recon &amp; Attack (Action Scans)" colour="#d63031">
         <block type="action_dns_resolve"></block>
         <block type="action_ip_geolocation"></block>
         <block type="action_phone_tracker"></block>
