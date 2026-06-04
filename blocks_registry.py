@@ -247,7 +247,7 @@ TOOLBOX_XML = """
       <block type="logic_negate"></block>
       <block type="logic_boolean"></block>
     </category>
-    <category name="🔁 Loops & Wait" colour="120">
+    <category name="🔁 Loops &amp; Wait" colour="120">
       <block type="controls_repeat_ext">
         <value name="TIMES">
           <shadow type="math_number">
@@ -258,7 +258,7 @@ TOOLBOX_XML = """
       <block type="controls_whileUntil"></block>
       <block type="action_wait_task"></block>
     </category>
-    <category name="🔢 Math & Data" colour="230">
+    <category name="🔢 Math &amp; Data" colour="230">
       <block type="math_number"></block>
       <block type="math_arithmetic"></block>
       <block type="text"></block>
