@@ -278,13 +278,16 @@ TOOLBOX_XML = """
       <block type="custom_phone_signature"></block>
     </category>
     
-    <category name="⚔️ Recon &amp; Attack" colour="#d63031">
+    <category name="⚔️ Recon &amp; Attack (Action Scans)" colour="#d63031">
         <block type="action_dns_resolve"></block>
         <block type="action_ip_geolocation"></block>
         <block type="action_phone_tracker"></block>
         <block type="action_whois_lookup"></block>
         <block type="action_shodan_lookup"></block>
+        <block type="action_robots_sitemap"></block>
         <block type="action_http_header_audit"></block>
+        <block type="action_ssl_audit"></block>
+        <block type="action_regex_filter"></block>
     </category>
   </xml>
 """
@@ -411,16 +414,48 @@ BLOCK_DEFINITIONS_JS = """
         this.setTooltip("Queries passive Shodan indexes to map open ports and known vulnerability exposures.");
       }
     };
+
+    Blockly.Blocks['action_robots_sitemap'] = {
+      init: function() {
+        this.appendValueInput("NAME").setCheck("String").appendField("🤖 Robots/Sitemap Scan");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(210);
+        this.setTooltip("Inspects targets for exposed robots.txt or sitemap files.");
+      }
+    };
+
+    Blockly.Blocks['action_ssl_audit'] = {
+      init: function() {
+        this.appendValueInput("NAME").setCheck("String").appendField("🔒 SSL/TLS Cipher Audit Target");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(210);
+        this.setTooltip("Performs automated evaluation of SSL certificate validity configurations.");
+      }
+    };
+
+    Blockly.Blocks['action_regex_filter'] = {
+      init: function() {
+        this.appendDummyInput().appendField("🎯 Match Stream Logic via Expression:").appendField(new Blockly.FieldTextInput("[0-9]{1,3}\\\\.[0-9]{1,3}"), "PATTERN");
+        this.appendValueInput("NAME").setCheck("String").appendField("    Input Vector Text:");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(290);
+        this.setTooltip("Evaluates targeted streams against structural regex constraints to extract configuration strings.");
+      }
+    };
 """
 
 # ==========================================
-# 4. CLEANED CODE GENERATION LAYER
+# 4. PYTHON CODES EMISSION SYNTAX MAPPING
 # ==========================================
 
 PYTHON_GENERATORS_JS = """
     Blockly.Python.forBlock['when_sequence_activated'] = function(block) { return '# Sequence Active: ' + block.getFieldValue('SEQUENCE_ID') + '\\n'; };
     Blockly.Python.forBlock['action_wait_task'] = function(block) { return 'time.sleep(' + block.getFieldValue('SECONDS') + ')\\n'; };
     
+    // Support generators (return values)
     Blockly.Python.forBlock['custom_input_string'] = function(block) { return ["'" + block.getFieldValue('RAW_TEXT') + "'", Blockly.Python.ORDER_ATOMIC]; };
     Blockly.Python.forBlock['global_phone_preset'] = function(block) { return ["'" + block.getFieldValue('CC_PREFIX') + block.getFieldValue('PHONE_BODY') + "'", Blockly.Python.ORDER_ATOMIC]; };
     Blockly.Python.forBlock['custom_phone_signature'] = function(block) {
@@ -429,6 +464,7 @@ PYTHON_GENERATORS_JS = """
       return ["'" + prefix + block.getFieldValue('PHONE_BODY').trim() + "'", Blockly.Python.ORDER_ATOMIC];
     };
 
+    // Action generators (return executable statements)
     Blockly.Python.forBlock['action_dns_resolve'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
       return 'run_scan(target=' + val + ', mode="dns")\\n';
@@ -457,5 +493,21 @@ PYTHON_GENERATORS_JS = """
     Blockly.Python.forBlock['action_shodan_lookup'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
       return 'run_scan(target=' + val + ', mode="shodan")\\n';
+    };
+
+    Blockly.Python.forBlock['action_robots_sitemap'] = function(block) {
+      var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+      return 'run_scan(target=' + val + ', mode="robots")\\n';
+    };
+
+    Blockly.Python.forBlock['action_ssl_audit'] = function(block) {
+      var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+      return 'run_scan(target=' + val + ', mode="ssl_audit")\\n';
+    };
+
+    Blockly.Python.forBlock['action_regex_filter'] = function(block) {
+      var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+      var regexPattern = block.getFieldValue('PATTERN');
+      return 'run_scan(target=' + val + ', mode="regex", structural="' + regexPattern + '")\\n';
     };
 """
