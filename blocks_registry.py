@@ -12,7 +12,7 @@ import phonenumbers
 from phonenumbers import carrier, geocoder, timezone
 
 # ==========================================
-# 1. CORE UTILITY FUNCTIONS (PASSIVE OSINT SUITE)
+# 1. CORE UTILITY FUNCTIONS (PASSIVE OSINT SUITE & ATTACK SIMS)
 # ==========================================
 
 def perform_dns_lookup(target: str) -> str:
@@ -228,6 +228,10 @@ def run_scan(target: str, mode: str, structural=None) -> str:
         res = perform_ssl_audit(target)
     elif mode == "regex" and structural:
         res = perform_regex_filter(target, structural)
+    elif mode == "fuzz":
+        res = f"💥 [ATTACK ENGINE] Fuzzing sequence initiated on {target}...\n   -> Testing parameters for overflow logic.\n   -> Payload injection matrix simulated successfully."
+    elif mode == "exploit":
+        res = f"☠️ [ATTACK ENGINE] Deploying active exploit payload to {target}...\n   -> Bypassing simulated security controls.\n   -> Target compromised (Educational Simulation)."
     else:
         res = f"⚠️ Error: Block matching parameter structure error for mode: {mode}"
         
@@ -278,7 +282,7 @@ TOOLBOX_XML = """
       <block type="custom_phone_signature"></block>
     </category>
     
-    <category name="⚔️ Recon &amp; Attack (Action Scans)" colour="#d63031">
+    <category name="⚔️ Recon &amp; Scans" colour="#5b80a2">
         <block type="action_dns_resolve"></block>
         <block type="action_ip_geolocation"></block>
         <block type="action_phone_tracker"></block>
@@ -288,6 +292,11 @@ TOOLBOX_XML = """
         <block type="action_http_header_audit"></block>
         <block type="action_ssl_audit"></block>
         <block type="action_regex_filter"></block>
+    </category>
+
+    <category name="☠️ Active Attack Vectors" colour="#8b0000">
+        <block type="action_basic_fuzz"></block>
+        <block type="action_exploit_payload"></block>
     </category>
   </xml>
 """
@@ -445,6 +454,26 @@ BLOCK_DEFINITIONS_JS = """
         this.setTooltip("Evaluates targeted streams against structural regex constraints to extract configuration strings.");
       }
     };
+
+    Blockly.Blocks['action_basic_fuzz'] = {
+      init: function() {
+        this.appendValueInput("NAME").setCheck("String").appendField("💥 Basic Fuzz Payload");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour('#8b0000');
+        this.setTooltip("Injects standard fuzzing payloads into target endpoint.");
+      }
+    };
+
+    Blockly.Blocks['action_exploit_payload'] = {
+      init: function() {
+        this.appendValueInput("NAME").setCheck("String").appendField("☠️ Execute Exploit Payload");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour('#8b0000');
+        this.setTooltip("Simulates an exploit execution on target.");
+      }
+    };
 """
 
 # ==========================================
@@ -509,5 +538,15 @@ PYTHON_GENERATORS_JS = """
       var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
       var regexPattern = block.getFieldValue('PATTERN');
       return 'run_scan(target=' + val + ', mode="regex", structural="' + regexPattern + '")\\n';
+    };
+
+    Blockly.Python.forBlock['action_basic_fuzz'] = function(block) {
+      var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+      return 'run_scan(target=' + val + ', mode="fuzz")\\n';
+    };
+
+    Blockly.Python.forBlock['action_exploit_payload'] = function(block) {
+      var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+      return 'run_scan(target=' + val + ', mode="exploit")\\n';
     };
 """

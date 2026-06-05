@@ -191,7 +191,10 @@ try:
         
     if "ai_msg" in st.query_params and st.query_params["ai_msg"]:
         user_text = urllib.parse.unquote(st.query_params["ai_msg"])
-        st.query_params["ai_msg"] = ""
+        
+        # PROPERLY CLEAR THE AI MSG SO THE LOOP STOPS
+        st.query_params.pop("ai_msg", None)
+        
         st.session_state["chat_messages"].append({"role": "user", "content": user_text})
         
         if ai_client:
