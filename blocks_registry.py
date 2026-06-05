@@ -510,16 +510,25 @@ TOOLBOX_XML = """
       <block type="custom_phone_signature"></block>
     </category>
     
-    <category name="⚔️ Recon &amp; Scans" colour="#5b80a2">
-        <block type="action_dns_resolve"></block>
-        <block type="action_ip_geolocation"></block>
-        <block type="action_phone_tracker"></block>
-        <block type="action_whois_lookup"></block>
-        <block type="action_shodan_lookup"></block>
-        <block type="action_robots_sitemap"></block>
-        <block type="action_http_header_audit"></block>
-        <block type="action_ssl_audit"></block>
-        <block type="action_regex_filter"></block>
+    <category name="🔎 Intelligence Gathering" colour="#5b80a2">
+        <category name="🌐 Domain &amp; IP Info" colour="#4a6fa5">
+            <block type="action_dns_resolve"></block>
+            <block type="action_ip_geolocation"></block>
+            <block type="action_whois_lookup"></block>
+        </category>
+        <category name="📱 Telecom Research" colour="#4a6fa5">
+            <block type="action_phone_tracker"></block>
+        </category>
+        <category name="🕷️ Web &amp; Service Scan" colour="#4a6fa5">
+            <block type="action_shodan_lookup"></block>
+            <block type="action_robots_sitemap"></block>
+            <block type="action_http_header_audit"></block>
+            <block type="action_ssl_audit"></block>
+            <block type="action_service_enum"></block>
+        </category>
+        <category name="🔧 Data Processing" colour="#4a6fa5">
+            <block type="action_regex_filter"></block>
+        </category>
     </category>
 
     <category name="☠️ Active Attack Vectors" colour="#8b0000">
@@ -528,17 +537,20 @@ TOOLBOX_XML = """
     </category>
 
     <category name="🔨 Attack Toolkit" colour="#8b4513">
-        <block type="action_sql_injection"></block>
-        <block type="action_xss_attack"></block>
-        <block type="action_directory_brute"></block>
-        <block type="action_credential_attack"></block>
-        <sep></sep>
-        <block type="action_port_scan"></block>
-        <block type="action_service_enum"></block>
-        <block type="action_vuln_lookup"></block>
-        <sep></sep>
-        <block type="action_malware_detect"></block>
-        <block type="action_firewall_detect"></block>
+        <category name="💉 Web Vulnerabilities" colour="#8b4513">
+            <block type="action_sql_injection"></block>
+            <block type="action_xss_attack"></block>
+        </category>
+        <category name="🔓 Infrastructure Attacks" colour="#8b4513">
+            <block type="action_directory_brute"></block>
+            <block type="action_port_scan"></block>
+            <block type="action_credential_attack"></block>
+        </category>
+        <category name="🔴 Threat Analysis" colour="#8b4513">
+            <block type="action_vuln_lookup"></block>
+            <block type="action_malware_detect"></block>
+            <block type="action_firewall_detect"></block>
+        </category>
     </category>
   </xml>
 """
