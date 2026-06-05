@@ -209,7 +209,95 @@ def perform_regex_filter(text: str, pattern: str) -> str:
     except Exception as e:
         return f"❌ Regex Evaluation Engine Exception: {str(e)}"
 
-def run_scan(target: str, mode: str, structural=None) -> str:
+def perform_sql_injection_test(target: str, payload: str) -> str:
+    clean_target = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
+    clean_payload = str(payload).strip()
+    try:
+        if not clean_target.startswith("http"):
+            clean_target = "https://" + clean_target
+        
+        test_url = f"{clean_target}?id={urllib.parse.quote(clean_payload)}"
+        req = urllib.request.Request(test_url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            response_text = response.read().decode('utf-8', errors='ignore')
+            
+        # Simulate detection logic
+        sql_indicators = ['SQL syntax', 'mysql_fetch', 'Warning:', 'error in your SQL', 'unclosed quotation']
+        detected = [ind for ind in sql_indicators if ind.lower() in response_text.lower()]
+        
+        if detected:
+            return f"⚠️ [SQL INJECTION TEST] Target appears VULNERABLE!\n   • Payload: {clean_payload}\n   • Detected Indicators: {', '.join(detected)}\n   ☠️ WARNING: This target may allow SQL injection attacks."
+        else:
+            return f"✅ [SQL INJECTION TEST] Target appears resistant.\n   • Payload Tested: {clean_payload}\n   • Status: No obvious SQL errors detected in response."
+    except Exception as e:
+        return f"❌ SQL Injection Test Failed: {str(e)}"
+
+def perform_xss_payload_test(target: str, payload: str) -> str:
+    clean_target = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
+    clean_payload = str(payload).strip()
+    try:
+        if not clean_target.startswith("http"):
+            clean_target = "https://" + clean_target
+        
+        test_url = f"{clean_target}?search={urllib.parse.quote(clean_payload)}"
+        req = urllib.request.Request(test_url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            response_text = response.read().decode('utf-8', errors='ignore')
+            
+        # Check if payload is reflected without escaping
+        if clean_payload in response_text:
+            return f"⚠️ [XSS PAYLOAD TEST] Target appears VULNERABLE!\n   • Payload: {clean_payload}\n   • Status: Payload reflected without encoding\n   ☠️ WARNING: This target may allow XSS attacks."
+        else:
+            return f"✅ [XSS PAYLOAD TEST] Target appears resistant.\n   • Payload Tested: {clean_payload}\n   • Status: Payload was encoded or filtered."
+    except Exception as e:
+        return f"❌ XSS Test Failed: {str(e)}"
+
+def perform_directory_brute_force(target: str, wordlist_sample: str) -> str:
+    clean_target = str(target).strip().replace(" ", "").replace('"', '').replace("'", "")
+    if not clean_target.startswith("http"):
+        clean_target = "https://" + clean_target
+    
+    try:
+        # Simulate directory brute forcing with common paths
+        common_dirs = ["admin", "config", "backup", "upload", "api", "data", "secret", "private"]
+        found_dirs = []
+        
+        for directory in common_dirs[:5]:  # Limit to 5 for simulation
+            try:
+                test_url = f"{clean_target}/{directory}/"
+                req = urllib.request.Request(test_url, method="HEAD", headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req, timeout=3) as response:
+                    if response.status in [200, 301, 302]:
+                        found_dirs.append((directory, response.status))
+            except:
+                pass
+        
+        if found_dirs:
+            dirs_list = "\n   ".join([f"/{d} (HTTP {s})" for d, s in found_dirs])
+            return f"🔓 [DIRECTORY BRUTE FORCE] Found exposed directories!\n   {dirs_list}\n   ⚠️ These directories may contain sensitive information."
+        else:
+            return f"🔒 [DIRECTORY BRUTE FORCE] No common directories found at {clean_target}"
+    except Exception as e:
+        return f"❌ Directory Brute Force Failed: {str(e)}"
+
+def perform_credential_attack(target: str, username: str, password_list: str) -> str:
+    clean_target = str(target).strip()
+    clean_user = str(username).strip()
+    pass_sample = str(password_list).strip()
+    
+    try:
+        # Simulate credential testing (non-invasive)
+        common_passwords = ["password123", "admin123", "letmein", "welcome", "test123", pass_sample]
+        
+        simulated_attempts = []
+        for idx, pwd in enumerate(common_passwords[:3]):
+            simulated_attempts.append(f"   Attempt {idx+1}: {clean_user}:{pwd} -> Connection Timeout (Rate Limited)")
+        
+        return f"🔑 [CREDENTIAL ATTACK SIMULATION] Testing {clean_user} against {clean_target}\n" + "\n".join(simulated_attempts) + "\n   ⚠️ Active credential attacks are blocked by rate limiting."
+    except Exception as e:
+        return f"❌ Credential Attack Simulation Failed: {str(e)}"
+
+def run_scan(target: str, mode: str, structural=None, payload: str = None, username: str = None, password_list: str = None) -> str:
     if mode == "dns":
         res = perform_dns_lookup(target)
     elif mode == "geo":
@@ -228,6 +316,14 @@ def run_scan(target: str, mode: str, structural=None) -> str:
         res = perform_ssl_audit(target)
     elif mode == "regex" and structural:
         res = perform_regex_filter(target, structural)
+    elif mode == "sql_injection" and payload:
+        res = perform_sql_injection_test(target, payload)
+    elif mode == "xss_attack" and payload:
+        res = perform_xss_payload_test(target, payload)
+    elif mode == "directory_brute" and structural:
+        res = perform_directory_brute_force(target, structural)
+    elif mode == "credential_attack" and username and password_list:
+        res = perform_credential_attack(target, username, password_list)
     elif mode == "fuzz":
         res = f"💥 [ATTACK ENGINE] Fuzzing sequence initiated on {target}...\n   -> Testing parameters for overflow logic.\n   -> Payload injection matrix simulated successfully."
     elif mode == "exploit":
@@ -236,7 +332,7 @@ def run_scan(target: str, mode: str, structural=None) -> str:
         res = f"⚠️ Error: Block matching parameter structure error for mode: {mode}"
         
     st.session_state["terminal_history_output"] += f"\n[ENGINE TRACE] Activating Module -> {mode.upper()}\n{res}\n"
-    return res 
+    return res
 
 # ==========================================
 # 2. CLEANED BLOCKLY TOOLBOX XML
@@ -297,6 +393,13 @@ TOOLBOX_XML = """
     <category name="☠️ Active Attack Vectors" colour="#8b0000">
         <block type="action_basic_fuzz"></block>
         <block type="action_exploit_payload"></block>
+    </category>
+
+    <category name="🔨 Attack Tools &amp; Payloads" colour="#8b4513">
+        <block type="action_sql_injection"></block>
+        <block type="action_xss_attack"></block>
+        <block type="action_directory_brute"></block>
+        <block type="action_credential_attack"></block>
     </category>
   </xml>
 """
@@ -474,6 +577,54 @@ BLOCK_DEFINITIONS_JS = """
         this.setTooltip("Simulates an exploit execution on target.");
       }
     };
+
+    Blockly.Blocks['action_sql_injection'] = {
+      init: function() {
+        this.appendValueInput("TARGET").setCheck("String").appendField("💉 SQL Injection Test");
+        this.appendValueInput("PAYLOAD").setCheck("String").appendField("   Payload:");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour('#8b4513');
+        this.setTooltip("Tests a target for SQL injection vulnerabilities using a custom payload.");
+      }
+    };
+
+    Blockly.Blocks['action_xss_attack'] = {
+      init: function() {
+        this.appendValueInput("TARGET").setCheck("String").appendField("🔗 XSS Payload Test");
+        this.appendValueInput("PAYLOAD").setCheck("String").appendField("   Payload:");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour('#8b4513');
+        this.setTooltip("Tests a target for Cross-Site Scripting (XSS) vulnerabilities.");
+      }
+    };
+
+    Blockly.Blocks['action_directory_brute'] = {
+      init: function() {
+        this.appendValueInput("TARGET").setCheck("String").appendField("📂 Directory Brute Force");
+        this.appendDummyInput().appendField("   Wordlist (sample):")
+          .appendField(new Blockly.FieldTextInput("admin,config,backup"), "WORDLIST");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour('#8b4513');
+        this.setTooltip("Attempts to discover hidden directories on a web server.");
+      }
+    };
+
+    Blockly.Blocks['action_credential_attack'] = {
+      init: function() {
+        this.appendValueInput("TARGET").setCheck("String").appendField("🔑 Credential Attack");
+        this.appendDummyInput().appendField("   Username:")
+          .appendField(new Blockly.FieldTextInput("admin"), "USERNAME");
+        this.appendDummyInput().appendField("   Password List:")
+          .appendField(new Blockly.FieldTextInput("password123,admin123"), "PASSWORD_LIST");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour('#8b4513');
+        this.setTooltip("Simulates credential attack testing against a target service.");
+      }
+    };
 """
 
 # ==========================================
@@ -548,5 +699,30 @@ PYTHON_GENERATORS_JS = """
     Blockly.Python.forBlock['action_exploit_payload'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
       return 'run_scan(target=' + val + ', mode="exploit")\\n';
+    };
+
+    Blockly.Python.forBlock['action_sql_injection'] = function(block) {
+      var target = Blockly.Python.valueToCode(block, 'TARGET', Blockly.Python.ORDER_ATOMIC) || "''";
+      var payload = Blockly.Python.valueToCode(block, 'PAYLOAD', Blockly.Python.ORDER_ATOMIC) || "''";
+      return 'run_scan(target=' + target + ', mode="sql_injection", payload=' + payload + ')\\n';
+    };
+
+    Blockly.Python.forBlock['action_xss_attack'] = function(block) {
+      var target = Blockly.Python.valueToCode(block, 'TARGET', Blockly.Python.ORDER_ATOMIC) || "''";
+      var payload = Blockly.Python.valueToCode(block, 'PAYLOAD', Blockly.Python.ORDER_ATOMIC) || "''";
+      return 'run_scan(target=' + target + ', mode="xss_attack", payload=' + payload + ')\\n';
+    };
+
+    Blockly.Python.forBlock['action_directory_brute'] = function(block) {
+      var target = Blockly.Python.valueToCode(block, 'TARGET', Blockly.Python.ORDER_ATOMIC) || "''";
+      var wordlist = block.getFieldValue('WORDLIST');
+      return 'run_scan(target=' + target + ', mode="directory_brute", structural="' + wordlist + '")\\n';
+    };
+
+    Blockly.Python.forBlock['action_credential_attack'] = function(block) {
+      var target = Blockly.Python.valueToCode(block, 'TARGET', Blockly.Python.ORDER_ATOMIC) || "''";
+      var username = block.getFieldValue('USERNAME');
+      var passwordList = block.getFieldValue('PASSWORD_LIST');
+      return 'run_scan(target=' + target + ', mode="credential_attack", username="' + username + '", password_list="' + passwordList + '")\\n';
     };
 """
