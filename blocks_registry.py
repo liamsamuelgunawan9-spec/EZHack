@@ -577,8 +577,13 @@ BLOCK_DEFINITIONS_JS = """
               callback: function() {
                   var targetedSequencePayload = Blockly.Python.blockToCode(currentBlockInstance);
                   var sequenceIdentifier = currentBlockInstance.getFieldValue("SEQUENCE_ID");
+                  
+                  // NEW ADDITION: Grab the XML Matrix so the UI canvas doesn't get wiped!
+                  var xmlDom = Blockly.Xml.workspaceToDom(window.workspace);
+                  var currentXmlText = Blockly.Xml.domToText(xmlDom);
+                  
                   var baseUrl = window.parent.location.origin + window.parent.location.pathname;
-                  var targetUrl = baseUrl + "?payload_matrix=" + encodeURIComponent(targetedSequencePayload) + "&run_sequence=" + encodeURIComponent(sequenceIdentifier);
+                  var targetUrl = baseUrl + "?payload_matrix=" + encodeURIComponent(targetedSequencePayload) + "&xml_matrix=" + encodeURIComponent(currentXmlText) + "&run_sequence=" + encodeURIComponent(sequenceIdentifier);
                   window.parent.location.href = targetUrl;
               }
           };

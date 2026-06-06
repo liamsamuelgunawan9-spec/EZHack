@@ -217,7 +217,9 @@ try:
 
     if "run_sequence" in st.query_params and st.query_params["run_sequence"]:
         sequence_id_name = urllib.parse.unquote(st.query_params["run_sequence"])
-        st.query_params["run_sequence"] = ""
+        
+        # FIX: PROPERLY POP THE URL PARAM SO IT EXECUTES CLEANLY WITHOUT LOOPING
+        st.query_params.pop("run_sequence", None)
         
         st.session_state["terminal_history_output"] += f"\n🤖 Booting sequence pipeline [{sequence_id_name}]...\nRunning target compiled script layers...\n"
         code_to_run = st.session_state["synced_workspace_code"].strip()
