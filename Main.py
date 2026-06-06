@@ -182,56 +182,53 @@ if "chat_messages" not in st.session_state:
     st.session_state["chat_messages"] = [{"role": "assistant", "content": "Hello! I am your Groq-powered AI Copilot. Drag and zoom the workspace canvas to see both the Terminal and AI Interface float like blocks!"}]
 
 # --- 3. Reactive State Updates & Executions ---
-try:
-    if "payload_matrix" in st.query_params:
-        st.session_state["synced_workspace_code"] = urllib.parse.unquote(st.query_params["payload_matrix"])
+if "payload_matrix" in st.query_params:
+    st.session_state["synced_workspace_code"] = urllib.parse.unquote(st.query_params["payload_matrix"])
+    
+if "xml_matrix" in st.query_params:
+    st.session_state["blockly_xml_state"] = urllib.parse.unquote(st.query_params["xml_matrix"])
+    
+if "ai_msg" in st.query_params and st.query_params["ai_msg"]:
+    user_text = urllib.parse.unquote(st.query_params["ai_msg"])
+    
+    st.session_state["chat_messages"].append({"role": "user", "content": user_text})
+    
+    if ai_client:
+        system_context = f"""
+        You are an elite pentesting AI assistant embedded in a visual block-coding platform.
+        The user is building security and OSINT tools by dragging logic blocks.
         
-    if "xml_matrix" in st.query_params:
-        st.session_state["blockly_xml_state"] = urllib.parse.unquote(st.query_params["xml_matrix"])
+        Current compiled workspace Python code:
+        {st.session_state.get("synced_workspace_code", "")}
         
-    if "ai_msg" in st.query_params and st.query_params["ai_msg"]:
-        user_text = urllib.parse.unquote(st.query_params["ai_msg"])
+        Current output console logs:
+        {st.session_state.get("terminal_history_output", "")}
         
-        # PROPERLY CLEAR THE AI MSG SO THE LOOP STOPS
-        st.query_params.pop("ai_msg", None)
-        
-        st.session_state["chat_messages"].append({"role": "user", "content": user_text})
-        
-        if ai_client:
-            system_context = f"""
-            You are an elite pentesting AI assistant embedded in a visual block-coding platform.
-            The user is building security and OSINT tools by dragging logic blocks.
-            
-            Current compiled workspace Python code:
-            {st.session_state.get("synced_workspace_code", "")}
-            
-            Current output console logs:
-            {st.session_state.get("terminal_history_output", "")}
-            
-            Analyze the user's workspace, explain what their blocks are doing, and answer their prompt.
-            Keep it hacker-themed, concise, and educational. Do not generate destructive payloads.
-            """
-            api_messages = [{"role": "system", "content": system_context}] + st.session_state["chat_messages"]
-            reply = generate_completion_with_fallback(api_messages)
-            st.session_state["chat_messages"].append({"role": "assistant", "content": reply})
+        Analyze the user's workspace, explain what their blocks are doing, and answer their prompt.
+        Keep it hacker-themed, concise, and educational. Do not generate destructive payloads.
+        """
+        api_messages = [{"role": "system", "content": system_context}] + st.session_state["chat_messages"]
+        reply = generate_completion_with_fallback(api_messages)
+        st.session_state["chat_messages"].append({"role": "assistant", "content": reply})
 
-    if "run_sequence" in st.query_params and st.query_params["run_sequence"]:
-        sequence_id_name = urllib.parse.unquote(st.query_params["run_sequence"])
-        
-        # FIX: PROPERLY POP THE URL PARAM SO IT EXECUTES CLEANLY WITHOUT LOOPING
-        st.query_params.pop("run_sequence", None)
-        
-        st.session_state["terminal_history_output"] += f"\n🤖 Booting sequence pipeline [{sequence_id_name}]...\nRunning target compiled script layers...\n"
-        code_to_run = st.session_state["synced_workspace_code"].strip()
-        if code_to_run:
-            try:
-                exec_scope = {"run_scan": blocks_registry.run_scan, "time": time}
-                exec(code_to_run, exec_scope)
-                st.session_state["terminal_history_output"] += "\n🟢 Execution automation run complete!"
-            except Exception as runtime_err:
-                st.session_state["terminal_history_output"] += f"\n💥 PIPELINE BREAK: {str(runtime_err)}"
-except Exception:
-    pass
+    # FIX 2: Pop this parameter AFTER logic completes so it doesn't kill execution early
+    st.query_params.pop("ai_msg", None)
+
+if "run_sequence" in st.query_params and st.query_params["run_sequence"]:
+    sequence_id_name = urllib.parse.unquote(st.query_params["run_sequence"])
+    
+    st.session_state["terminal_history_output"] += f"\n🤖 Booting sequence pipeline [{sequence_id_name}]...\nRunning target compiled script layers...\n"
+    code_to_run = st.session_state["synced_workspace_code"].strip()
+    if code_to_run:
+        try:
+            exec_scope = {"run_scan": blocks_registry.run_scan, "time": time}
+            exec(code_to_run, exec_scope)
+            st.session_state["terminal_history_output"] += "\n🟢 Execution automation run complete!"
+        except Exception as runtime_err:
+            st.session_state["terminal_history_output"] += f"\n💥 PIPELINE BREAK: {str(runtime_err)}"
+            
+    # FIX 3: Pop this parameter AFTER exec() completes so Streamlit actually runs it!
+    st.query_params.pop("run_sequence", None)
 
 safe_xml_state = json.dumps(st.session_state.get("blockly_xml_state", ""))
 safe_terminal_output = json.dumps(st.session_state.get("terminal_history_output", ""))
@@ -510,8 +507,10 @@ blockly_html_payload = f"""
     function handleTabSend() {{
       var inputField = document.getElementById("aiTabInputField"); var text = inputField.value.trim();
       if(!text) return; inputField.value = "";
-      var topBlocks = window.workspace.getTopBlocks(false); var generatedPythonCode = "";
-      for (var i = 0; i < topBlocks.length; i++) {{ if (topBlocks[i].type === 'when_sequence_activated') {{ generatedPythonCode += Blockly.Python.blockToCode(topBlocks[i]); }} }}
+      
+      // FIX 4: Use workspaceToCode for Chatbot as well to grab the full context
+      var generatedPythonCode = Blockly.Python.workspaceToCode(window.workspace);
+      
       var xmlDom = Blockly.Xml.workspaceToDom(window.workspace); var currentXmlText = Blockly.Xml.domToText(xmlDom);
       var baseUrl = window.parent.location.origin + window.parent.location.pathname;
       var targetUrl = baseUrl + "?payload_matrix=" + encodeURIComponent(generatedPythonCode) + "&xml_matrix=" + encodeURIComponent(currentXmlText) + "&ai_msg=" + encodeURIComponent(text);
@@ -539,9 +538,13 @@ blockly_html_payload = f"""
     document.addEventListener("mouseup", function() {{ isDraggingTerm = false; isResizingTerm = false; isDraggingAI = false; isResizingAI = false; }});
 
     function processLiveDebugCompilations() {{
-      var topBlocks = window.workspace.getTopBlocks(false); var generatedPythonCode = ""; var sequenceFound = false;
-      for (var i = 0; i < topBlocks.length; i++) {{ if (topBlocks[i].type === 'when_sequence_activated') {{ sequenceFound = true; generatedPythonCode += Blockly.Python.blockToCode(topBlocks[i]); }} }}
+      var topBlocks = window.workspace.getTopBlocks(false); var sequenceFound = false;
+      for (var i = 0; i < topBlocks.length; i++) {{ if (topBlocks[i].type === 'when_sequence_activated') {{ sequenceFound = true; }} }}
+      
+      // FIX 5: Ensure live debug pulls from the entire workspace so you actually see code assembling!
+      var generatedPythonCode = Blockly.Python.workspaceToCode(window.workspace);
       var xmlDom = Blockly.Xml.workspaceToDom(window.workspace); var currentXmlText = Blockly.Xml.domToText(xmlDom);
+      
       if(sequenceFound) {{
         var targetUrl = window.parent.location.origin + window.parent.location.pathname + "?payload_matrix=" + encodeURIComponent(generatedPythonCode) + "&xml_matrix=" + encodeURIComponent(currentXmlText);
         if(window.parent.location.search !== "?payload_matrix=" + encodeURIComponent(generatedPythonCode) + "&xml_matrix=" + encodeURIComponent(currentXmlText)) {{ window.parent.history.replaceState({{}}, '', targetUrl); }}
