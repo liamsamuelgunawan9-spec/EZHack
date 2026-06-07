@@ -575,8 +575,8 @@ BLOCK_DEFINITIONS_JS = """
               enabled: true,
               text: "⚡ Activate This Sequence",
               callback: function() {
-                  // FIX 1: Grab the ENTIRE workspace code, not just the single block, so connected nodes are caught
-                  var targetedSequencePayload = Blockly.Python.workspaceToCode(window.workspace);
+                  // FIX 1: Restored blockToCode so it strictly captures only the sequence connected to this specific block
+                  var targetedSequencePayload = Blockly.Python.blockToCode(currentBlockInstance);
                   var sequenceIdentifier = currentBlockInstance.getFieldValue("SEQUENCE_ID");
                   
                   // Grab the XML Matrix so the UI canvas doesn't get wiped!

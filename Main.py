@@ -211,7 +211,7 @@ if "ai_msg" in st.query_params and st.query_params["ai_msg"]:
         reply = generate_completion_with_fallback(api_messages)
         st.session_state["chat_messages"].append({"role": "assistant", "content": reply})
 
-    # FIX 2: Pop this parameter AFTER logic completes so it doesn't kill execution early
+    # Pop this parameter AFTER logic completes so it doesn't kill execution early
     st.query_params.pop("ai_msg", None)
 
 if "run_sequence" in st.query_params and st.query_params["run_sequence"]:
@@ -227,7 +227,7 @@ if "run_sequence" in st.query_params and st.query_params["run_sequence"]:
         except Exception as runtime_err:
             st.session_state["terminal_history_output"] += f"\n💥 PIPELINE BREAK: {str(runtime_err)}"
             
-    # FIX 3: Pop this parameter AFTER exec() completes so Streamlit actually runs it!
+    # Pop this parameter safely at the absolute end
     st.query_params.pop("run_sequence", None)
 
 safe_xml_state = json.dumps(st.session_state.get("blockly_xml_state", ""))
@@ -235,14 +235,15 @@ safe_terminal_output = json.dumps(st.session_state.get("terminal_history_output"
 safe_chat_history = json.dumps(st.session_state.get("chat_messages", []))
 
 # --- 4. Render Dynamic SVG HTML Components ---
+# FIX: Explicitly pinning the blockly unpkg CDNs to version 9.3.3 so Blockly.Python never silently crashes again.
 blockly_html_payload = f"""
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <script src="https://unpkg.com/blockly/blockly.min.js"></script>
-  <script src="https://unpkg.com/blockly/python_compressed.js"></script>
-  <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
+  <script src="https://unpkg.com/blockly@9.3.3/blockly.min.js"></script>
+  <script src="https://unpkg.com/blockly@9.3.3/python_compressed.js"></script>
+  <script src="https://unpkg.com/blockly@9.3.3/blocks_compressed.js"></script>
   <style>
     html, body {{ height: 100%; margin: 0; padding: 0; background-color: transparent; overflow: hidden; }}
     
@@ -508,8 +509,9 @@ blockly_html_payload = f"""
       var inputField = document.getElementById("aiTabInputField"); var text = inputField.value.trim();
       if(!text) return; inputField.value = "";
       
-      // FIX 4: Use workspaceToCode for Chatbot as well to grab the full context
-      var generatedPythonCode = Blockly.Python.workspaceToCode(window.workspace);
+      // FIX 4: Use blockToCode loop to safely grab ONLY valid connected sequences 
+      var topBlocks = window.workspace.getTopBlocks(false); var generatedPythonCode = "";
+      for (var i = 0; i < topBlocks.length; i++) {{ if (topBlocks[i].type === 'when_sequence_activated') {{ generatedPythonCode += Blockly.Python.blockToCode(topBlocks[i]); }} }}
       
       var xmlDom = Blockly.Xml.workspaceToDom(window.workspace); var currentXmlText = Blockly.Xml.domToText(xmlDom);
       var baseUrl = window.parent.location.origin + window.parent.location.pathname;
@@ -538,13 +540,9 @@ blockly_html_payload = f"""
     document.addEventListener("mouseup", function() {{ isDraggingTerm = false; isResizingTerm = false; isDraggingAI = false; isResizingAI = false; }});
 
     function processLiveDebugCompilations() {{
-      var topBlocks = window.workspace.getTopBlocks(false); var sequenceFound = false;
-      for (var i = 0; i < topBlocks.length; i++) {{ if (topBlocks[i].type === 'when_sequence_activated') {{ sequenceFound = true; }} }}
-      
-      // FIX 5: Ensure live debug pulls from the entire workspace so you actually see code assembling!
-      var generatedPythonCode = Blockly.Python.workspaceToCode(window.workspace);
+      var topBlocks = window.workspace.getTopBlocks(false); var generatedPythonCode = ""; var sequenceFound = false;
+      for (var i = 0; i < topBlocks.length; i++) {{ if (topBlocks[i].type === 'when_sequence_activated') {{ sequenceFound = true; generatedPythonCode += Blockly.Python.blockToCode(topBlocks[i]); }} }}
       var xmlDom = Blockly.Xml.workspaceToDom(window.workspace); var currentXmlText = Blockly.Xml.domToText(xmlDom);
-      
       if(sequenceFound) {{
         var targetUrl = window.parent.location.origin + window.parent.location.pathname + "?payload_matrix=" + encodeURIComponent(generatedPythonCode) + "&xml_matrix=" + encodeURIComponent(currentXmlText);
         if(window.parent.location.search !== "?payload_matrix=" + encodeURIComponent(generatedPythonCode) + "&xml_matrix=" + encodeURIComponent(currentXmlText)) {{ window.parent.history.replaceState({{}}, '', targetUrl); }}
