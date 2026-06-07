@@ -575,8 +575,8 @@ BLOCK_DEFINITIONS_JS = """
               enabled: true,
               text: "⚡ Activate This Sequence",
               callback: function() {
-                  // FIX 1: Grab the ENTIRE workspace code, not just the single block, so connected nodes are caught
-                  var targetedSequencePayload = Blockly.Python.workspaceToCode(window.workspace);
+                  // FIX 1: Restored blockToCode so it strictly captures only the sequence connected to this specific block
+                  var targetedSequencePayload = Blockly.Python.blockToCode(currentBlockInstance);
                   var sequenceIdentifier = currentBlockInstance.getFieldValue("SEQUENCE_ID");
                   
                   // Grab the XML Matrix so the UI canvas doesn't get wiped!
@@ -844,125 +844,127 @@ BLOCK_DEFINITIONS_JS = """
 # 4. PYTHON CODES EMISSION SYNTAX MAPPING
 # ==========================================
 
+# FIX 2: Explicitly mapping directly to Blockly.Python instead of Blockly.Python.forBlock 
+# to ensure it successfully reads all chained blocks across standard unpkg environments.
 PYTHON_GENERATORS_JS = """
-    Blockly.Python.forBlock['when_sequence_activated'] = function(block) { return '# Sequence Active: ' + block.getFieldValue('SEQUENCE_ID') + '\\n'; };
-    Blockly.Python.forBlock['action_wait_task'] = function(block) { return 'time.sleep(' + block.getFieldValue('SECONDS') + ')\\n'; };
+    Blockly.Python['when_sequence_activated'] = function(block) { return '# Sequence Active: ' + block.getFieldValue('SEQUENCE_ID') + '\\n'; };
+    Blockly.Python['action_wait_task'] = function(block) { return 'time.sleep(' + block.getFieldValue('SECONDS') + ')\\n'; };
     
     // Support generators (return values)
-    Blockly.Python.forBlock['custom_input_string'] = function(block) { return ["'" + block.getFieldValue('RAW_TEXT') + "'", Blockly.Python.ORDER_ATOMIC]; };
-    Blockly.Python.forBlock['global_phone_preset'] = function(block) { return ["'" + block.getFieldValue('CC_PREFIX') + block.getFieldValue('PHONE_BODY') + "'", Blockly.Python.ORDER_ATOMIC]; };
-    Blockly.Python.forBlock['custom_phone_signature'] = function(block) {
+    Blockly.Python['custom_input_string'] = function(block) { return ["'" + block.getFieldValue('RAW_TEXT') + "'", Blockly.Python.ORDER_ATOMIC]; };
+    Blockly.Python['global_phone_preset'] = function(block) { return ["'" + block.getFieldValue('CC_PREFIX') + block.getFieldValue('PHONE_BODY') + "'", Blockly.Python.ORDER_ATOMIC]; };
+    Blockly.Python['custom_phone_signature'] = function(block) {
       var prefix = block.getFieldValue('CUSTOM_PREFIX').trim();
       if(!prefix.startsWith("+")) { prefix = "+" + prefix; }
       return ["'" + prefix + block.getFieldValue('PHONE_BODY').trim() + "'", Blockly.Python.ORDER_ATOMIC];
     };
 
     // Action generators (return executable statements)
-    Blockly.Python.forBlock['action_dns_resolve'] = function(block) {
+    Blockly.Python['action_dns_resolve'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
       return 'run_scan(target=' + val + ', mode="dns")\\n';
     };
     
-    Blockly.Python.forBlock['action_ip_geolocation'] = function(block) {
+    Blockly.Python['action_ip_geolocation'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
       return 'run_scan(target=' + val + ', mode="geo")\\n';
     };
     
-    Blockly.Python.forBlock['action_phone_tracker'] = function(block) {
+    Blockly.Python['action_phone_tracker'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
       return 'run_scan(target=' + val + ', mode="phone")\\n';
     };
 
-    Blockly.Python.forBlock['action_whois_lookup'] = function(block) {
+    Blockly.Python['action_whois_lookup'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
       return 'run_scan(target=' + val + ', mode="whois")\\n';
     };
 
-    Blockly.Python.forBlock['action_http_header_audit'] = function(block) {
+    Blockly.Python['action_http_header_audit'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
       return 'run_scan(target=' + val + ', mode="header_audit")\\n';
     };
 
-    Blockly.Python.forBlock['action_shodan_lookup'] = function(block) {
+    Blockly.Python['action_shodan_lookup'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
       return 'run_scan(target=' + val + ', mode="shodan")\\n';
     };
 
-    Blockly.Python.forBlock['action_robots_sitemap'] = function(block) {
+    Blockly.Python['action_robots_sitemap'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
       return 'run_scan(target=' + val + ', mode="robots")\\n';
     };
 
-    Blockly.Python.forBlock['action_ssl_audit'] = function(block) {
+    Blockly.Python['action_ssl_audit'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
       return 'run_scan(target=' + val + ', mode="ssl_audit")\\n';
     };
 
-    Blockly.Python.forBlock['action_regex_filter'] = function(block) {
+    Blockly.Python['action_regex_filter'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
       var regexPattern = block.getFieldValue('PATTERN');
       return 'run_scan(target=' + val + ', mode="regex", structural="' + regexPattern + '")\\n';
     };
 
-    Blockly.Python.forBlock['action_basic_fuzz'] = function(block) {
+    Blockly.Python['action_basic_fuzz'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
       return 'run_scan(target=' + val + ', mode="fuzz")\\n';
     };
 
-    Blockly.Python.forBlock['action_exploit_payload'] = function(block) {
+    Blockly.Python['action_exploit_payload'] = function(block) {
       var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
       return 'run_scan(target=' + val + ', mode="exploit")\\n';
     };
 
-    Blockly.Python.forBlock['action_sql_injection'] = function(block) {
+    Blockly.Python['action_sql_injection'] = function(block) {
       var target = Blockly.Python.valueToCode(block, 'TARGET', Blockly.Python.ORDER_ATOMIC) || "''";
       var payload = Blockly.Python.valueToCode(block, 'PAYLOAD', Blockly.Python.ORDER_ATOMIC) || "''";
       return 'run_scan(target=' + target + ', mode="sql_injection", payload=' + payload + ')\\n';
     };
 
-    Blockly.Python.forBlock['action_xss_attack'] = function(block) {
+    Blockly.Python['action_xss_attack'] = function(block) {
       var target = Blockly.Python.valueToCode(block, 'TARGET', Blockly.Python.ORDER_ATOMIC) || "''";
       var payload = Blockly.Python.valueToCode(block, 'PAYLOAD', Blockly.Python.ORDER_ATOMIC) || "''";
       return 'run_scan(target=' + target + ', mode="xss_attack", payload=' + payload + ')\\n';
     };
 
-    Blockly.Python.forBlock['action_directory_brute'] = function(block) {
+    Blockly.Python['action_directory_brute'] = function(block) {
       var target = Blockly.Python.valueToCode(block, 'TARGET', Blockly.Python.ORDER_ATOMIC) || "''";
       var wordlist = block.getFieldValue('WORDLIST');
       return 'run_scan(target=' + target + ', mode="directory_brute", structural="' + wordlist + '")\\n';
     };
 
-    Blockly.Python.forBlock['action_credential_attack'] = function(block) {
+    Blockly.Python['action_credential_attack'] = function(block) {
       var target = Blockly.Python.valueToCode(block, 'TARGET', Blockly.Python.ORDER_ATOMIC) || "''";
       var username = block.getFieldValue('USERNAME');
       var passwordList = block.getFieldValue('PASSWORD_LIST');
       return 'run_scan(target=' + target + ', mode="credential_attack", username="' + username + '", password_list="' + passwordList + '")\\n';
     };
 
-    Blockly.Python.forBlock['action_port_scan'] = function(block) {
+    Blockly.Python['action_port_scan'] = function(block) {
       var target = Blockly.Python.valueToCode(block, 'TARGET', Blockly.Python.ORDER_ATOMIC) || "''";
       var portRange = block.getFieldValue('PORT_RANGE');
       return 'run_scan(target=' + target + ', mode="port_scan", structural="' + portRange + '")\\n';
     };
 
-    Blockly.Python.forBlock['action_service_enum'] = function(block) {
+    Blockly.Python['action_service_enum'] = function(block) {
       var target = Blockly.Python.valueToCode(block, 'TARGET', Blockly.Python.ORDER_ATOMIC) || "''";
       return 'run_scan(target=' + target + ', mode="service_enum")\\n';
     };
 
-    Blockly.Python.forBlock['action_vuln_lookup'] = function(block) {
+    Blockly.Python['action_vuln_lookup'] = function(block) {
       var target = Blockly.Python.valueToCode(block, 'TARGET', Blockly.Python.ORDER_ATOMIC) || "''";
       var cveId = block.getFieldValue('CVE_ID');
       return 'run_scan(target=' + target + ', mode="vuln_lookup", structural="' + cveId + '")\\n';
     };
 
-    Blockly.Python.forBlock['action_malware_detect'] = function(block) {
+    Blockly.Python['action_malware_detect'] = function(block) {
       var target = Blockly.Python.valueToCode(block, 'TARGET', Blockly.Python.ORDER_ATOMIC) || "''";
       var fileHash = block.getFieldValue('FILE_HASH');
       return 'run_scan(target=' + target + ', mode="malware_detect", structural="' + fileHash + '")\\n';
     };
 
-    Blockly.Python.forBlock['action_firewall_detect'] = function(block) {
+    Blockly.Python['action_firewall_detect'] = function(block) {
       var target = Blockly.Python.valueToCode(block, 'TARGET', Blockly.Python.ORDER_ATOMIC) || "''";
       return 'run_scan(target=' + target + ', mode="firewall_detect")\\n';
     };
