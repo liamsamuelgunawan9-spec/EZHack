@@ -255,7 +255,9 @@ safe_terminal_output = json.dumps(st.session_state.get("terminal_history_output"
 safe_chat_history = json.dumps(st.session_state.get("chat_messages", []))
 
 # --- 4. Render Dynamic SVG HTML Components ---
-blockly_html_payload = f"""
+# Build HTML using .replace() so JS curly braces are never touched by Python f-string
+# This fixes the block-loading bug where 81+ JS brace pairs were being silently corrupted
+_HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
@@ -264,342 +266,252 @@ blockly_html_payload = f"""
   <script src="https://unpkg.com/blockly/python_compressed.js"></script>
   <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
   <style>
-    html, body {{ height: 100%; margin: 0; padding: 0; background-color: transparent; overflow: hidden; }}
-    
-    #workspaceWrapper {{ display: flex; flex-direction: column; height: 95vh; padding: 0; box-sizing: border-box; position: relative; }}
-    #blocklyDiv {{ flex: 1; border: 1px solid #1e293b; position: relative; z-index: 1; }}
-    
-    #particle-canvas {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background-color: transparent; }}
-    .blocklySvg {{ background-color: rgba(2, 4, 10, 0.85) !important; }}
-    
-    /* ========================================================
-       HACKER TOOLBOX CSS
-       ======================================================== */
-    .blocklyToolboxDiv {{
+    html, body { height: 100%; margin: 0; padding: 0; background-color: transparent; overflow: hidden; }
+    #workspaceWrapper { display: flex; flex-direction: column; height: 95vh; padding: 0; box-sizing: border-box; position: relative; }
+    #blocklyDiv { flex: 1; border: 1px solid #1e293b; position: relative; z-index: 1; }
+    #particle-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background-color: transparent; }
+    .blocklySvg { background-color: rgba(2, 4, 10, 0.85) !important; }
+
+    .blocklyToolboxDiv {
         background-color: #0b0f19 !important;
         border-right: 2px solid #00ff66 !important;
-        -webkit-user-select: none !important;
-        -moz-user-select: none !important;
-        -ms-user-select: none !important;
         user-select: none !important;
-    }}
-    .blocklyTreeRow {{
-        border-radius: 4px !important;
-        transition: background-color 0.1s;
-        -webkit-user-select: none !important;
-        -moz-user-select: none !important;
-        -ms-user-select: none !important;
-        user-select: none !important;
-    }}
-    .blocklyTreeLabel {{
-        color: #ffffff !important;
-        font-family: monospace !important;
-        font-size: 14px !important;
-        font-weight: bold !important;
-        padding: 5px !important;
-        -webkit-user-select: none !important;
-        -moz-user-select: none !important;
-        -ms-user-select: none !important;
-        user-select: none !important;
-    }}
-    .blocklyTreeRow:hover {{
-        background-color: rgba(0, 255, 102, 0.2) !important;
-    }}
-    .blocklyTreeSelected .blocklyTreeRow {{
-        background-color: #00ff66 !important;
-    }}
-    .blocklyTreeSelected .blocklyTreeLabel {{
-        color: #000000 !important;
-    }}
-    /* ======================================================== */
+    }
+    .blocklyTreeRow { border-radius: 4px !important; transition: background-color 0.1s; user-select: none !important; }
+    .blocklyTreeLabel { color: #ffffff !important; font-family: monospace !important; font-size: 14px !important; font-weight: bold !important; padding: 5px !important; user-select: none !important; }
+    .blocklyTreeRow:hover { background-color: rgba(0, 255, 102, 0.2) !important; }
+    .blocklyTreeSelected .blocklyTreeRow { background-color: #00ff66 !important; }
+    .blocklyTreeSelected .blocklyTreeLabel { color: #000000 !important; }
 
-    .hud-window {{ display: flex; flex-direction: column; height: 100%; background-color: #090d16; border: 1px solid #00ff66; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); overflow: hidden; position: relative; }}
-    .hud-header {{ padding: 8px 12px; cursor: move; background-color: #02040a; border-bottom: 1px solid #00ff66; font-weight: bold; color: #00ff66; font-size: 11px; display: flex; justify-content: space-between; align-items: center; user-select: none; }}
-    .hud-body {{ flex: 1; padding: 10px; background-color: #05070f; overflow-y: auto; font-size: 11px; font-family: monospace; line-height: 1.4; }}
-    .resize-handle {{ position: absolute; bottom: 0; right: 0; width: 14px; height: 14px; cursor: se-resize; background: linear-gradient(135deg, transparent 50%, #00ff66 50%); border-bottom-right-radius: 6px; z-index: 100; }}
-    
-    .ai-theme {{ border-color: #00ffcc; }}
-    .ai-theme .hud-header {{ border-color: #00ffcc; color: #00ffcc; }}
-    .ai-theme .resize-handle {{ background: linear-gradient(135deg, transparent 50%, #00ffcc 50%); }}
-    #aiTabInputArea {{ padding: 6px; background-color: #02040a; border-top: 1px solid #00ffcc; display: flex; gap: 6px; }}
-    #aiTabInputField {{ flex: 1; background-color: #05070f; border: 1px solid #00ffcc; color: #00ffcc; padding: 6px; border-radius: 4px; font-family: monospace; font-size: 11px; }}
-    #aiTabInputField:focus {{ outline: none; border-color: #1fec79; }}
-    #aiTabSendBtn {{ background: #02040a; color: #00ffcc; border: 1px solid #00ffcc; padding: 4px 10px; cursor: pointer; border-radius: 4px; font-family: monospace; font-size: 11px; font-weight: bold; }}
-    #aiTabSendBtn:hover {{ background: #00ffcc; color: #02040a; }}
+    .hud-window { display: flex; flex-direction: column; height: 100%; background-color: #090d16; border: 1px solid #00ff66; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); overflow: hidden; position: relative; }
+    .hud-header { padding: 8px 12px; cursor: move; background-color: #02040a; border-bottom: 1px solid #00ff66; font-weight: bold; color: #00ff66; font-size: 11px; display: flex; justify-content: space-between; align-items: center; user-select: none; }
+    .hud-body { flex: 1; padding: 10px; background-color: #05070f; overflow-y: auto; font-size: 11px; font-family: monospace; line-height: 1.4; }
+    .resize-handle { position: absolute; bottom: 0; right: 0; width: 14px; height: 14px; cursor: se-resize; background: linear-gradient(135deg, transparent 50%, #00ff66 50%); border-bottom-right-radius: 6px; z-index: 100; }
+
+    .ai-theme { border-color: #00ffcc; }
+    .ai-theme .hud-header { border-color: #00ffcc; color: #00ffcc; }
+    .ai-theme .resize-handle { background: linear-gradient(135deg, transparent 50%, #00ffcc 50%); }
+    #aiTabInputArea { padding: 6px; background-color: #02040a; border-top: 1px solid #00ffcc; display: flex; gap: 6px; }
+    #aiTabInputField { flex: 1; background-color: #05070f; border: 1px solid #00ffcc; color: #00ffcc; padding: 6px; border-radius: 4px; font-family: monospace; font-size: 11px; }
+    #aiTabInputField:focus { outline: none; border-color: #1fec79; }
+    #aiTabSendBtn { background: #02040a; color: #00ffcc; border: 1px solid #00ffcc; padding: 4px 10px; cursor: pointer; border-radius: 4px; font-family: monospace; font-size: 11px; font-weight: bold; }
+    #aiTabSendBtn:hover { background: #00ffcc; color: #02040a; }
   </style>
 </head>
 <body>
-
   <div id="workspaceWrapper">
     <canvas id="particle-canvas"></canvas>
     <div id="blocklyDiv"></div>
   </div>
 
-  {blocks_registry.TOOLBOX_XML}
+  %%TOOLBOX_XML%%
 
   <script>
-    // --- JS BUG FIX: FORCED RENDER REFRESH ---
-    document.addEventListener("DOMContentLoaded", function() {{
-        setTimeout(function() {{
-            var toolboxDiv = document.querySelector('.blocklyToolboxDiv');
-            if (toolboxDiv) {{
-                toolboxDiv.addEventListener('click', function(e) {{
-                    var target = e.target.closest('.blocklyTreeRow');
-                    if (target) {{
-                        setTimeout(function() {{
-                            if (window.workspace) {{
-                                window.workspace.render();
-                                Blockly.svgResize(window.workspace);
-                            }}
-                        }}, 50);
-                    }}
-                }}, true);
-            }}
-        }}, 500);
-    }});
-    // ---------------------------------------------------
-
+    // ── Particle background ──────────────────────────────────
     const canvasEl = document.getElementById('particle-canvas');
     const ctx = canvasEl.getContext('2d');
-    let width, height;
-    let particles = [];
-    const mouse = {{ x: null, y: null }};
-
-    function resizeCanvas() {{
-        width = window.innerWidth;
-        height = window.innerHeight;
-        canvasEl.width = width;
-        canvasEl.height = height;
-    }}
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
-
-    window.addEventListener('mousemove', (e) => {{
-        mouse.x = e.clientX;
-        mouse.y = e.clientY;
-    }});
-
-    class Particle {{
-        constructor() {{
-            this.x = Math.random() * width;
-            this.y = Math.random() * height;
-            this.vx = (Math.random() - 0.5) * 1.5;
-            this.vy = (Math.random() - 0.5) * 1.5;
-        }}
-        update() {{
-            this.x += this.vx;
-            this.y += this.vy;
-            if (this.x < 0 || this.x > width) this.vx *= -1;
-            if (this.y < 0 || this.y > height) this.vy *= -1;
-        }}
-        draw() {{
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, 1.5, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(0, 255, 102, 0.8)';
-            ctx.fill();
-        }}
-    }}
-
-    for(let i = 0; i < 90; i++) particles.push(new Particle());
-
-    function animateParticles() {{
-        ctx.clearRect(0, 0, width, height);
-        
-        particles.forEach(p => {{
-            p.update();
-            p.draw();
-            if (mouse.x != null) {{
-                let dx = mouse.x - p.x;
-                let dy = mouse.y - p.y;
-                let dist = Math.sqrt(dx*dx + dy*dy);
-                if (dist < 180) {{
-                    ctx.beginPath();
-                    ctx.strokeStyle = `rgba(0, 255, 102, ${{1 - dist/180}})`;
-                    ctx.lineWidth = 1;
-                    ctx.moveTo(p.x, p.y);
-                    ctx.lineTo(mouse.x, mouse.y);
-                    ctx.stroke();
-                }}
-            }}
-            particles.forEach(p2 => {{
-                let dx = p.x - p2.x;
-                let dy = p.y - p2.y;
-                let dist = Math.sqrt(dx*dx + dy*dy);
-                if (dist < 120) {{
-                    ctx.beginPath();
-                    ctx.strokeStyle = `rgba(0, 255, 102, ${{0.2 - dist/600}})`;
-                    ctx.lineWidth = 0.5;
-                    ctx.moveTo(p.x, p.y);
-                    ctx.lineTo(p2.x, p2.y);
-                    ctx.stroke();
-                }}
-            }});
-        }});
-        requestAnimationFrame(animateParticles);
-    }}
+    let width, height, particles = [];
+    const mouse = { x: null, y: null };
+    function resizeCanvas() { width = window.innerWidth; height = window.innerHeight; canvasEl.width = width; canvasEl.height = height; }
+    window.addEventListener('resize', resizeCanvas); resizeCanvas();
+    window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+    class Particle {
+      constructor() { this.x = Math.random()*width; this.y = Math.random()*height; this.vx=(Math.random()-0.5)*1.5; this.vy=(Math.random()-0.5)*1.5; }
+      update() { this.x+=this.vx; this.y+=this.vy; if(this.x<0||this.x>width) this.vx*=-1; if(this.y<0||this.y>height) this.vy*=-1; }
+      draw() { ctx.beginPath(); ctx.arc(this.x,this.y,1.5,0,Math.PI*2); ctx.fillStyle='rgba(0,255,102,0.8)'; ctx.fill(); }
+    }
+    for(let i=0;i<60;i++) particles.push(new Particle());
+    function animateParticles() {
+      ctx.clearRect(0,0,width,height);
+      particles.forEach(p => {
+        p.update(); p.draw();
+        if(mouse.x!=null){ let dx=mouse.x-p.x,dy=mouse.y-p.y,d=Math.sqrt(dx*dx+dy*dy); if(d<180){ ctx.beginPath(); ctx.strokeStyle=`rgba(0,255,102,${1-d/180})`; ctx.lineWidth=1; ctx.moveTo(p.x,p.y); ctx.lineTo(mouse.x,mouse.y); ctx.stroke(); } }
+        particles.forEach(p2=>{ let dx=p.x-p2.x,dy=p.y-p2.y,d=Math.sqrt(dx*dx+dy*dy); if(d<120){ ctx.beginPath(); ctx.strokeStyle=`rgba(0,255,102,${0.2-d/600})`; ctx.lineWidth=0.5; ctx.moveTo(p.x,p.y); ctx.lineTo(p2.x,p2.y); ctx.stroke(); } });
+      });
+      requestAnimationFrame(animateParticles);
+    }
     animateParticles();
 
-    {blocks_registry.BLOCK_DEFINITIONS_JS}
-    {blocks_registry.PYTHON_GENERATORS_JS}
+    // ── Block definitions & generators (safe from f-string) ──
+    %%BLOCK_DEFINITIONS_JS%%
+    %%PYTHON_GENERATORS_JS%%
 
-    window.workspace = Blockly.inject('blocklyDiv', {{
+    // ── Blockly workspace ────────────────────────────────────
+    window.workspace = Blockly.inject('blocklyDiv', {
       toolbox: document.getElementById('toolbox'),
-      grid: {{ spacing: 40, length: 40, colour: 'rgba(0, 255, 102, 0.2)', snap: true }}, 
-      move: {{ scrollbars: true, drag: true, wheel: true }},
-      zoom: {{ controls: true, wheel: true, startScale: 1.0, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 }},
+      grid: { spacing: 40, length: 40, colour: 'rgba(0,255,102,0.2)', snap: true },
+      move: { scrollbars: true, drag: true, wheel: true },
+      zoom: { controls: true, wheel: true, startScale: 1.0, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 },
       trashcan: true
-    }});
-    
-    try {{
-      var initialXmlText = {safe_xml_state};
-      if (initialXmlText && initialXmlText.trim() !== "") {{
+    });
+
+    // Restore saved workspace XML
+    try {
+      var initialXmlText = %%SAFE_XML_STATE%%;
+      if (initialXmlText && initialXmlText.trim() !== "") {
         var dom = Blockly.utils.xml.textToDom(initialXmlText);
         Blockly.Xml.domToWorkspace(dom, window.workspace);
-      }}
-    }} catch (err) {{
-      console.error("Hydration Layer Failure:", err);
-    }}
+      }
+    } catch(err) { console.error("Workspace restore failed:", err); }
 
+    // ── HUD windows (terminal + AI chat) ────────────────────
     var canvas = window.workspace.getCanvas();
 
-    var termForeignObject = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-    termForeignObject.setAttribute("x", "40"); termForeignObject.setAttribute("y", "40");
-    termForeignObject.setAttribute("width", "420"); termForeignObject.setAttribute("height", "280");
-    var termTabDiv = document.createElement("div"); termTabDiv.style.width = "100%"; termTabDiv.style.height = "100%";
-    termTabDiv.innerHTML = `
-      <div id="terminalWindow" class="hud-window">
-        <div id="terminalHeader" class="hud-header">
-          <span>💻 SYSTEM TERMINAL OUTPUT</span><span style="font-size:9px; color:#888;">[DRAGGABLE WORKSPACE TAB]</span>
-        </div>
-        <div class="hud-body"><pre id="terminalLogOutput" style="margin: 0; color: #00ff66; font-size: 12px; line-height: 1.4; white-space: pre-wrap; font-family: monospace;"></pre></div>
-        <div class="resize-handle" id="terminalResizeAnchor"></div>
-      </div>
-    `;
-    termForeignObject.appendChild(termTabDiv); canvas.appendChild(termForeignObject);
-    termTabDiv.addEventListener("mousedown", function(e) {{ e.stopPropagation(); }});
-    termTabDiv.addEventListener("pointerdown", function(e) {{ e.stopPropagation(); }});
-    termTabDiv.addEventListener("keydown", function(e) {{ e.stopPropagation(); }});
+    var termFO = document.createElementNS("http://www.w3.org/2000/svg","foreignObject");
+    termFO.setAttribute("x","40"); termFO.setAttribute("y","40");
+    termFO.setAttribute("width","420"); termFO.setAttribute("height","280");
+    var termDiv = document.createElement("div"); termDiv.style.width="100%"; termDiv.style.height="100%";
+    termDiv.innerHTML = `
+      <div id="termWin" class="hud-window">
+        <div id="termHeader" class="hud-header"><span>💻 TERMINAL OUTPUT</span><span style="font-size:9px;color:#888">[DRAG]</span></div>
+        <div class="hud-body"><pre id="termLog" style="margin:0;color:#00ff66;font-size:12px;line-height:1.4;white-space:pre-wrap;font-family:monospace;"></pre></div>
+        <div class="resize-handle" id="termResize"></div>
+      </div>`;
+    termFO.appendChild(termDiv); canvas.appendChild(termFO);
+    termDiv.addEventListener("mousedown", e=>e.stopPropagation());
+    termDiv.addEventListener("pointerdown", e=>e.stopPropagation());
+    termDiv.addEventListener("keydown", e=>e.stopPropagation());
+    document.getElementById("termLog").textContent = %%SAFE_TERMINAL_OUTPUT%%;
+    document.getElementById("termLog").parentElement.scrollTop = 99999;
 
-    var termLogOutput = document.getElementById("terminalLogOutput");
-    termLogOutput.textContent = {safe_terminal_output};
-    termLogOutput.parentElement.scrollTop = termLogOutput.parentElement.scrollHeight;
-
-    var aiForeignObject = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-    aiForeignObject.setAttribute("x", "480"); aiForeignObject.setAttribute("y", "40");
-    aiForeignObject.setAttribute("width", "390"); aiForeignObject.setAttribute("height", "520");
-    var aiTabDiv = document.createElement("div"); aiTabDiv.style.width = "100%"; aiTabDiv.style.height = "100%";
-    aiTabDiv.innerHTML = `
-      <div id="aiTabWindow" class="hud-window ai-theme">
-        <div id="aiTabHeader" class="hud-header">
-          <span>🤖 AI CO-PILOT MATRIX</span><span style="font-size:9px; color:#888;">[DRAGGABLE WORKSPACE TAB]</span>
-        </div>
-        <div class="hud-body" id="aiTabChatContent"></div>
+    var aiFO = document.createElementNS("http://www.w3.org/2000/svg","foreignObject");
+    aiFO.setAttribute("x","480"); aiFO.setAttribute("y","40");
+    aiFO.setAttribute("width","390"); aiFO.setAttribute("height","520");
+    var aiDiv = document.createElement("div"); aiDiv.style.width="100%"; aiDiv.style.height="100%";
+    aiDiv.innerHTML = `
+      <div id="aiWin" class="hud-window ai-theme">
+        <div id="aiHeader" class="hud-header"><span>🤖 AI CO-PILOT</span><span style="font-size:9px;color:#888">[DRAG]</span></div>
+        <div class="hud-body" id="aiChat"></div>
         <div id="aiTabInputArea">
-          <input type="text" id="aiTabInputField" placeholder="Ask AI Copilot or type logic prompt..." autocomplete="off">
-          <button id="aiTabSendBtn">SEND</button>
+          <input type="text" id="aiInput" placeholder="Ask the AI Copilot..." autocomplete="off">
+          <button id="aiSend">SEND</button>
         </div>
-        <div class="resize-handle" id="aiTabResizeHandle"></div>
-      </div>
-    `;
-    aiForeignObject.appendChild(aiTabDiv); canvas.appendChild(aiForeignObject);
-    aiTabDiv.addEventListener("mousedown", function(e) {{ e.stopPropagation(); }});
-    aiTabDiv.addEventListener("pointerdown", function(e) {{ e.stopPropagation(); }});
-    aiTabDiv.addEventListener("keydown", function(e) {{ e.stopPropagation(); }});
-    
-    var chatHistory = {safe_chat_history};
-    function renderChatHistory() {{
-      var container = document.getElementById("aiTabChatContent"); container.innerHTML = "";
-      chatHistory.forEach(function(msg) {{
-        var msgDiv = document.createElement("div"); msgDiv.style.marginBottom = "10px"; msgDiv.style.padding = "6px 10px"; msgDiv.style.borderRadius = "4px"; msgDiv.style.wordBreak = "break-word";
-        if (msg.role === "user") {{
-          msgDiv.style.backgroundColor = "#02040a"; msgDiv.style.color = "#00ffcc"; msgDiv.style.borderRight = "2px solid #00ffcc"; msgDiv.innerHTML = "<div style='font-weight:bold;font-size:9px;color:#888;margin-bottom:2px;'>OPERATOR:</div>" + escapeHtml(msg.content);
-        }} else if (msg.role === "assistant") {{
-          msgDiv.style.backgroundColor = "#05070f"; msgDiv.style.color = "#ffffff"; msgDiv.style.borderLeft = "2px solid #00ffcc"; msgDiv.innerHTML = "<div style='font-weight:bold;font-size:9px;color:#00ffcc;margin-bottom:2px;'>GROQ CORERUN:</div>" + escapeHtml(msg.content);
-        }}
-        container.appendChild(msgDiv);
-      }});
-      container.scrollTop = container.scrollHeight;
-    }}
-    
-    function escapeHtml(str) {{ return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;").replace(/\\n/g, "<br>"); }}
-    renderChatHistory();
-    
-    function handleTabSend() {{
-      var inputField = document.getElementById("aiTabInputField"); var text = inputField.value.trim();
-      if(!text) return; inputField.value = "";
-      
-      var topBlocks = window.workspace.getTopBlocks(false); var generatedPythonCode = "";
-      for (var i = 0; i < topBlocks.length; i++) {{ 
-          if (topBlocks[i].type === 'when_sequence_activated') {{ 
-              generatedPythonCode += Blockly.Python.blockToCode(topBlocks[i]); 
-          }} 
-      }}
-      
-      var xmlDom = Blockly.Xml.workspaceToDom(window.workspace); var currentXmlText = Blockly.Xml.domToText(xmlDom);
-      var baseUrl = window.parent.location.origin + window.parent.location.pathname;
-      var targetUrl = baseUrl + "?payload_matrix=" + encodeURIComponent(generatedPythonCode) + "&xml_matrix=" + encodeURIComponent(currentXmlText) + "&ai_msg=" + encodeURIComponent(text);
-      window.parent.location.href = targetUrl;
-    }}
-    document.getElementById("aiTabSendBtn").onclick = handleTabSend;
-    document.getElementById("aiTabInputField").onkeydown = function(e) {{ if(e.key === "Enter") {{ handleTabSend(); }} }};
+        <div class="resize-handle" id="aiResize"></div>
+      </div>`;
+    aiFO.appendChild(aiDiv); canvas.appendChild(aiFO);
+    aiDiv.addEventListener("mousedown", e=>e.stopPropagation());
+    aiDiv.addEventListener("pointerdown", e=>e.stopPropagation());
+    aiDiv.addEventListener("keydown", e=>e.stopPropagation());
 
-    var isDraggingTerm = false, termStartX, termStartY, isResizingTerm = false, termStartW, termStartH, termResStartX, termResStartY;
-    document.getElementById("terminalHeader").onmousedown = function(e) {{ isDraggingTerm = true; var scale = window.workspace.scale || 1; termStartX = e.clientX / scale - parseFloat(termForeignObject.getAttribute("x")); termStartY = e.clientY / scale - parseFloat(termForeignObject.getAttribute("y")); e.stopPropagation(); e.preventDefault(); }};
-    document.getElementById("terminalResizeAnchor").onmousedown = function(e) {{ isResizingTerm = true; var scale = window.workspace.scale || 1; termStartW = parseFloat(termForeignObject.getAttribute("width")); termStartH = parseFloat(termForeignObject.getAttribute("height")); termResStartX = e.clientX / scale; termResStartY = e.clientY / scale; e.stopPropagation(); e.preventDefault(); }};
+    // Render chat history
+    var chatHistory = %%SAFE_CHAT_HISTORY%%;
+    function escapeHtml(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;").replace(/\n/g,"<br>"); }
+    function renderChat() {
+      var c = document.getElementById("aiChat"); c.innerHTML = "";
+      chatHistory.forEach(function(msg) {
+        var d = document.createElement("div");
+        d.style.cssText = "margin-bottom:10px;padding:6px 10px;border-radius:4px;word-break:break-word;";
+        if(msg.role==="user") { d.style.backgroundColor="#02040a"; d.style.color="#00ffcc"; d.style.borderRight="2px solid #00ffcc"; d.innerHTML="<div style=\'font-weight:bold;font-size:9px;color:#888;margin-bottom:2px;\'>YOU:</div>"+escapeHtml(msg.content); }
+        else { d.style.backgroundColor="#05070f"; d.style.color="#ffffff"; d.style.borderLeft="2px solid #00ffcc"; d.innerHTML="<div style=\'font-weight:bold;font-size:9px;color:#00ffcc;margin-bottom:2px;\'>AI COPILOT:</div>"+escapeHtml(msg.content); }
+        c.appendChild(d);
+      });
+      c.scrollTop = c.scrollHeight;
+    }
+    renderChat();
 
-    var isDraggingAI = false, aiStartX, aiStartY, isResizingAI = false, aiStartW, aiStartH, aiResStartX, aiResStartY;
-    document.getElementById("aiTabHeader").onmousedown = function(e) {{ isDraggingAI = true; var scale = window.workspace.scale || 1; aiStartX = e.clientX / scale - parseFloat(aiForeignObject.getAttribute("x")); aiStartY = e.clientY / scale - parseFloat(aiForeignObject.getAttribute("y")); e.stopPropagation(); e.preventDefault(); }};
-    document.getElementById("aiTabResizeHandle").onmousedown = function(e) {{ isResizingAI = true; var scale = window.workspace.scale || 1; aiStartW = parseFloat(aiForeignObject.getAttribute("width")); aiStartH = parseFloat(aiForeignObject.getAttribute("height")); aiResStartX = e.clientX / scale; aiResStartY = e.clientY / scale; e.stopPropagation(); e.preventDefault(); }};
+    // ── AI send — uses location.href so Python sees ai_msg param ──
+    function handleSend() {
+      var input = document.getElementById("aiInput");
+      var text = input.value.trim();
+      if(!text) return;
+      input.value = "";
+      input.disabled = true;
+      document.getElementById("aiSend").textContent = "...";
 
-    document.addEventListener("mousemove", function(e) {{
-      var scale = window.workspace.scale || 1;
-      if (isDraggingTerm) {{ termForeignObject.setAttribute("x", e.clientX / scale - termStartX); termForeignObject.setAttribute("y", e.clientY / scale - termStartY); }}
-      if (isResizingTerm) {{ var newWT = termStartW + (e.clientX / scale - termResStartX); var newHT = termStartH + (e.clientY / scale - termResStartY); if (newWT > 200) termForeignObject.setAttribute("width", newWT); if (newHT > 150) termForeignObject.setAttribute("height", newHT); }}
-      if (isDraggingAI) {{ aiForeignObject.setAttribute("x", e.clientX / scale - aiStartX); aiForeignObject.setAttribute("y", e.clientY / scale - aiStartY); }}
-      if (isResizingAI) {{ var newWA = aiStartW + (e.clientX / scale - aiResStartX); var newHA = aiStartH + (e.clientY / scale - aiResStartY); if (newWA > 200) aiForeignObject.setAttribute("width", newWA); if (newHA > 200) aiForeignObject.setAttribute("height", newHA); }}
-    }});
-    
-    document.addEventListener("mouseup", function() {{ isDraggingTerm = false; isResizingTerm = false; isDraggingAI = false; isResizingAI = false; }});
+      // Show user message immediately in the UI while page reloads
+      chatHistory.push({ role: "user", content: text });
+      renderChat();
 
-    function processLiveDebugCompilations() {{
       var topBlocks = window.workspace.getTopBlocks(false);
-      var generatedPythonCode = "";
-      var sequenceFound = false;
-
-      for (var i = 0; i < topBlocks.length; i++) {{
-          if (topBlocks[i].type === 'when_sequence_activated') {{
-              sequenceFound = true;
-              generatedPythonCode += Blockly.Python.blockToCode(topBlocks[i]);
-          }}
-      }}
-
-      if (!sequenceFound) return;
-
+      var code = "";
+      for(var i=0;i<topBlocks.length;i++) {
+        if(topBlocks[i].type==='when_sequence_activated') code += Blockly.Python.blockToCode(topBlocks[i]);
+      }
       var xmlDom = Blockly.Xml.workspaceToDom(window.workspace);
-      var currentXmlText = Blockly.Xml.domToText(xmlDom);
+      var xmlText = Blockly.Xml.domToText(xmlDom);
+      var base = window.parent.location.origin + window.parent.location.pathname;
+      window.parent.location.href = base
+        + "?payload_matrix=" + encodeURIComponent(code)
+        + "&xml_matrix=" + encodeURIComponent(xmlText)
+        + "&ai_msg=" + encodeURIComponent(text);
+    }
+    document.getElementById("aiSend").onclick = handleSend;
+    document.getElementById("aiInput").onkeydown = function(e) { if(e.key==="Enter") handleSend(); };
 
-      // BUGFIX: Use URLSearchParams so we only update payload_matrix and xml_matrix.
-      // We must NEVER overwrite run_sequence here — that param is set by the right-click
-      // Activate action and must survive until Python reads it on the next full reload.
+    // ── Dragging & resizing HUD windows ─────────────────────
+    function makeDraggable(headerId, fo) {
+      var dragging=false, sx, sy;
+      document.getElementById(headerId).onmousedown = function(e) {
+        dragging=true; var sc=window.workspace.scale||1;
+        sx=e.clientX/sc-parseFloat(fo.getAttribute("x"));
+        sy=e.clientY/sc-parseFloat(fo.getAttribute("y"));
+        e.stopPropagation(); e.preventDefault();
+      };
+      document.addEventListener("mousemove", function(e) {
+        if(!dragging) return; var sc=window.workspace.scale||1;
+        fo.setAttribute("x", e.clientX/sc-sx); fo.setAttribute("y", e.clientY/sc-sy);
+      });
+      document.addEventListener("mouseup", function() { dragging=false; });
+    }
+    function makeResizable(handleId, fo, minW, minH) {
+      var resizing=false, sw, sh, srx, sry;
+      document.getElementById(handleId).onmousedown = function(e) {
+        resizing=true; var sc=window.workspace.scale||1;
+        sw=parseFloat(fo.getAttribute("width")); sh=parseFloat(fo.getAttribute("height"));
+        srx=e.clientX/sc; sry=e.clientY/sc;
+        e.stopPropagation(); e.preventDefault();
+      };
+      document.addEventListener("mousemove", function(e) {
+        if(!resizing) return; var sc=window.workspace.scale||1;
+        var nw=sw+(e.clientX/sc-srx), nh=sh+(e.clientY/sc-sry);
+        if(nw>minW) fo.setAttribute("width",nw); if(nh>minH) fo.setAttribute("height",nh);
+      });
+      document.addEventListener("mouseup", function() { resizing=false; });
+    }
+    makeDraggable("termHeader", termFO);
+    makeResizable("termResize", termFO, 200, 150);
+    makeDraggable("aiHeader", aiFO);
+    makeResizable("aiResize", aiFO, 200, 200);
+
+    // ── Live compile watcher ─────────────────────────────────
+    // Only updates payload_matrix and xml_matrix via replaceState.
+    // Never touches run_sequence — that param is owned by the right-click activate action.
+    function processLiveCompile() {
+      var topBlocks = window.workspace.getTopBlocks(false);
+      var code = ""; var found = false;
+      for(var i=0;i<topBlocks.length;i++) {
+        if(topBlocks[i].type==='when_sequence_activated') { found=true; code+=Blockly.Python.blockToCode(topBlocks[i]); }
+      }
+      if(!found) return;
+      var xmlText = Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(window.workspace));
       var params = new URLSearchParams(window.parent.location.search);
-      params.set("payload_matrix", generatedPythonCode);
-      params.set("xml_matrix", currentXmlText);
+      params.set("payload_matrix", code);
+      params.set("xml_matrix", xmlText);
       var newSearch = "?" + params.toString();
-      if (window.parent.location.search !== newSearch) {{
-        window.parent.history.replaceState({{}}, '', window.parent.location.pathname + newSearch);
-      }}
-    }}
-
-    var compileTimeout = null;
-    window.workspace.addChangeListener(function(e) {{
-      if (e.type === Blockly.Events.BLOCK_CREATE || e.type === Blockly.Events.BLOCK_MOVE || e.type === Blockly.Events.BLOCK_CHANGE || e.type === Blockly.Events.BLOCK_DELETE) {{
-        clearTimeout(compileTimeout); compileTimeout = setTimeout(processLiveDebugCompilations, 500);
-      }}
-    }});
+      if(window.parent.location.search !== newSearch) {
+        window.parent.history.replaceState({}, '', window.parent.location.pathname + newSearch);
+      }
+    }
+    var compileTimer = null;
+    window.workspace.addChangeListener(function(e) {
+      if(e.type===Blockly.Events.BLOCK_CREATE||e.type===Blockly.Events.BLOCK_MOVE||e.type===Blockly.Events.BLOCK_CHANGE||e.type===Blockly.Events.BLOCK_DELETE) {
+        clearTimeout(compileTimer); compileTimer=setTimeout(processLiveCompile, 500);
+      }
+    });
   </script>
 </body>
 </html>
 """
+
+blockly_html_payload = (
+    _HTML_TEMPLATE
+    .replace("%%TOOLBOX_XML%%",         blocks_registry.TOOLBOX_XML)
+    .replace("%%BLOCK_DEFINITIONS_JS%%", blocks_registry.BLOCK_DEFINITIONS_JS)
+    .replace("%%PYTHON_GENERATORS_JS%%", blocks_registry.PYTHON_GENERATORS_JS)
+    .replace("%%SAFE_XML_STATE%%",       safe_xml_state)
+    .replace("%%SAFE_TERMINAL_OUTPUT%%", safe_terminal_output)
+    .replace("%%SAFE_CHAT_HISTORY%%",    safe_chat_history)
+)
 
 components.html(blockly_html_payload, height=850, scrolling=False)
 
