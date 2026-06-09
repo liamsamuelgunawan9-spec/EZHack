@@ -182,56 +182,73 @@ if "chat_messages" not in st.session_state:
     st.session_state["chat_messages"] = [{"role": "assistant", "content": "Hello! I am your Groq-powered AI Copilot. Drag and zoom the workspace canvas to see both the Terminal and AI Interface float like blocks!"}]
 
 # --- 3. Reactive State Updates & Executions ---
-try:
-    if "payload_matrix" in st.query_params:
-        st.session_state["synced_workspace_code"] = urllib.parse.unquote(st.query_params["payload_matrix"])
-        
-    if "xml_matrix" in st.query_params:
-        st.session_state["blockly_xml_state"] = urllib.parse.unquote(st.query_params["xml_matrix"])
-        
-    if "ai_msg" in st.query_params and st.query_params["ai_msg"]:
-        user_text = urllib.parse.unquote(st.query_params["ai_msg"])
-        
-        # PROPERLY CLEAR THE AI MSG SO THE LOOP STOPS
-        st.query_params.pop("ai_msg", None)
-        
+
+# Always sync workspace code and XML from URL params first
+if "payload_matrix" in st.query_params:
+    st.session_state["synced_workspace_code"] = urllib.parse.unquote(st.query_params["payload_matrix"])
+
+if "xml_matrix" in st.query_params:
+    st.session_state["blockly_xml_state"] = urllib.parse.unquote(st.query_params["xml_matrix"])
+
+# --- BUG FIX 1: AI Chat ---
+# Problem was: pop("ai_msg") fired before Streamlit committed state,
+# so the message vanished and the reply was never stored.
+# Fix: use a session_state flag to ensure the reply is only generated
+# once per message, and clear the param AFTER storing everything.
+if "ai_msg" in st.query_params and st.query_params["ai_msg"]:
+    user_text = urllib.parse.unquote(st.query_params["ai_msg"])
+
+    # Only process if this is a new message we haven't handled yet
+    last_user_msg = next(
+        (m["content"] for m in reversed(st.session_state["chat_messages"]) if m["role"] == "user"),
+        None
+    )
+    if user_text != last_user_msg:
         st.session_state["chat_messages"].append({"role": "user", "content": user_text})
-        
+
         if ai_client:
-            system_context = f"""
-            You are an elite pentesting AI assistant embedded in a visual block-coding platform.
-            The user is building security and OSINT tools by dragging logic blocks.
-            
-            Current compiled workspace Python code:
-            {st.session_state.get("synced_workspace_code", "")}
-            
-            Current output console logs:
-            {st.session_state.get("terminal_history_output", "")}
-            
-            Analyze the user's workspace, explain what their blocks are doing, and answer their prompt.
-            Keep it hacker-themed, concise, and educational. Do not generate destructive payloads.
-            """
+            system_context = (
+                "You are an elite pentesting AI assistant embedded in a visual block-coding platform. "
+                "The user is building security and OSINT tools by dragging logic blocks.\n\n"
+                f"Current compiled workspace code:\n{st.session_state.get('synced_workspace_code', '')}\n\n"
+                f"Current terminal output:\n{st.session_state.get('terminal_history_output', '')[-1000:]}\n\n"
+                "Analyze the workspace, explain what the blocks are doing, and answer the prompt. "
+                "Keep it hacker-themed, concise, and educational. Do not generate destructive payloads."
+            )
             api_messages = [{"role": "system", "content": system_context}] + st.session_state["chat_messages"]
             reply = generate_completion_with_fallback(api_messages)
             st.session_state["chat_messages"].append({"role": "assistant", "content": reply})
 
-    if "run_sequence" in st.query_params and st.query_params["run_sequence"]:
-        sequence_id_name = urllib.parse.unquote(st.query_params["run_sequence"])
-        
-        st.session_state["terminal_history_output"] += f"\n🤖 Booting sequence pipeline [{sequence_id_name}]...\nRunning target compiled script layers...\n"
-        code_to_run = st.session_state["synced_workspace_code"].strip()
-        if code_to_run:
-            try:
-                exec_scope = {"run_scan": blocks_registry.run_scan, "time": time}
-                exec(code_to_run, exec_scope)
-                st.session_state["terminal_history_output"] += "\n🟢 Execution automation run complete!"
-            except Exception as runtime_err:
-                st.session_state["terminal_history_output"] += f"\n💥 PIPELINE BREAK: {str(runtime_err)}"
-                
-        # Pop this parameter AFTER exec() completes so Streamlit actually runs it!
-        st.query_params.pop("run_sequence", None)
-except Exception:
-    pass
+    # Clear AFTER state is committed
+    st.query_params.pop("ai_msg", None)
+
+# --- BUG FIX 2: Sequence Execution ---
+# Problem was: processLiveDebugCompilations() used replaceState() to keep
+# the workspace in sync, which wiped run_sequence from the URL before
+# Python ever saw it. The JS now sends run_sequence separately via
+# location.href (not replaceState), so Python catches it correctly.
+# On the Python side: we read payload_matrix into session_state first
+# (done above), then run the code from session_state — not from the URL.
+if "run_sequence" in st.query_params and st.query_params["run_sequence"]:
+    sequence_id_name = urllib.parse.unquote(st.query_params["run_sequence"])
+    st.session_state["terminal_history_output"] += (
+        f"\n🤖 Booting sequence pipeline [{sequence_id_name}]...\n"
+        f"Running target compiled script layers...\n"
+    )
+    code_to_run = st.session_state["synced_workspace_code"].strip()
+    if code_to_run:
+        try:
+            exec_scope = {"run_scan": blocks_registry.run_scan, "time": time}
+            exec(code_to_run, exec_scope)
+            st.session_state["terminal_history_output"] += "\n🟢 Execution automation run complete!"
+        except Exception as runtime_err:
+            st.session_state["terminal_history_output"] += f"\n💥 PIPELINE BREAK: {str(runtime_err)}"
+    else:
+        st.session_state["terminal_history_output"] += (
+            "\n⚠️ No compiled code found. Make sure blocks are connected "
+            "below a SEQUENCE GENERATOR block before activating."
+        )
+    st.query_params.pop("run_sequence", None)
 
 safe_xml_state = json.dumps(st.session_state.get("blockly_xml_state", ""))
 safe_terminal_output = json.dumps(st.session_state.get("terminal_history_output", ""))
@@ -545,20 +562,31 @@ blockly_html_payload = f"""
     document.addEventListener("mouseup", function() {{ isDraggingTerm = false; isResizingTerm = false; isDraggingAI = false; isResizingAI = false; }});
 
     function processLiveDebugCompilations() {{
-      var topBlocks = window.workspace.getTopBlocks(false); var generatedPythonCode = ""; var sequenceFound = false;
-      
-      // FIX 3: Reverted to properly scan and append ONLY specific connected chains via blockToCode.
-      for (var i = 0; i < topBlocks.length; i++) {{ 
-          if (topBlocks[i].type === 'when_sequence_activated') {{ 
-              sequenceFound = true; 
-              generatedPythonCode += Blockly.Python.blockToCode(topBlocks[i]); 
-          }} 
+      var topBlocks = window.workspace.getTopBlocks(false);
+      var generatedPythonCode = "";
+      var sequenceFound = false;
+
+      for (var i = 0; i < topBlocks.length; i++) {{
+          if (topBlocks[i].type === 'when_sequence_activated') {{
+              sequenceFound = true;
+              generatedPythonCode += Blockly.Python.blockToCode(topBlocks[i]);
+          }}
       }}
-      
-      var xmlDom = Blockly.Xml.workspaceToDom(window.workspace); var currentXmlText = Blockly.Xml.domToText(xmlDom);
-      if(sequenceFound) {{
-        var targetUrl = window.parent.location.origin + window.parent.location.pathname + "?payload_matrix=" + encodeURIComponent(generatedPythonCode) + "&xml_matrix=" + encodeURIComponent(currentXmlText);
-        if(window.parent.location.search !== "?payload_matrix=" + encodeURIComponent(generatedPythonCode) + "&xml_matrix=" + encodeURIComponent(currentXmlText)) {{ window.parent.history.replaceState({{}}, '', targetUrl); }}
+
+      if (!sequenceFound) return;
+
+      var xmlDom = Blockly.Xml.workspaceToDom(window.workspace);
+      var currentXmlText = Blockly.Xml.domToText(xmlDom);
+
+      // BUGFIX: Use URLSearchParams so we only update payload_matrix and xml_matrix.
+      // We must NEVER overwrite run_sequence here — that param is set by the right-click
+      // Activate action and must survive until Python reads it on the next full reload.
+      var params = new URLSearchParams(window.parent.location.search);
+      params.set("payload_matrix", generatedPythonCode);
+      params.set("xml_matrix", currentXmlText);
+      var newSearch = "?" + params.toString();
+      if (window.parent.location.search !== newSearch) {{
+        window.parent.history.replaceState({{}}, '', window.parent.location.pathname + newSearch);
       }}
     }}
 
