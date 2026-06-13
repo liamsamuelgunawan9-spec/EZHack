@@ -203,6 +203,7 @@ HTML_AFTER_JS = (
     'move:{scrollbars:true,drag:true,wheel:true},'
     'zoom:{controls:true,wheel:true,startScale:1.0,maxScale:3,minScale:0.3,scaleSpeed:1.2},'
     'trashcan:true});'
+    'window.workspace=window.ws;' # alias so block definitions can use either name
     # ── Restore XML ──
     'try{'
     'var sx=' + safe_xml + ';'
