@@ -143,7 +143,14 @@ BLOCK_DEFINITIONS_JS = """
 # ── Python generators (JS) ───────────────────────────────────
 PYTHON_GENERATORS_JS = """
     Blockly.Python['when_sequence_activated'] = function(block) {
-        return '# Sequence Active: ' + block.getFieldValue('SEQUENCE_ID') + '\\n';
+        var seqId = block.getFieldValue('SEQUENCE_ID');
+        var code = '# Sequence: ' + seqId + '\n';
+        var next = block.getNextBlock();
+        while (next) {
+            code += Blockly.Python.blockToCode(next);
+            next = next.getNextBlock();
+        }
+        return code;
     };
 
     Blockly.Python['action_wait_task'] = function(block) {

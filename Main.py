@@ -295,23 +295,23 @@ HTML_AFTER_JS = (
     'document.addEventListener("mouseup",function(){rs=false;});}'
     'mkDrag("th",tfo);mkRes("trh",tfo,180,120);'
     'mkDrag("ah",afo);mkRes("arh",afo,180,180);'
-    # ── Live compile (replaceState — never touches run_sequence or ai_msg) ──
+    # ── Live compile: uses location.href so Streamlit reruns and sees new code ──
+    # Fires 2 seconds after the user stops editing (debounced).
+    # Skips reload if code hasn't changed since last sync.
+    'var lastSyncedCode="";var ct=null;'
     'function lc(){'
     'var code="",found=false;'
     'window.ws.getTopBlocks(false).forEach(function(b){'
     'if(b.type==="when_sequence_activated"){found=true;code+=Blockly.Python.blockToCode(b);}});'
-    'if(!found)return;'
+    'if(!found||code===lastSyncedCode)return;'
+    'lastSyncedCode=code;'
     'var xml=Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(window.ws));'
-    'var p=new URLSearchParams(window.parent.location.search);'
-    'p.set("payload_matrix",code);p.set("xml_matrix",xml);'
-    'var ns="?"+p.toString();'
-    'if(window.parent.location.search!==ns)'
-    'window.parent.history.replaceState({},"",window.parent.location.pathname+ns);}'
-    'var ct=null;'
+    'var base=window.parent.location.origin+window.parent.location.pathname;'
+    'window.parent.location.href=base+"?payload_matrix="+encodeURIComponent(code)+"&xml_matrix="+encodeURIComponent(xml);}'
     'window.ws.addChangeListener(function(e){'
     'if([Blockly.Events.BLOCK_CREATE,Blockly.Events.BLOCK_MOVE,'
     'Blockly.Events.BLOCK_CHANGE,Blockly.Events.BLOCK_DELETE].indexOf(e.type)>=0){'
-    'clearTimeout(ct);ct=setTimeout(lc,500);}});'
+    'clearTimeout(ct);ct=setTimeout(lc,2000);}});'
     '</script></body></html>'
 )
 
