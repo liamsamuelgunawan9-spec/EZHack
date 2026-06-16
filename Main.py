@@ -3,7 +3,6 @@ import json
 import time
 import urllib.parse
 import streamlit as st
-import streamlit.components.v1 as components
 
 from dotenv import load_dotenv
 from groq import Groq, RateLimitError
@@ -325,7 +324,7 @@ blockly_html = (
     + HTML_AFTER_JS
 )
 
-components.html(blockly_html, height=850, scrolling=False)
+st.iframe(blockly_html, height=850)
 
 # ── 6. Live code display ───────────────────────────────────────────────────────
 st.markdown('<div class="live-code-box">', unsafe_allow_html=True)
