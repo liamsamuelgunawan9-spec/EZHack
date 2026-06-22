@@ -59,6 +59,12 @@ BLOCK_DEFINITIONS_JS = """
         this.setNextStatement(true, null);
         this.setColour(0);
         this.setTooltip("Right-click to activate this sequence block.");
+        this.setOnChange(function(event) {
+            if (!event || event.type !== Blockly.Events.BLOCK_CHANGE) return;
+            if (event.blockId !== this.id) return;
+            if (event.name !== "SEQUENCE_ID") return;
+            this.pendingRunLabel_ = this.getFieldValue("SEQUENCE_ID");
+        });
       },
       customContextMenu: function(options) {
           var currentBlockInstance = this;
@@ -66,16 +72,15 @@ BLOCK_DEFINITIONS_JS = """
               enabled: true,
               text: "⚡ Activate This Sequence",
               callback: function() {
-                  var targetedSequencePayload = Blockly.Python.blockToCode(currentBlockInstance);
+                  var targetedSequencePayload = window.ezCompileSequences ? window.ezCompileSequences() : Blockly.Python.workspaceToCode(window.workspace);
                   var sequenceIdentifier = currentBlockInstance.getFieldValue("SEQUENCE_ID");
                   var xmlDom = Blockly.Xml.workspaceToDom(window.workspace);
                   var currentXmlText = Blockly.Xml.domToText(xmlDom);
-                  var baseUrl = window.parent.location.origin + window.parent.location.pathname;
-                  var targetUrl = baseUrl
-                      + "?payload_matrix=" + encodeURIComponent(targetedSequencePayload)
-                      + "&xml_matrix=" + encodeURIComponent(currentXmlText)
-                      + "&run_sequence=" + encodeURIComponent(sequenceIdentifier);
-                  window.parent.location.href = targetUrl;
+                  window.ezSendState("run", {
+                      code: targetedSequencePayload,
+                      xml: currentXmlText,
+                      sequenceId: sequenceIdentifier
+                  });
               }
           };
           options.push(activateOption);
@@ -144,10 +149,12 @@ BLOCK_DEFINITIONS_JS = """
 PYTHON_GENERATORS_JS = """
     Blockly.Python['when_sequence_activated'] = function(block) {
         var seqId = block.getFieldValue('SEQUENCE_ID');
-        var code = '# Sequence: ' + seqId + '\n';
+        var code = '# Sequence: ' + seqId + '\\n';
         var next = block.getNextBlock();
         while (next) {
-            code += Blockly.Python.blockToCode(next);
+            var nextCode = Blockly.Python.blockToCode(next);
+            if (Array.isArray(nextCode)) { nextCode = nextCode[0]; }
+            code += nextCode;
             next = next.getNextBlock();
         }
         return code;
@@ -158,12 +165,12 @@ PYTHON_GENERATORS_JS = """
     };
 
     Blockly.Python['custom_input_string'] = function(block) {
-        return ["'" + block.getFieldValue('RAW_TEXT') + "'", Blockly.Python.ORDER_ATOMIC];
+        return [JSON.stringify(block.getFieldValue('RAW_TEXT')), Blockly.Python.ORDER_ATOMIC];
     };
 
     Blockly.Python['global_phone_preset'] = function(block) {
         return [
-            "'" + block.getFieldValue('CC_PREFIX') + block.getFieldValue('PHONE_BODY') + "'",
+            JSON.stringify(block.getFieldValue('CC_PREFIX') + block.getFieldValue('PHONE_BODY')),
             Blockly.Python.ORDER_ATOMIC
         ];
     };
@@ -172,7 +179,7 @@ PYTHON_GENERATORS_JS = """
         var prefix = block.getFieldValue('CUSTOM_PREFIX').trim();
         if (!prefix.startsWith("+")) { prefix = "+" + prefix; }
         return [
-            "'" + prefix + block.getFieldValue('PHONE_BODY').trim() + "'",
+            JSON.stringify(prefix + block.getFieldValue('PHONE_BODY').trim()),
             Blockly.Python.ORDER_ATOMIC
         ];
     };

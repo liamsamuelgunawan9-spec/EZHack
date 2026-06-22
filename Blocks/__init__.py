@@ -31,7 +31,8 @@ from .recon_blocks import (
     perform_dns_lookup, perform_ip_geolocation, perform_phone_tracking,
     perform_whois_lookup, perform_robots_sitemap_scan, perform_ssl_audit,
     perform_shodan_lookup, perform_http_header_audit, perform_service_enumeration,
-    perform_regex_filter,
+    perform_regex_filter, perform_reverse_dns_lookup, perform_hostname_parse,
+    perform_dns_cache_check, perform_email_parse,
 )
 from .attack_blocks import (
     perform_port_scan, perform_directory_probe,
@@ -41,8 +42,12 @@ from .attack_blocks import (
 
 _SIMPLE_HANDLERS = {
     "dns":              perform_dns_lookup,
+    "reverse_dns":      perform_reverse_dns_lookup,
+    "hostname_parse":   perform_hostname_parse,
+    "dns_cache":        perform_dns_cache_check,
     "geo":              perform_ip_geolocation,
     "phone":            perform_phone_tracking,
+    "email_parse":      perform_email_parse,
     "whois":            perform_whois_lookup,
     "robots":           perform_robots_sitemap_scan,
     "ssl_audit":        perform_ssl_audit,
@@ -74,7 +79,8 @@ def run_scan(target: str, mode: str, structural: str = None,
     else:
         res = f"⚠️ Unknown or incomplete scan mode: '{mode}'"
 
-    st.session_state["terminal_history_output"] += (
+    st.session_state["terminal"] = st.session_state.get("terminal", "")
+    st.session_state["terminal"] += (
         f"\n[ENGINE] {mode.upper()}\n{res}\n"
     )
     return res
