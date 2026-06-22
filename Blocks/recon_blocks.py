@@ -1,352 +1,560 @@
 # ============================================================
-# ATTACK BLOCKS
-# Covers real, non-destructive security testing tools:
-#   - Port scan (real TCP connect)
-#   - Directory probe (real HTTP HEAD requests)
-#   - HTTP header security audit (real)
-#   - SQL injection error detection (passive, read-only)
-#   - XSS reflection detection (passive, read-only)
-#   - Firewall/WAF fingerprinting (real header inspection)
-#   - Hash lookup against VirusTotal when configured
-#
-# Removed: credential attack sim, exploit sim, fuzz sim,
-#          vuln lookup blocks that did not use real data sources.
+# RECON BLOCKS
+# Covers: DNS, GeoIP, WHOIS, Phone, SSL, Robots/Sitemap,
+#         Shodan, HTTP Headers, Service Enumeration, Regex
+# All functions are PASSIVE — no active attacks here.
 # ============================================================
 
 import socket
 import json
+import os
 import urllib.request
 import urllib.parse
+import re
+import ssl
 
+import phonenumbers
+from phonenumbers import carrier, geocoder, timezone
+
+
+# ── Helper: input sanitizers ─────────────────────────────────
+
+def _clean_host(target: str) -> str:
+    """Strip spaces/quotes, remove protocol prefix, take only the hostname."""
+    t = str(target).strip().replace(" ", "").replace('"', "").replace("'", "")
+    t = t.replace("https://", "").replace("http://", "").split("/")[0]
+    return t
 
 def _clean_url(target: str) -> str:
+    """Ensure the target is a full URL with https:// prefix."""
     t = str(target).strip().replace(" ", "").replace('"', "").replace("'", "")
     if not t.startswith(("http://", "https://")):
         t = "https://" + t
     return t
 
-def _clean_host(target: str) -> str:
-    t = str(target).strip().replace(" ", "").replace('"', "").replace("'", "")
-    return t.replace("https://", "").replace("http://", "").split("/")[0]
+
+# ── Python backend functions ──────────────────────────────────
+
+def perform_dns_lookup(target: str) -> str:
+    host = _clean_host(target)
+    if not host:
+        return "❌ ERROR: Target host missing!"
+    if host.startswith("+") or (host.isdigit() and len(host) > 6):
+        return perform_phone_tracking(host)
+    try:
+        ip_addr = socket.gethostbyname(host)
+        return (
+            f"📡 DNS Resolution successful for [{host}]\n"
+            f"📍 Resolved IP Address: {ip_addr}"
+        )
+    except Exception as e:
+        return f"❌ DNS Lookup Failed for '{host}': {str(e)}"
 
 
-def perform_port_scan(target: str, port_range: str) -> str:
-    """Real TCP connect scan against common ports in the given range."""
+def perform_ip_geolocation(target: str) -> str:
+    host = _clean_host(target)
+    if not host:
+        return "❌ ERROR: Geolocation target missing!"
+    try:
+        ip_addr = socket.gethostbyname(host)
+        url = f"http://ip-api.com/json/{ip_addr}"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            data = json.loads(response.read().decode())
+        if data.get("status") == "success":
+            return (
+                f"📍 IP Geolocation [{ip_addr}]:\n"
+                f"   Country : {data.get('country')} ({data.get('countryCode')})\n"
+                f"   Region  : {data.get('regionName')}\n"
+                f"   City    : {data.get('city')}\n"
+                f"   ISP     : {data.get('isp')}\n"
+                f"   Coords  : {data.get('lat')}, {data.get('lon')}"
+            )
+        return f"⚠️ Geolocation API returned failure for [{ip_addr}]."
+    except Exception as e:
+        return f"❌ Geolocation Failed: {str(e)}"
+
+
+def perform_phone_tracking(target: str) -> str:
+    raw = str(target).strip().replace(" ", "").replace('"', "").replace("'", "")
+    if not raw.startswith("+"):
+        raw = "+" + raw
+    try:
+        parsed = phonenumbers.parse(raw, None)
+        if not phonenumbers.is_valid_number(parsed):
+            return f"❌ ERROR: '{raw}' is not a valid E.164 phone number."
+        region   = geocoder.description_for_number(parsed, "en") or "Unknown"
+        carrier_ = carrier.name_for_number(parsed, "en") or "Unknown Provider"
+        tz_list  = timezone.time_zones_for_number(parsed)
+        return (
+            f"📱 Phone Lookup [{raw}]:\n"
+            f"   Valid Format   : True\n"
+            f"   Country        : {region}\n"
+            f"   Network Carrier: {carrier_}\n"
+            f"   Timezone       : {', '.join(tz_list)}"
+        )
+    except Exception as e:
+        return f"❌ Phone Tracking Error: {str(e)}"
+
+
+def perform_whois_lookup(target: str) -> str:
+    host = _clean_host(target).lower()
+    if not host:
+        return "❌ ERROR: Target domain missing!"
+    try:
+        api_url = f"https://rdap.org/domain/{host}"
+        req = urllib.request.Request(api_url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=5) as stream:
+            data = json.loads(stream.read().decode())
+        registrar = data.get("port43", "Unknown")
+        creation_date = "Unknown"
+        for event in data.get("events", []):
+            if event.get("action") == "registration":
+                creation_date = event.get("eventDate", "Unknown")
+        return (
+            f"🌐 WHOIS [{host}]:\n"
+            f"   Registrar : {registrar}\n"
+            f"   Created   : {creation_date}"
+        )
+    except Exception as e:
+        return f"❌ WHOIS Lookup Failed: {str(e)}"
+
+
+def perform_robots_sitemap_scan(target: str) -> str:
+    url = _clean_url(target)
+    report = f"🕸️ Robots/Sitemap scan for [{url}]:\n"
+    try:
+        req = urllib.request.Request(url.rstrip("/") + "/robots.txt",
+                                     headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=4) as r:
+            lines = r.read().decode("utf-8", errors="ignore").split("\n")
+        disallowed = [l for l in lines if l.lower().startswith("disallow:")]
+        report += f"   [+] robots.txt found — {len(disallowed)} restricted paths\n"
+        if disallowed:
+            report += "       Sample:\n"
+            report += "\n".join(f"       {d.strip()}" for d in disallowed[:4]) + "\n"
+    except Exception:
+        report += "   [-] robots.txt not found\n"
+    try:
+        req = urllib.request.Request(url.rstrip("/") + "/sitemap.xml",
+                                     headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=4):
+            report += "   [+] sitemap.xml found\n"
+    except Exception:
+        report += "   [-] sitemap.xml not found\n"
+    return report
+
+
+def perform_ssl_audit(target: str) -> str:
+    host = _clean_host(target)
+    if not host:
+        return "❌ ERROR: SSL audit target missing!"
+    context = ssl.create_default_context()
+    try:
+        with socket.create_connection((host, 443), timeout=5) as sock:
+            with context.wrap_socket(sock, server_hostname=host) as ssock:
+                cert   = ssock.getpeercert()
+                cipher = ssock.cipher()
+                version = ssock.version()
+                issuer  = dict(x[0] for x in cert.get("issuer", []))
+                subject = dict(x[0] for x in cert.get("subject", []))
+                return (
+                    f"🔒 SSL/TLS Audit [{host}]:\n"
+                    f"   Protocol : {version}\n"
+                    f"   Cipher   : {cipher[0]} ({cipher[2]} bits)\n"
+                    f"   Issuer   : {issuer.get('organizationName', 'Unknown')}\n"
+                    f"   Subject  : {subject.get('commonName', 'Unknown')}\n"
+                    f"   Expires  : {cert.get('notAfter')}"
+                )
+    except Exception as e:
+        return f"❌ SSL Handshake Failed: {str(e)}"
+
+
+def perform_shodan_lookup(target: str) -> str:
     host = _clean_host(target)
     try:
-        if "-" in port_range:
-            start, end = (int(x.strip()) for x in port_range.split("-"))
-        else:
-            start = end = int(port_range.strip())
-        # Only scan well-known ports that fall within the requested range
-        common_ports = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445,
-                        3306, 3389, 5432, 5900, 6379, 8080, 8443, 27017]
-        to_scan = [p for p in common_ports if start <= p <= end]
-        open_ports, closed_ports = [], []
-        for port in to_scan:
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                    sock.settimeout(1)
-                    result = sock.connect_ex((host, port))
-                    if result == 0:
-                        open_ports.append(port)
-                    else:
-                        closed_ports.append(port)
-            except Exception:
-                closed_ports.append(port)
-        open_str = ", ".join(map(str, open_ports)) if open_ports else "None"
-        return (
-            f"🔓 Port Scan [{host}] range {start}–{end}:\n"
-            f"   Open ports   : {open_str}\n"
-            f"   Scanned      : {len(to_scan)} common ports"
-        )
-    except Exception as e:
-        return f"❌ Port Scan Failed: {str(e)}"
-
-
-def perform_directory_probe(target: str, wordlist: str) -> str:
-    """Real HTTP HEAD probe against user-supplied directory names."""
-    url = _clean_url(target)
-    dirs = [d.strip() for d in wordlist.split(",") if d.strip()]
-    if not dirs:
-        dirs = ["admin", "config", "backup", "upload", "api", "login", "dashboard"]
-    found, not_found = [], []
-    for directory in dirs:
-        try:
-            test_url = f"{url.rstrip('/')}/{directory}/"
-            req = urllib.request.Request(
-                test_url, method="HEAD",
-                headers={"User-Agent": "Mozilla/5.0"}
-            )
-            with urllib.request.urlopen(req, timeout=4) as r:
-                if r.status in [200, 301, 302, 403]:
-                    found.append(f"/{directory}/ → HTTP {r.status}")
-        except urllib.error.HTTPError as e:
-            if e.code == 403:
-                found.append(f"/{directory}/ → HTTP 403 (Forbidden — exists but locked)")
-        except Exception:
-            not_found.append(directory)
-    if found:
-        return (
-            f"📂 Directory Probe [{url}]:\n"
-            + "\n".join(f"   [+] {f}" for f in found)
-        )
-    return f"📂 Directory Probe [{url}]:\n   No directories responded from: {', '.join(dirs)}"
-
-
-def perform_sql_error_detection(target: str, payload: str) -> str:
-    """
-    Passive SQL injection error detection.
-    Sends one GET request with the payload appended as a query param
-    and checks if the response contains database error strings.
-    Read-only — does not modify any data.
-    """
-    url = _clean_url(target)
-    clean_payload = str(payload).strip()
-    try:
-        test_url = f"{url}?id={urllib.parse.quote(clean_payload)}"
-        req = urllib.request.Request(test_url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=5) as r:
-            body = r.read().decode("utf-8", errors="ignore")
-        error_strings = [
-            "sql syntax", "mysql_fetch", "warning:", "you have an error in your sql",
-            "unclosed quotation", "odbc", "ora-", "pg_query", "sqlite_"
-        ]
-        hits = [e for e in error_strings if e in body.lower()]
-        if hits:
+        api_key = os.environ.get("SHODAN_API_KEY", "").strip()
+        if not api_key:
             return (
-                f"⚠️ SQL Error Detection [{url}]:\n"
-                f"   Payload   : {clean_payload}\n"
-                f"   DB errors found in response: {', '.join(hits)}\n"
-                f"   ⚠️ Passive read-only test — verify manually before acting."
+                "❌ Shodan Lookup Unavailable:\n"
+                "   SHODAN_API_KEY is not set, so this block cannot return real Shodan data."
             )
-        return (
-            f"✅ SQL Error Detection [{url}]:\n"
-            f"   Payload   : {clean_payload}\n"
-            f"   No database error strings found in response."
+        ip_addr = socket.gethostbyname(host)
+        api_url = "https://api.shodan.io/shodan/host/{}?key={}".format(
+            ip_addr, urllib.parse.quote(api_key)
         )
-    except Exception as e:
-        return f"❌ SQL Error Detection Failed: {str(e)}"
-
-
-def perform_xss_reflection_check(target: str, payload: str) -> str:
-    """
-    Passive XSS reflection check.
-    Sends one GET request and checks if the payload appears
-    unencoded in the response HTML.
-    Read-only — does not execute anything in a browser.
-    """
-    url = _clean_url(target)
-    clean_payload = str(payload).strip()
-    try:
-        test_url = f"{url}?q={urllib.parse.quote(clean_payload)}"
-        req = urllib.request.Request(test_url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=5) as r:
-            body = r.read().decode("utf-8", errors="ignore")
-        if clean_payload in body:
-            return (
-                f"⚠️ XSS Reflection [{url}]:\n"
-                f"   Payload   : {clean_payload}\n"
-                f"   Payload found unencoded in response — potential reflection point.\n"
-                f"   ⚠️ Passive check only — does not execute in browser."
-            )
-        return (
-            f"✅ XSS Reflection [{url}]:\n"
-            f"   Payload   : {clean_payload}\n"
-            f"   Payload was not reflected unencoded in the response."
-        )
-    except Exception as e:
-        return f"❌ XSS Reflection Check Failed: {str(e)}"
-
-
-def perform_firewall_detect(target: str) -> str:
-    """Real WAF/firewall fingerprinting via HTTP response header inspection."""
-    host = _clean_host(target)
-    try:
-        req = urllib.request.Request(
-            f"https://{host}",
-            headers={"User-Agent": "Mozilla/5.0"}
-        )
-        with urllib.request.urlopen(req, timeout=5) as r:
-            headers = dict(r.info())
-        waf_signatures = {
-            "CF-RAY":               "Cloudflare",
-            "X-Sucuri-ID":          "Sucuri",
-            "X-Cache":              "CDN/Cache Layer",
-            "X-Powered-By-Plesk":   "Plesk WAF",
-            "Server: AkamaiGHost":  "Akamai",
-            "X-Distil-CS":         "Distil Networks",
-        }
-        detected = [name for header, name in waf_signatures.items()
-                    if any(header.lower() in k.lower() for k in headers)]
-        if detected:
-            return (
-                f"🔥 Firewall/WAF Detect [{host}]:\n"
-                f"   Detected : {', '.join(detected)}\n"
-                f"   Raw headers: {', '.join(headers.keys())}"
-            )
-        return (
-            f"🔥 Firewall/WAF Detect [{host}]:\n"
-            f"   No known WAF fingerprint found in response headers.\n"
-            f"   Headers present: {', '.join(headers.keys())}"
-        )
-    except Exception as e:
-        return f"❌ Firewall Detection Failed: {str(e)}"
-
-
-def perform_malware_hash_check(target: str, sample_hash: str) -> str:
-    """
-    Checks a hash against VirusTotal when VT_API_KEY is configured.
-    """
-    clean_hash = str(sample_hash).strip().upper()
-    import os
-    api_key = os.environ.get("VT_API_KEY", "").strip()
-    if not api_key:
-        return (
-            "❌ Hash Check Unavailable:\n"
-            "   VT_API_KEY is not set, so this block cannot return real malware intelligence."
-        )
-    try:
-        req = urllib.request.Request(
-            f"https://www.virustotal.com/api/v3/files/{clean_hash}",
-            headers={
-                "x-apikey": api_key,
-                "User-Agent": "Mozilla/5.0",
-            }
-        )
+        req = urllib.request.Request(api_url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=8) as stream:
             data = json.loads(stream.read().decode())
-        stats = data.get("data", {}).get("attributes", {}).get("last_analysis_stats", {})
+        ports = data.get("ports", [])
+        vulns = data.get("vulns", {})
+        org = data.get("org", "Unknown")
+        os_name = data.get("os", "Unknown")
         return (
-            f"🦠 Hash Check [{clean_hash}]:\n"
-            f"   Malicious : {stats.get('malicious', 0)}\n"
-            f"   Suspicious: {stats.get('suspicious', 0)}\n"
-            f"   Harmless  : {stats.get('harmless', 0)}"
+            f"📡 Shodan Lookup [{ip_addr}]:\n"
+            f"   Org          : {org}\n"
+            f"   OS           : {os_name}\n"
+            f"   Open ports   : {', '.join(map(str, ports)) if ports else 'None reported'}\n"
+            f"   Vulns        : {', '.join(vulns.keys()) if vulns else 'None reported'}"
         )
     except Exception as e:
-        return f"❌ Hash Check Failed: {str(e)}"
+        return f"❌ Shodan Lookup Failed: {str(e)}"
 
 
-# ── Toolbox XML ──────────────────────────────────────────────
+def perform_http_header_audit(target: str) -> str:
+    url = _clean_url(target)
+    try:
+        req = urllib.request.Request(url, method="HEAD",
+                                     headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            headers = response.info()
+        server  = headers.get("Server", "Hidden/Not Disclosed")
+        x_frame = headers.get("X-Frame-Options", "❌ MISSING (Clickjacking risk)")
+        hsts    = headers.get("Strict-Transport-Security", "❌ MISSING (MITM risk)")
+        csp     = headers.get("Content-Security-Policy", "❌ MISSING (XSS risk)")
+        return (
+            f"🛡️ HTTP Header Audit [{url}]:\n"
+            f"   Server          : {server}\n"
+            f"   X-Frame-Options : {x_frame}\n"
+            f"   HSTS            : {hsts}\n"
+            f"   Content-Policy  : {csp}"
+        )
+    except Exception as e:
+        return f"❌ Header Audit Failed: {str(e)}"
+
+
+def perform_service_enumeration(target: str) -> str:
+    url = _clean_url(target)
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            headers = response.info()
+            content = response.read().decode("utf-8", errors="ignore")[:2000]
+        server    = headers.get("Server", "Unknown")
+        powered   = headers.get("X-Powered-By", "Unknown")
+        techs = []
+        for name, keyword in [("WordPress","WordPress"), ("Laravel","Laravel"),
+                               ("Django","Django"), ("React","React"),
+                               ("Vue.js","Vue")]:
+            if keyword in content:
+                techs.append(name)
+        return (
+            f"🔍 Service Enumeration [{url}]:\n"
+            f"   Server     : {server}\n"
+            f"   Powered-By : {powered}\n"
+            f"   Detected   : {', '.join(techs) if techs else 'Standard web stack'}"
+        )
+    except Exception as e:
+        return f"❌ Service Enumeration Failed: {str(e)}"
+
+
+def perform_regex_filter(text: str, pattern: str) -> str:
+    try:
+        matches = re.findall(pattern, text)
+        return f"🎯 Regex: found {len(matches)} match(es): {matches[:6]}"
+    except Exception as e:
+        return f"❌ Regex Error: {str(e)}"
+
+
+def perform_reverse_dns_lookup(target: str) -> str:
+    host = _clean_host(target)
+    if not host:
+        return "❌ ERROR: Reverse DNS target missing!"
+    try:
+        ip_addr = socket.gethostbyname(host)
+        try:
+            ptr_name = socket.gethostbyaddr(ip_addr)[0]
+        except Exception:
+            ptr_name = "No PTR record found"
+        return (
+            f"🔄 Reverse DNS [{host}]:\n"
+            f"   IP Address : {ip_addr}\n"
+            f"   PTR Record : {ptr_name}"
+        )
+    except Exception as e:
+        return f"❌ Reverse DNS Failed: {str(e)}"
+
+
+def perform_hostname_parse(target: str) -> str:
+    raw = str(target).strip()
+    if not raw:
+        return "❌ ERROR: Hostname parse target missing!"
+    try:
+        parsed = urllib.parse.urlparse(raw if "://" in raw else f"https://{raw}")
+        return (
+            f"🧩 URL Parse [{raw}]:\n"
+            f"   Scheme : {parsed.scheme or 'Unknown'}\n"
+            f"   Host   : {parsed.hostname or 'Unknown'}\n"
+            f"   Port   : {parsed.port or 'Default'}\n"
+            f"   Path   : {parsed.path or '/'}\n"
+            f"   Query  : {parsed.query or 'None'}"
+        )
+    except Exception as e:
+        return f"❌ URL Parse Failed: {str(e)}"
+
+
+def perform_dns_cache_check(target: str) -> str:
+    host = _clean_host(target)
+    if not host:
+        return "❌ ERROR: DNS cache target missing!"
+    try:
+        addrs = socket.getaddrinfo(host, None)
+        unique_ips = sorted({entry[4][0] for entry in addrs})
+        return (
+            f"🧠 DNS Cache [{host}]:\n"
+            f"   Resolved IPs : {', '.join(unique_ips)}\n"
+            f"   Records Seen : {len(addrs)}"
+        )
+    except Exception as e:
+        return f"❌ DNS Cache Check Failed: {str(e)}"
+
+
+def perform_email_parse(target: str) -> str:
+    raw = str(target).strip()
+    if not raw:
+        return "❌ ERROR: Email target missing!"
+    try:
+        local, domain = raw.split("@", 1)
+        return (
+            f"✉️ Email Parse [{raw}]:\n"
+            f"   Local Part : {local}\n"
+            f"   Domain     : {domain}\n"
+            f"   Length     : {len(raw)} chars"
+        )
+    except ValueError:
+        return f"❌ Email Parse Failed: '{raw}' is not a valid email format."
+
+
+# ── Toolbox XML ─────────────────────────────────────────────
 TOOLBOX_XML = """
-    <category name="🔨 Security Testing" colour="#8b4513">
-        <category name="🌐 Infrastructure" colour="#8b4513">
-            <block type="action_port_scan"></block>
-            <block type="action_directory_probe"></block>
-            <block type="action_firewall_detect"></block>
+    <category name="🔎 Intelligence Gathering" colour="#5b80a2">
+        <category name="🌐 Domain &amp; IP Info" colour="#4a6fa5">
+            <block type="action_dns_resolve"></block>
+            <block type="action_reverse_dns"></block>
+            <block type="action_hostname_parse"></block>
+            <block type="action_dns_cache_check"></block>
+            <block type="action_ip_geolocation"></block>
+            <block type="action_whois_lookup"></block>
         </category>
-        <category name="💉 Web Vulnerability Detection" colour="#8b4513">
-            <block type="action_sql_error_detect"></block>
-            <block type="action_xss_reflect_check"></block>
+        <category name="📱 Telecom Research" colour="#4a6fa5">
+            <block type="action_phone_tracker"></block>
+            <block type="action_email_parse"></block>
         </category>
-        <category name="🦠 Threat Analysis" colour="#8b4513">
-            <block type="action_malware_hash_check"></block>
+        <category name="🕷️ Web &amp; Service Scan" colour="#4a6fa5">
+            <block type="action_shodan_lookup"></block>
+            <block type="action_robots_sitemap"></block>
+            <block type="action_http_header_audit"></block>
+            <block type="action_ssl_audit"></block>
+            <block type="action_service_enum"></block>
+        </category>
+        <category name="🔧 Data Processing" colour="#4a6fa5">
+            <block type="action_regex_filter"></block>
         </category>
     </category>
 """
 
 # ── Block definitions (JS) ───────────────────────────────────
 BLOCK_DEFINITIONS_JS = """
-    Blockly.Blocks['action_port_scan'] = {
+    Blockly.Blocks['action_dns_resolve'] = {
       init: function() {
-        this.appendValueInput("TARGET").setCheck("String").appendField("🔓 Port Scan");
+        this.appendValueInput("NAME").setCheck("String").appendField("📡 Resolve DNS");
+        this.setPreviousStatement(true, null); this.setNextStatement(true, null);
+        this.setColour(210);
+        this.setTooltip("Resolves a domain name to its IP address.");
+      }
+    };
+
+    Blockly.Blocks['action_reverse_dns'] = {
+      init: function() {
+        this.appendValueInput("NAME").setCheck("String").appendField("🔄 Reverse DNS");
+        this.setPreviousStatement(true, null); this.setNextStatement(true, null);
+        this.setColour(210);
+        this.setTooltip("Resolves a hostname to IP, then looks up the PTR record.");
+      }
+    };
+
+    Blockly.Blocks['action_hostname_parse'] = {
+      init: function() {
+        this.appendValueInput("NAME").setCheck("String").appendField("🧩 Parse URL");
+        this.setPreviousStatement(true, null); this.setNextStatement(true, null);
+        this.setColour(210);
+        this.setTooltip("Breaks a URL into scheme, host, port, path, and query.");
+      }
+    };
+
+    Blockly.Blocks['action_dns_cache_check'] = {
+      init: function() {
+        this.appendValueInput("NAME").setCheck("String").appendField("🧠 DNS Cache");
+        this.setPreviousStatement(true, null); this.setNextStatement(true, null);
+        this.setColour(210);
+        this.setTooltip("Shows the IPs returned by the local resolver for a hostname.");
+      }
+    };
+
+    Blockly.Blocks['action_ip_geolocation'] = {
+      init: function() {
+        this.appendValueInput("NAME").setCheck("String").appendField("🌐 IP Geolocation");
+        this.setPreviousStatement(true, null); this.setNextStatement(true, null);
+        this.setColour(210);
+        this.setTooltip("Returns city, country, ISP, and coordinates for an IP/domain.");
+      }
+    };
+
+    Blockly.Blocks['action_phone_tracker'] = {
+      init: function() {
+        this.appendValueInput("NAME").setCheck("String").appendField("📞 Phone Lookup");
+        this.setPreviousStatement(true, null); this.setNextStatement(true, null);
+        this.setColour(210);
+        this.setTooltip("Identifies carrier and region for a phone number.");
+      }
+    };
+
+    Blockly.Blocks['action_email_parse'] = {
+      init: function() {
+        this.appendValueInput("NAME").setCheck("String").appendField("✉️ Email Parse");
+        this.setPreviousStatement(true, null); this.setNextStatement(true, null);
+        this.setColour(210);
+        this.setTooltip("Splits an email address into its local part and domain.");
+      }
+    };
+
+    Blockly.Blocks['action_whois_lookup'] = {
+      init: function() {
+        this.appendValueInput("NAME").setCheck("String").appendField("🌐 WHOIS Lookup");
+        this.setPreviousStatement(true, null); this.setNextStatement(true, null);
+        this.setColour(210);
+        this.setTooltip("Fetches domain registration info via RDAP.");
+      }
+    };
+
+    Blockly.Blocks['action_robots_sitemap'] = {
+      init: function() {
+        this.appendValueInput("NAME").setCheck("String").appendField("🤖 Robots/Sitemap");
+        this.setPreviousStatement(true, null); this.setNextStatement(true, null);
+        this.setColour(210);
+        this.setTooltip("Checks for robots.txt and sitemap.xml files.");
+      }
+    };
+
+    Blockly.Blocks['action_ssl_audit'] = {
+      init: function() {
+        this.appendValueInput("NAME").setCheck("String").appendField("🔒 SSL Audit");
+        this.setPreviousStatement(true, null); this.setNextStatement(true, null);
+        this.setColour(210);
+        this.setTooltip("Checks SSL/TLS certificate details and cipher strength.");
+      }
+    };
+
+    Blockly.Blocks['action_shodan_lookup'] = {
+      init: function() {
+        this.appendValueInput("NAME").setCheck("String").appendField("👁️ Shodan Lookup");
+        this.setPreviousStatement(true, null); this.setNextStatement(true, null);
+        this.setColour(210);
+        this.setTooltip("Looks up real Shodan host data when SHODAN_API_KEY is configured.");
+      }
+    };
+
+    Blockly.Blocks['action_http_header_audit'] = {
+      init: function() {
+        this.appendValueInput("NAME").setCheck("String").appendField("🛡️ HTTP Headers");
+        this.setPreviousStatement(true, null); this.setNextStatement(true, null);
+        this.setColour(210);
+        this.setTooltip("Checks security headers like HSTS, CSP, X-Frame-Options.");
+      }
+    };
+
+    Blockly.Blocks['action_service_enum'] = {
+      init: function() {
+        this.appendValueInput("TARGET").setCheck("String").appendField("🔍 Service Enum");
+        this.setPreviousStatement(true, null); this.setNextStatement(true, null);
+        this.setColour(210);
+        this.setTooltip("Identifies web technologies running on the target.");
+      }
+    };
+
+    Blockly.Blocks['action_regex_filter'] = {
+      init: function() {
         this.appendDummyInput()
-            .appendField("   Port range:")
-            .appendField(new Blockly.FieldTextInput("80-443"), "PORT_RANGE");
+            .appendField("🎯 Regex Pattern:")
+            .appendField(new Blockly.FieldTextInput("[0-9]{1,3}\\\\.[0-9]{1,3}"), "PATTERN");
+        this.appendValueInput("NAME").setCheck("String").appendField("   Input Text:");
         this.setPreviousStatement(true, null); this.setNextStatement(true, null);
-        this.setColour('#8b4513');
-        this.setTooltip("Real TCP connect scan. Checks common ports in the given range.");
-      }
-    };
-
-    Blockly.Blocks['action_directory_probe'] = {
-      init: function() {
-        this.appendValueInput("TARGET").setCheck("String").appendField("📂 Directory Probe");
-        this.appendDummyInput()
-            .appendField("   Directories (comma-sep):")
-            .appendField(new Blockly.FieldTextInput("admin,config,backup,login"), "WORDLIST");
-        this.setPreviousStatement(true, null); this.setNextStatement(true, null);
-        this.setColour('#8b4513');
-        this.setTooltip("Real HTTP HEAD probe. Checks if directories respond.");
-      }
-    };
-
-    Blockly.Blocks['action_sql_error_detect'] = {
-      init: function() {
-        this.appendValueInput("TARGET").setCheck("String").appendField("💉 SQL Error Detect");
-        this.appendValueInput("PAYLOAD").setCheck("String").appendField("   Payload:");
-        this.setPreviousStatement(true, null); this.setNextStatement(true, null);
-        this.setColour('#8b4513');
-        this.setTooltip("Sends payload as GET param, checks response for DB error strings. Read-only.");
-      }
-    };
-
-    Blockly.Blocks['action_xss_reflect_check'] = {
-      init: function() {
-        this.appendValueInput("TARGET").setCheck("String").appendField("🔗 XSS Reflection Check");
-        this.appendValueInput("PAYLOAD").setCheck("String").appendField("   Payload:");
-        this.setPreviousStatement(true, null); this.setNextStatement(true, null);
-        this.setColour('#8b4513');
-        this.setTooltip("Checks if payload appears unencoded in response. Read-only.");
-      }
-    };
-
-    Blockly.Blocks['action_firewall_detect'] = {
-      init: function() {
-        this.appendValueInput("TARGET").setCheck("String").appendField("🔥 WAF Detect");
-        this.setPreviousStatement(true, null); this.setNextStatement(true, null);
-        this.setColour('#8b4513');
-        this.setTooltip("Checks response headers for known WAF/CDN fingerprints.");
-      }
-    };
-
-    Blockly.Blocks['action_malware_hash_check'] = {
-      init: function() {
-        this.appendValueInput("TARGET").setCheck("String").appendField("🦠 Hash Check");
-        this.appendDummyInput()
-            .appendField("   Hash (MD5/SHA):")
-            .appendField(new Blockly.FieldTextInput("5D41402ABC4B2A76B9719D911017C592"), "FILE_HASH");
-        this.setPreviousStatement(true, null); this.setNextStatement(true, null);
-        this.setColour('#8b4513');
-        this.setTooltip("Checks the hash against VirusTotal when VT_API_KEY is configured.");
+        this.setColour(290);
+        this.setTooltip("Extracts matches from text using a regular expression.");
       }
     };
 """
 
 # ── Python generators (JS) ───────────────────────────────────
 PYTHON_GENERATORS_JS = """
-    Blockly.Python['action_port_scan'] = function(block) {
-        var target    = Blockly.Python.valueToCode(block,'TARGET',Blockly.Python.ORDER_ATOMIC)||"''";
-        var portRange = block.getFieldValue('PORT_RANGE');
-        return 'run_scan(target='+target+', mode="port_scan", structural='+JSON.stringify(portRange)+')\\n';
+    Blockly.Python['action_dns_resolve'] = function(block) {
+        var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+        return 'run_scan(target=' + val + ', mode="dns")\\n';
     };
 
-    Blockly.Python['action_directory_probe'] = function(block) {
-        var target   = Blockly.Python.valueToCode(block,'TARGET',Blockly.Python.ORDER_ATOMIC)||"''";
-        var wordlist = block.getFieldValue('WORDLIST');
-        return 'run_scan(target='+target+', mode="directory_probe", structural='+JSON.stringify(wordlist)+')\\n';
+    Blockly.Python['action_reverse_dns'] = function(block) {
+        var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+        return 'run_scan(target=' + val + ', mode="reverse_dns")\\n';
     };
 
-    Blockly.Python['action_sql_error_detect'] = function(block) {
-        var target  = Blockly.Python.valueToCode(block,'TARGET',Blockly.Python.ORDER_ATOMIC)||"''";
-        var payload = Blockly.Python.valueToCode(block,'PAYLOAD',Blockly.Python.ORDER_ATOMIC)||"''";
-        return 'run_scan(target='+target+', mode="sql_error_detect", payload='+payload+')\\n';
+    Blockly.Python['action_hostname_parse'] = function(block) {
+        var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+        return 'run_scan(target=' + val + ', mode="hostname_parse")\\n';
     };
 
-    Blockly.Python['action_xss_reflect_check'] = function(block) {
-        var target  = Blockly.Python.valueToCode(block,'TARGET',Blockly.Python.ORDER_ATOMIC)||"''";
-        var payload = Blockly.Python.valueToCode(block,'PAYLOAD',Blockly.Python.ORDER_ATOMIC)||"''";
-        return 'run_scan(target='+target+', mode="xss_reflect_check", payload='+payload+')\\n';
+    Blockly.Python['action_dns_cache_check'] = function(block) {
+        var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+        return 'run_scan(target=' + val + ', mode="dns_cache")\\n';
     };
 
-    Blockly.Python['action_firewall_detect'] = function(block) {
-        var target = Blockly.Python.valueToCode(block,'TARGET',Blockly.Python.ORDER_ATOMIC)||"''";
-        return 'run_scan(target='+target+', mode="firewall_detect")\\n';
+    Blockly.Python['action_ip_geolocation'] = function(block) {
+        var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+        return 'run_scan(target=' + val + ', mode="geo")\\n';
     };
 
-    Blockly.Python['action_malware_hash_check'] = function(block) {
-        var target   = Blockly.Python.valueToCode(block,'TARGET',Blockly.Python.ORDER_ATOMIC)||"''";
-        var fileHash = block.getFieldValue('FILE_HASH');
-        return 'run_scan(target='+target+', mode="malware_hash_check", structural='+JSON.stringify(fileHash)+')\\n';
+    Blockly.Python['action_phone_tracker'] = function(block) {
+        var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+        return 'run_scan(target=' + val + ', mode="phone")\\n';
+    };
+
+    Blockly.Python['action_email_parse'] = function(block) {
+        var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+        return 'run_scan(target=' + val + ', mode="email_parse")\\n';
+    };
+
+    Blockly.Python['action_whois_lookup'] = function(block) {
+        var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+        return 'run_scan(target=' + val + ', mode="whois")\\n';
+    };
+
+    Blockly.Python['action_robots_sitemap'] = function(block) {
+        var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+        return 'run_scan(target=' + val + ', mode="robots")\\n';
+    };
+
+    Blockly.Python['action_ssl_audit'] = function(block) {
+        var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+        return 'run_scan(target=' + val + ', mode="ssl_audit")\\n';
+    };
+
+    Blockly.Python['action_shodan_lookup'] = function(block) {
+        var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+        return 'run_scan(target=' + val + ', mode="shodan")\\n';
+    };
+
+    Blockly.Python['action_http_header_audit'] = function(block) {
+        var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+        return 'run_scan(target=' + val + ', mode="header_audit")\\n';
+    };
+
+    Blockly.Python['action_service_enum'] = function(block) {
+        var val = Blockly.Python.valueToCode(block, 'TARGET', Blockly.Python.ORDER_ATOMIC) || "''";
+        return 'run_scan(target=' + val + ', mode="service_enum")\\n';
+    };
+
+    Blockly.Python['action_regex_filter'] = function(block) {
+        var val = Blockly.Python.valueToCode(block, 'NAME', Blockly.Python.ORDER_ATOMIC) || "''";
+        var pattern = block.getFieldValue('PATTERN');
+        return 'run_scan(target=' + val + ', mode="regex", structural=' + JSON.stringify(pattern) + ')\\n';
     };
 """
