@@ -3,7 +3,6 @@ import json
 import time
 import urllib.parse
 import streamlit as st
-import streamlit.components.v1 as components
 
 from dotenv import load_dotenv
 from groq import Groq, RateLimitError
@@ -139,12 +138,7 @@ H = (
 H += BR.TOOLBOX_XML
 H += '<script>'
 H += (
-"var Streamlit={"
-"setComponentReady:function(){window.parent.postMessage({isStreamlitMessage:true,type:'streamlit:componentReady',apiVersion:1},'*');},"
-"setComponentValue:function(value){window.parent.postMessage({isStreamlitMessage:true,type:'streamlit:setComponentValue',value:value},'*');},"
-"setFrameHeight:function(height){window.parent.postMessage({isStreamlitMessage:true,type:'streamlit:setFrameHeight',height:height},'*');}"
-"};"
-"Streamlit.setComponentReady();Streamlit.setFrameHeight(850);"
+"// Communication: JS to Python via location.href query params"
 )
 
 # â”€â”€ PARTICLES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -209,10 +203,15 @@ H += (
 "window.ezSendState=function(action,extra){"
 "extra=extra||{};"
 "var code=extra.code!==undefined?extra.code:window.ezCompileSequences();"
-"var xml=extra.xml!==undefined?extra.xml:Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(window.ws));"
-"Streamlit.setComponentValue({"
-"action:action||'sync',code:code,xml:xml,sequenceId:extra.sequenceId||'',aiMsg:extra.aiMsg||'',nonce:String(Date.now())+'-'+Math.random()"
-"});"
+"var xml=Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(window.ws));"
+"var base=window.parent.location.href.split('?')[0];"
+"if(action==='run'){"
+"window.parent.location.href=base+'?run_sequence='+encodeURIComponent(extra.sequenceId||'seq')+'&payload_matrix='+encodeURIComponent(code)+'&xml_matrix='+encodeURIComponent(xml);"
+"}else if(action==='ai'){"
+"window.parent.location.href=base+'?ai_msg='+encodeURIComponent(extra.aiMsg||'')+'&payload_matrix='+encodeURIComponent(code)+'&xml_matrix='+encodeURIComponent(xml);"
+"}else{"
+"window.parent.location.href=base+'?payload_matrix='+encodeURIComponent(code)+'&xml_matrix='+encodeURIComponent(xml);"
+"}"
 "};"
 "window.ghostCatalog=["
 "{name:'Text input',label:'String'},{name:'Number',label:'Number'},{name:'Target string',label:'String'},"
@@ -444,53 +443,53 @@ H += (
 
 H += '</script></body></html>'
 
-component_dir = os.path.join(os.path.dirname(__file__), "assets", "blockly_component")
-os.makedirs(component_dir, exist_ok=True)
-with open(os.path.join(component_dir, "index.html"), "w", encoding="utf-8") as f:
-    f.write(H)
+# st.iframe accepts raw HTML directly and works on Streamlit Cloud.
+# declare_component(path=...) only works locally, not on Cloud.
+# Render the workspace
+st.iframe(H, height=850)
 
-blockly_component = components.declare_component("ezhack_blockly", path=component_dir)
-component_event = blockly_component(default=None, key="ezhack_blockly")
+# ── Read URL params set by the iframe JS ─────────────────────────────────────
+qp = st.query_params
 
-if isinstance(component_event, dict):
-    if component_event.get("code") is not None:
-        st.session_state["workspace_code"] = component_event.get("code", "")
-    if component_event.get("xml") is not None:
-        st.session_state["workspace_xml"] = component_event.get("xml", "")
+if "payload_matrix" in qp:
+    st.session_state["workspace_code"] = urllib.parse.unquote(qp["payload_matrix"])
+if "xml_matrix" in qp:
+    st.session_state["workspace_xml"] = urllib.parse.unquote(qp["xml_matrix"])
 
-    nonce = component_event.get("nonce")
-    if nonce and nonce != st.session_state.get("last_component_nonce"):
-        st.session_state["last_component_nonce"] = nonce
-        action = component_event.get("action")
-        if action == "run":
-            seq_id = component_event.get("sequenceId") or "sequence"
-            code = st.session_state["workspace_code"].strip()
-            st.session_state["terminal"] += f"\nÃ°Å¸Â¤â€“ Sequence [{seq_id}] activated...\n"
-            if code:
-                try:
-                    exec(code, {"run_scan": BR.run_scan, "time": time})
-                    st.session_state["terminal"] += "Ã°Å¸Å¸Â¢ Sequence complete.\n"
-                except Exception as e:
-                    st.session_state["terminal"] += f"Ã°Å¸â€™Â¥ Error: {e}\n"
-            else:
-                st.session_state["terminal"] += "Ã¢Å¡Â Ã¯Â¸Â No code found. Connect blocks below a SEQUENCE GENERATOR.\n"
-            st.rerun()
-        elif action == "ai":
-            user_text = component_event.get("aiMsg", "").strip()
-            if user_text:
-                st.session_state["chat"].append({"role": "user", "content": user_text})
-                system_prompt = (
-                    "You are an AI assistant inside EZHack, a visual block-coding OSINT tool.\n"
-                    f"Workspace code:\n{st.session_state['workspace_code']}\n\n"
-                    f"Terminal output:\n{st.session_state['terminal'][-800:]}\n\n"
-                    "Be concise and hacker-themed."
-                )
-                reply = ai_reply([{"role": "system", "content": system_prompt}] + st.session_state["chat"])
-                st.session_state["chat"].append({"role": "assistant", "content": reply})
-                st.rerun()
+if "run_sequence" in qp and qp["run_sequence"]:
+    seq_id = urllib.parse.unquote(qp["run_sequence"])
+    code   = st.session_state["workspace_code"].strip()
+    st.session_state["terminal"] += f"\n🤖 Sequence [{seq_id}] activated...\n"
+    if code:
+        try:
+            exec(code, {"run_scan": BR.run_scan, "time": time})
+            st.session_state["terminal"] += "🟢 Sequence complete.\n"
+        except Exception as e:
+            st.session_state["terminal"] += f"💥 Error: {e}\n"
+    else:
+        st.session_state["terminal"] += "⚠️ No code found. Connect blocks below a SEQUENCE GENERATOR.\n"
+    st.query_params.clear()
+    st.rerun()
 
-# â”€â”€ 6. Live code display â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+if "ai_msg" in qp and qp["ai_msg"]:
+    user_text = urllib.parse.unquote(qp["ai_msg"]).strip()
+    last = next((m["content"] for m in reversed(st.session_state["chat"]) if m["role"] == "user"), None)
+    if user_text and user_text != last:
+        st.session_state["chat"].append({"role": "user", "content": user_text})
+        system_prompt = (
+            "You are an AI assistant inside EZHack, a visual block-coding OSINT tool.\n"
+            f"Workspace code:\n{st.session_state['workspace_code']}\n\n"
+            f"Terminal output:\n{st.session_state['terminal'][-800:]}\n\n"
+            "Be concise and hacker-themed."
+        )
+        reply = ai_reply([{"role": "system", "content": system_prompt}] + st.session_state["chat"])
+        st.session_state["chat"].append({"role": "assistant", "content": reply})
+    st.query_params.clear()
+    st.rerun()
+
+
+# ── Live code display ──────────────────────────────────────────────────────────
 st.markdown('<div class="live-code-box">', unsafe_allow_html=True)
-st.subheader("ðŸ“ Live Compiled Automation Script")
+st.subheader("📁 Live Compiled Automation Script")
 st.code(st.session_state["workspace_code"] or "# No blocks connected yet.", language="python")
 st.markdown('</div>', unsafe_allow_html=True)
