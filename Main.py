@@ -59,52 +59,6 @@ for k, v in defaults.items():
         st.session_state[k] = v
 
 # â”€â”€ 4. Query param handling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-qp = st.query_params
-
-if "payload_matrix" in qp:
-    st.session_state["workspace_code"] = urllib.parse.unquote(qp["payload_matrix"])
-
-if "xml_matrix" in qp:
-    st.session_state["workspace_xml"] = urllib.parse.unquote(qp["xml_matrix"])
-
-if "run_sequence" in qp and qp["run_sequence"]:
-    seq_id = urllib.parse.unquote(qp["run_sequence"])
-    code   = st.session_state["workspace_code"].strip()
-    st.session_state["terminal"] += f"\nðŸ¤– Sequence [{seq_id}] activated...\n"
-    if code:
-        try:
-            exec(code, {"run_scan": BR.run_scan, "time": time})
-            st.session_state["terminal"] += "ðŸŸ¢ Sequence complete.\n"
-        except Exception as e:
-            st.session_state["terminal"] += f"ðŸ’¥ Error: {e}\n"
-    else:
-        st.session_state["terminal"] += "âš ï¸ No code found. Connect blocks below a SEQUENCE GENERATOR.\n"
-    st.query_params.clear()
-    st.rerun()
-
-if "ai_msg" in qp and qp["ai_msg"]:
-    user_text = urllib.parse.unquote(qp["ai_msg"])
-    last = next((m["content"] for m in reversed(st.session_state["chat"]) if m["role"] == "user"), None)
-    if user_text != last:
-        st.session_state["chat"].append({"role": "user", "content": user_text})
-        system_prompt = (
-            "You are an AI assistant inside EZHack, a visual block-coding OSINT tool.\n"
-            f"Workspace code:\n{st.session_state['workspace_code']}\n\n"
-            f"Terminal output:\n{st.session_state['terminal'][-800:]}\n\n"
-            "Be concise and hacker-themed."
-        )
-        reply = ai_reply([{"role": "system", "content": system_prompt}] + st.session_state["chat"])
-        st.session_state["chat"].append({"role": "assistant", "content": reply})
-    st.query_params.clear()
-    st.rerun()
-
-# â”€â”€ 5. Build Blockly HTML â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-# Rules:
-#   - Never use f-strings for JS (curly braces get misinterpreted)
-#   - Never use \\\" for innerHTML (becomes \" in browser = JS syntax error)
-#   - Use single quotes inside JS strings so no escaping needed at all
-#   - Inject dynamic Python values via direct string concatenation only
-
 safe_xml      = json.dumps(st.session_state["workspace_xml"])
 safe_terminal = json.dumps(st.session_state["terminal"])
 safe_chat     = json.dumps(st.session_state["chat"])
