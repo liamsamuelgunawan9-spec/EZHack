@@ -7,14 +7,14 @@
 #   - SQL injection error detection (passive, read-only)
 #   - XSS reflection detection (passive, read-only)
 #   - Firewall/WAF fingerprinting (real header inspection)
-#   - Hash lookup against a known demo malware list
+#   - Hash lookup against VirusTotal when configured
 #
 # Removed: credential attack sim, exploit sim, fuzz sim,
-#          vuln lookup (all were fake/simulated with no
-#          real data source — removed per project policy)
+#          vuln lookup blocks that did not use real data sources.
 # ============================================================
 
 import socket
+import json
 import urllib.request
 import urllib.parse
 
@@ -196,27 +196,35 @@ def perform_firewall_detect(target: str) -> str:
 
 def perform_malware_hash_check(target: str, sample_hash: str) -> str:
     """
-    Checks a hash against a small hardcoded known-bad list.
-    In a real deployment this would query VirusTotal or MalwareBazaar API.
-    The list here is illustrative — add real hashes as needed.
+    Checks a hash against VirusTotal when VT_API_KEY is configured.
     """
     clean_hash = str(sample_hash).strip().upper()
-    # Real known-bad MD5 hashes (example — replace/extend with real threat intel)
-    known_bad = {
-        "5D41402ABC4B2A76B9719D911017C592": "Demo test hash (not a real threat)",
-        "098F6BCD4621D373CADE4E832627B4F6": "Demo test hash (not a real threat)",
-    }
-    if clean_hash in known_bad:
+    import os
+    api_key = os.environ.get("VT_API_KEY", "").strip()
+    if not api_key:
         return (
-            f"⚠️ Hash Check [{clean_hash}]:\n"
-            f"   Status : FOUND in known-bad list\n"
-            f"   Note   : {known_bad[clean_hash]}"
+            "❌ Hash Check Unavailable:\n"
+            "   VT_API_KEY is not set, so this block cannot return real malware intelligence."
         )
-    return (
-        f"✅ Hash Check [{clean_hash}]:\n"
-        f"   Status : Not found in local known-bad list.\n"
-        f"   Tip    : For comprehensive lookup, query VirusTotal or MalwareBazaar."
-    )
+    try:
+        req = urllib.request.Request(
+            f"https://www.virustotal.com/api/v3/files/{clean_hash}",
+            headers={
+                "x-apikey": api_key,
+                "User-Agent": "Mozilla/5.0",
+            }
+        )
+        with urllib.request.urlopen(req, timeout=8) as stream:
+            data = json.loads(stream.read().decode())
+        stats = data.get("data", {}).get("attributes", {}).get("last_analysis_stats", {})
+        return (
+            f"🦠 Hash Check [{clean_hash}]:\n"
+            f"   Malicious : {stats.get('malicious', 0)}\n"
+            f"   Suspicious: {stats.get('suspicious', 0)}\n"
+            f"   Harmless  : {stats.get('harmless', 0)}"
+        )
+    except Exception as e:
+        return f"❌ Hash Check Failed: {str(e)}"
 
 
 # ── Toolbox XML ──────────────────────────────────────────────
@@ -300,7 +308,7 @@ BLOCK_DEFINITIONS_JS = """
             .appendField(new Blockly.FieldTextInput("5D41402ABC4B2A76B9719D911017C592"), "FILE_HASH");
         this.setPreviousStatement(true, null); this.setNextStatement(true, null);
         this.setColour('#8b4513');
-        this.setTooltip("Checks hash against a known-bad list.");
+        this.setTooltip("Checks the hash against VirusTotal when VT_API_KEY is configured.");
       }
     };
 """
@@ -310,13 +318,13 @@ PYTHON_GENERATORS_JS = """
     Blockly.Python['action_port_scan'] = function(block) {
         var target    = Blockly.Python.valueToCode(block,'TARGET',Blockly.Python.ORDER_ATOMIC)||"''";
         var portRange = block.getFieldValue('PORT_RANGE');
-        return 'run_scan(target='+target+', mode="port_scan", structural="'+portRange+'")\\n';
+        return 'run_scan(target='+target+', mode="port_scan", structural='+JSON.stringify(portRange)+')\\n';
     };
 
     Blockly.Python['action_directory_probe'] = function(block) {
         var target   = Blockly.Python.valueToCode(block,'TARGET',Blockly.Python.ORDER_ATOMIC)||"''";
         var wordlist = block.getFieldValue('WORDLIST');
-        return 'run_scan(target='+target+', mode="directory_probe", structural="'+wordlist+'")\\n';
+        return 'run_scan(target='+target+', mode="directory_probe", structural='+JSON.stringify(wordlist)+')\\n';
     };
 
     Blockly.Python['action_sql_error_detect'] = function(block) {
@@ -339,6 +347,6 @@ PYTHON_GENERATORS_JS = """
     Blockly.Python['action_malware_hash_check'] = function(block) {
         var target   = Blockly.Python.valueToCode(block,'TARGET',Blockly.Python.ORDER_ATOMIC)||"''";
         var fileHash = block.getFieldValue('FILE_HASH');
-        return 'run_scan(target='+target+', mode="malware_hash_check", structural="'+fileHash+'")\\n';
+        return 'run_scan(target='+target+', mode="malware_hash_check", structural='+JSON.stringify(fileHash)+')\\n';
     };
 """

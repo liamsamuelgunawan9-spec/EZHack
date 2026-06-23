@@ -13,12 +13,8 @@ import urllib.parse
 import re
 import ssl
 
-try:
-    import phonenumbers
-    from phonenumbers import carrier, geocoder, timezone
-    _PHONENUMBERS_OK = True
-except ImportError:
-    _PHONENUMBERS_OK = False
+import phonenumbers
+from phonenumbers import carrier, geocoder, timezone
 
 
 # ── Helper: input sanitizers ─────────────────────────────────
@@ -80,8 +76,6 @@ def perform_ip_geolocation(target: str) -> str:
 
 
 def perform_phone_tracking(target: str) -> str:
-    if not _PHONENUMBERS_OK:
-        return "❌ phonenumbers library not installed on this server."
     raw = str(target).strip().replace(" ", "").replace('"', "").replace("'", "")
     if not raw.startswith("+"):
         raw = "+" + raw
