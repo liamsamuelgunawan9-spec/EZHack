@@ -1,5 +1,5 @@
 streamlit
 groq
-phonenumbers
+phonenumbers>=8.12.0
 python-dotenv
 requests
